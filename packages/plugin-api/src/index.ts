@@ -20,6 +20,7 @@ export type {
   ColumnValueType,
   TableResult,
   ViewHostApi,
+  ViewMessageContext,
   ViewMessageHandler,
 } from "./ui.js";
 

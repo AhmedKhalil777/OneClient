@@ -49,8 +49,27 @@ export interface ViewHostApi {
   invokeCommand(commandId: string, args?: unknown[]): Promise<unknown>;
 }
 
+/**
+ * One registered handler (`registerView(viewId, handler)`) serves every
+ * open instance of that view — e.g. a user can open a per-connection
+ * dashboard for two different connections at once, both backed by the
+ * same handler. `connectionId` tells you which instance a message came
+ * from (present when the view's manifest contribution sets
+ * `connectionType`; absent for connection-agnostic views).
+ *
+ * `reply` stays valid for the life of the view instance and can be called
+ * any number of times — including asynchronously, well after `onMessage`
+ * returns — which is what makes pushing a live log tail or periodic
+ * status refresh to the view work: keep the `reply` from the view's
+ * initial "subscribe" message and call it whenever new data is ready.
+ */
+export interface ViewMessageContext {
+  readonly connectionId?: string;
+  reply(message: unknown): void;
+}
+
 export interface ViewMessageHandler {
-  onMessage(message: unknown, reply: (message: unknown) => void): void | Promise<void>;
-  /** Called when the view is closed/torn down; release any resources here. */
-  onDispose?(): void | Promise<void>;
+  onMessage(message: unknown, context: ViewMessageContext): void | Promise<void>;
+  /** Called when this specific view instance is closed/torn down; release any resources (e.g. a log-tail subscription) held for it. */
+  onDispose?(connectionId?: string): void | Promise<void>;
 }

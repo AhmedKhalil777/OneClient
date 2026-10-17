@@ -1,0 +1,16 @@
+launch
+wait 400
+click-text +
+wait 300
+select #conn-type sample
+wait 400
+fill #field-label demo-conn
+fill #conn-name My Sample
+click-text Save
+wait 500
+ss t2-01-saved
+click-text ⊞
+wait 1500
+ss-view ui t2-02-view-pong
+wait 1500
+ss-view ui t2-03-view-ticks

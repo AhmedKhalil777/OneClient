@@ -5,10 +5,21 @@
   "version": "0.1.0",
   "engines": { "oneclient": "^0.1.0" },
   "main": "main.mjs",
+  "ui": "ui",
   "contributes": {
     "connectionTypes": [{ "id": "sample", "label": "Sample (in-memory)", "category": "Dev" }],
     "explorerNodes": [{ "id": "sample.item", "connectionType": "sample" }],
-    "commands": [{ "id": "sample.sayHello", "title": "Sample: Say Hello" }]
+    "commands": [{ "id": "sample.sayHello", "title": "Sample: Say Hello" }],
+    "views": [
+      {
+        "id": "sample.dashboard",
+        "title": "Sample Dashboard",
+        "tier": 2,
+        "location": "editor",
+        "entry": "index.html",
+        "connectionType": "sample"
+      }
+    ]
   },
   "activationEvents": ["*"]
 }

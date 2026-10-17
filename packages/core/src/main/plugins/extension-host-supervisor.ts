@@ -8,6 +8,7 @@ import type { PluginRecord } from "./plugin-manager.js";
 type LogFn = (pluginId: string, level: "debug" | "info" | "warn" | "error", message: string, meta?: unknown) => void;
 type RegisteredFn = (pluginId: string, contribution: HostOutboundMessage & { type: "registered" }) => void;
 type ExitFn = (pluginId: string, code: number) => void;
+type ViewPushFn = (pluginId: string, viewId: string, connectionId: string | undefined, message: unknown) => void;
 
 interface PendingInvoke {
   resolve: (value: unknown) => void;
@@ -38,6 +39,7 @@ export class ExtensionHostSupervisor {
     private readonly onRegistered: RegisteredFn,
     private readonly onExit: ExitFn,
     private readonly log: LogFn,
+    private readonly onViewPush: ViewPushFn,
   ) {}
 
   isActive(pluginId: string): boolean {
@@ -117,6 +119,19 @@ export class ExtensionHostSupervisor {
     });
   }
 
+  /** Fire-and-forget: a view's reply (if any) arrives later as a "view:push" the caller already subscribed to via onViewPush. */
+  sendViewMessage(pluginId: string, viewId: string, connectionId: string | undefined, message: unknown): void {
+    const handle = this.hosts.get(pluginId);
+    if (!handle) return;
+    this.send(handle, { type: "view:message", viewId, connectionId, message });
+  }
+
+  sendViewDispose(pluginId: string, viewId: string, connectionId: string | undefined): void {
+    const handle = this.hosts.get(pluginId);
+    if (!handle) return;
+    this.send(handle, { type: "view:dispose", viewId, connectionId });
+  }
+
   private handleMessage(handle: HostHandle, msg: HostOutboundMessage): void {
     switch (msg.type) {
       case "activated":
@@ -157,6 +172,9 @@ export class ExtensionHostSupervisor {
         break;
       case "deactivated":
         handle.deactivation?.resolve();
+        break;
+      case "view:push":
+        this.onViewPush(handle.pluginId, msg.viewId, msg.connectionId, msg.message);
         break;
     }
   }

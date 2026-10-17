@@ -4,11 +4,21 @@ import { CommandPalette, type PaletteCommand } from "./components/CommandPalette
 import { NewConnectionDialog } from "./components/NewConnectionDialog.js";
 import { PluginManagerPanel } from "./components/PluginManagerPanel.js";
 import { Sidebar } from "./components/Sidebar.js";
+import { Tier2ViewHost } from "./components/Tier2ViewHost.js";
 
 type Tab =
   | { id: "welcome"; title: "Welcome"; kind: "welcome" }
   | { id: "plugin-manager"; title: "Plugins"; kind: "plugin-manager" }
-  | { id: string; title: string; kind: "command-result"; result: unknown };
+  | { id: string; title: string; kind: "command-result"; result: unknown }
+  | {
+      id: string;
+      title: string;
+      kind: "tier2-view";
+      instanceId: string;
+      pluginId: string;
+      viewId: string;
+      connectionId?: string;
+    };
 
 const emptyRegistry: ContributionRegistrySnapshot = { connectionTypes: [], explorerNodes: [], views: [], commands: [] };
 
@@ -72,6 +82,19 @@ export function App() {
     }
   }
 
+  function openDashboard(connection: ConnectionSummary, view: { pluginId: string; id: string; title: string }) {
+    const instanceId = `${view.pluginId}:${view.id}:${connection.id}`;
+    openTab({
+      id: instanceId,
+      title: `${view.title}: ${connection.name}`,
+      kind: "tier2-view",
+      instanceId,
+      pluginId: view.pluginId,
+      viewId: view.id,
+      connectionId: connection.id,
+    });
+  }
+
   const paletteCommands = useMemo<PaletteCommand[]>(() => {
     const builtins: PaletteCommand[] = [
       { id: "workbench.reloadWindow", title: "Reload Window", run: () => location.reload() },
@@ -93,8 +116,10 @@ export function App() {
       <Sidebar
         connections={connections}
         plugins={plugins}
+        views={registry.views}
         onNewConnection={() => setNewConnectionOpen(true)}
         onOpenPluginManager={() => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" })}
+        onOpenDashboard={openDashboard}
       />
 
       <div className="main-area">
@@ -121,11 +146,20 @@ export function App() {
           ))}
         </div>
 
-        <div className="tab-content">
+        <div className={`tab-content ${activeTab?.kind === "tier2-view" ? "tab-content-bleed" : ""}`}>
           {activeTab?.kind === "welcome" && <WelcomeTab />}
           {activeTab?.kind === "plugin-manager" && <PluginManagerPanel plugins={plugins} />}
           {activeTab?.kind === "command-result" && (
             <pre className="result">{JSON.stringify(activeTab.result, null, 2)}</pre>
+          )}
+          {activeTab?.kind === "tier2-view" && (
+            <Tier2ViewHost
+              key={activeTab.instanceId}
+              instanceId={activeTab.instanceId}
+              pluginId={activeTab.pluginId}
+              viewId={activeTab.viewId}
+              connectionId={activeTab.connectionId}
+            />
           )}
         </div>
       </div>

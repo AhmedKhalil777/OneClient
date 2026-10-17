@@ -14,6 +14,7 @@ import { PluginManager, type PluginRecord } from "./plugins/plugin-manager.js";
 import { ProviderDirectory } from "./plugins/provider-directory.js";
 import { ContributionRegistry } from "./plugins/registry.js";
 import { SqliteSecretStore } from "./secrets/secret-store.js";
+import { ViewHostManager } from "./views/view-host-manager.js";
 import { createMainWindow } from "./windows.js";
 
 function pluginDirs(): string[] {
@@ -42,7 +43,22 @@ async function main(): Promise<void> {
   const secrets = new SqliteSecretStore(db);
   const pluginManager = new PluginManager(pluginDirs(), registry, metadata);
 
-  const supervisor = new ExtensionHostSupervisor(
+  const mainWindow = createMainWindow();
+
+  // ExtensionHostSupervisor and ViewHostManager each need to call into the
+  // other (a host pushes a view message -> ViewHostManager delivers it to
+  // the right WebContentsView; a view posts a message -> the supervisor
+  // forwards it to the owning host). Forward-declare one side; both
+  // closures below only ever fire after everything is constructed.
+  let supervisor!: ExtensionHostSupervisor;
+
+  const views = new ViewHostManager(
+    mainWindow,
+    join(__dirname, "../preload"),
+    (pluginId, viewId, connectionId, message) => supervisor.sendViewMessage(pluginId, viewId, connectionId, message),
+  );
+
+  supervisor = new ExtensionHostSupervisor(
     secrets,
     (pluginId, msg) => {
       const c = msg.contribution;
@@ -59,6 +75,7 @@ async function main(): Promise<void> {
       pluginManager.setState(pluginId, "crashed", `Extension host exited unexpectedly (code ${code}).`);
     },
     log,
+    (pluginId, viewId, connectionId, message) => views.push(viewId, connectionId, message),
   );
 
   async function tryActivate(record: PluginRecord): Promise<void> {
@@ -99,18 +116,19 @@ async function main(): Promise<void> {
     pluginManager,
     connections,
     supervisor,
+    views,
     ensureActivated,
     getWindows: () => BrowserWindow.getAllWindows(),
   });
 
   await pluginManager.scan();
-  createMainWindow();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
   });
 
   app.on("before-quit", () => {
+    views.closeAll();
     for (const record of pluginManager.getRecords()) {
       if (record.state === "active") void supervisor.deactivate(record.id);
     }

@@ -1,6 +1,8 @@
 // Dev fixture plugin — see ../README.md. Plain ESM, no build step needed.
 
 const sessions = new Map();
+const tickIntervals = new Map();
+let tickCount = 0;
 
 export function activate(context) {
   context.logger.info("sample plugin activated");
@@ -53,8 +55,30 @@ export function activate(context) {
       return [];
     },
   });
+
+  context.registerView("sample.dashboard", {
+    onMessage(message, ctx) {
+      if (message?.type === "ping") {
+        ctx.reply({ type: "pong", connectionId: ctx.connectionId });
+      } else if (message?.type === "subscribe") {
+        const interval = setInterval(() => {
+          ctx.reply({ type: "tick", count: ++tickCount, connectionId: ctx.connectionId });
+        }, 1000);
+        tickIntervals.set(ctx.connectionId, interval);
+      }
+    },
+    onDispose(connectionId) {
+      const interval = tickIntervals.get(connectionId);
+      if (interval) {
+        clearInterval(interval);
+        tickIntervals.delete(connectionId);
+      }
+    },
+  });
 }
 
 export function deactivate() {
   sessions.clear();
+  for (const interval of tickIntervals.values()) clearInterval(interval);
+  tickIntervals.clear();
 }

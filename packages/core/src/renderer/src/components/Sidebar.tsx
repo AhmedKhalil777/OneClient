@@ -1,17 +1,24 @@
 import { useState } from "react";
+import type { ViewContribution } from "@oneclient/plugin-api";
 import type { ConnectionSummary, PluginSummary } from "../../../shared/types.js";
 import { ConnectionRootNodes } from "./ExplorerTree.js";
+
+type DashboardView = ViewContribution & { pluginId: string };
 
 export function Sidebar({
   connections,
   plugins,
+  views,
   onNewConnection,
   onOpenPluginManager,
+  onOpenDashboard,
 }: {
   connections: ConnectionSummary[];
   plugins: PluginSummary[];
+  views: DashboardView[];
   onNewConnection: () => void;
   onOpenPluginManager: () => void;
+  onOpenDashboard: (connection: ConnectionSummary, view: DashboardView) => void;
 }) {
   return (
     <div className="sidebar">
@@ -23,9 +30,17 @@ export function Sidebar({
           </button>
         </div>
         {connections.length === 0 && <div className="empty-hint">No connections yet.</div>}
-        {connections.map((c) => (
-          <ConnectionRow key={c.id} connection={c} />
-        ))}
+        {connections.map((c) => {
+          const dashboard = views.find((v) => v.tier === 2 && v.connectionType === c.typeId);
+          return (
+            <ConnectionRow
+              key={c.id}
+              connection={c}
+              dashboard={dashboard}
+              onOpenDashboard={dashboard ? () => onOpenDashboard(c, dashboard) : undefined}
+            />
+          );
+        })}
       </div>
 
       <div className="sidebar-section">
@@ -43,7 +58,15 @@ export function Sidebar({
   );
 }
 
-function ConnectionRow({ connection }: { connection: ConnectionSummary }) {
+function ConnectionRow({
+  connection,
+  dashboard,
+  onOpenDashboard,
+}: {
+  connection: ConnectionSummary;
+  dashboard?: DashboardView;
+  onOpenDashboard?: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -63,6 +86,18 @@ function ConnectionRow({ connection }: { connection: ConnectionSummary }) {
         <span className="tree-caret">{expanded ? "▾" : "▸"}</span>
         <span>{connection.name}</span>
         <span style={{ marginLeft: "auto", color: "var(--text-dim)", fontSize: 11 }}>{connection.typeId}</span>
+        {onOpenDashboard && (
+          <button
+            className="icon-button"
+            title={`Open ${dashboard?.title ?? "Dashboard"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDashboard();
+            }}
+          >
+            ⊞
+          </button>
+        )}
         <button className="icon-button" title="Delete" disabled={deleting} onClick={remove}>
           ×
         </button>

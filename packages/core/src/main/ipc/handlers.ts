@@ -1,24 +1,27 @@
+import { join } from "node:path";
 import { type BrowserWindow, ipcMain } from "electron";
 import type { TreeNode } from "@oneclient/plugin-api";
-import { IpcChannel } from "../../shared/ipc-contract.js";
+import { IpcChannel, type ViewBounds } from "../../shared/ipc-contract.js";
 import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "../../shared/types.js";
 import type { ConnectionManager } from "../connections/connection-manager.js";
 import type { ExtensionHostSupervisor } from "../plugins/extension-host-supervisor.js";
 import type { PluginManager } from "../plugins/plugin-manager.js";
 import type { ContributionRegistry } from "../plugins/registry.js";
+import type { ViewHostManager } from "../views/view-host-manager.js";
 
 export interface IpcDeps {
   registry: ContributionRegistry;
   pluginManager: PluginManager;
   connections: ConnectionManager;
   supervisor: ExtensionHostSupervisor;
+  views: ViewHostManager;
   ensureActivated: (pluginId: string) => Promise<void>;
   getWindows: () => BrowserWindow[];
 }
 
 /** Registers every main-process IPC handler and wires registry/plugin change events to all open windows. */
 export function registerIpcHandlers(deps: IpcDeps): void {
-  const { registry, pluginManager, connections, supervisor, ensureActivated, getWindows } = deps;
+  const { registry, pluginManager, connections, supervisor, views, ensureActivated, getWindows } = deps;
 
   const broadcast = (channel: string, payload: unknown) => {
     for (const win of getWindows()) {
@@ -96,4 +99,39 @@ export function registerIpcHandlers(deps: IpcDeps): void {
       >;
     },
   );
+
+  ipcMain.handle(
+    IpcChannel.ViewOpen,
+    async (_event, instanceId: string, pluginId: string, viewId: string, connectionId?: string) => {
+      const viewContribution = registry
+        .snapshot()
+        .views.find((v) => v.id === viewId && v.pluginId === pluginId);
+      if (!viewContribution?.entry) throw new Error(`No Tier 2 view "${viewId}" contributed by "${pluginId}".`);
+
+      const record = pluginManager.getRecord(pluginId);
+      if (!record?.manifest.ui) throw new Error(`Plugin "${pluginId}" has no "ui" bundle declared in its manifest.`);
+
+      await ensureActivated(pluginId);
+      if (connectionId) await connections.ensureConnected(connectionId);
+
+      views.open({
+        instanceId,
+        pluginId,
+        viewId,
+        connectionId,
+        entryDir: join(record.rootDir, record.manifest.ui),
+        entryFile: viewContribution.entry,
+      });
+    },
+  );
+
+  ipcMain.handle(IpcChannel.ViewClose, (_event, instanceId: string) => {
+    const instance = views.getInstance(instanceId);
+    views.close(instanceId);
+    if (instance) supervisor.sendViewDispose(instance.pluginId, instance.viewId, instance.connectionId);
+  });
+
+  ipcMain.handle(IpcChannel.ViewSetBounds, (_event, instanceId: string, bounds: ViewBounds) => {
+    views.setBounds(instanceId, bounds);
+  });
 }

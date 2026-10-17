@@ -27,6 +27,7 @@ error at startup (e.g. after bumping the Electron version).
 
 ```sh
 node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/smoke-test.txt
+node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/tier2-smoke-test.txt  # Tier 2 view pipeline
 ```
 
 This is non-interactive/batch mode: it runs every line in the file as a
@@ -47,7 +48,8 @@ node .claude/skills/run-desktop/driver.mjs
 | command | what it does |
 |---|---|
 | `launch` | launch the app, find the real window |
-| `ss [name]` | screenshot -> `shots/<name>.png` |
+| `ss [name]` | screenshot of the main window -> `shots/<name>.png`. **Does not show Tier 2 views** — see Gotchas |
+| `ss-view [urlSubstring] [name]` | screenshot of an open Tier 2 view's own content -> `shots/<name>.png` |
 | `click <css-sel>` | click element via DOM `.click()` (not coordinates) |
 | `click-text <text>` | click first `button/a/div/span/td/li` with matching text |
 | `fill <css-sel> <text>` | **use this for text inputs**, not `type`/`eval` — see Gotchas |
@@ -98,7 +100,21 @@ pnpm run dev     # electron-vite dev, hot reload, opens a real window
   (`%APPDATA%/oneClient` on Windows). Repeated smoke-test runs will leave
   behind multiple "My Sample" connections unless you delete that directory
   between runs — this is expected (it's exactly the persistence Phase 2
-  was asked to add), not a bug.
+  was asked to add), not a bug. **Also stop any background `pnpm run dev`
+  session first** — the sqlite file and a running Electron instance both
+  hold OS-level locks that make `rm -rf` on userData fail with "Device or
+  resource busy".
+- **`BrowserWindow.capturePage()` does not composite child
+  `WebContentsView`s.** Tier 2 views are hosted as separate
+  `WebContentsView`s layered over the main window (see
+  `view-host-manager.ts`) — a real user sees them fine via the OS
+  compositor, but `ss` (which uses `capturePage()`) shows a blank hole
+  where one is. Use `ss-view` instead, which screenshots the view's own
+  `webContents` directly by matching its URL (every Tier 2 entry lives
+  under the plugin manifest's `ui` dir, so any loaded webContents URL
+  containing `/ui/` is one — pass a substring to disambiguate when
+  multiple views are open). Confirmed by a direct side-by-side comparison
+  while building the Docker dashboard's Tier 2 infra — not a guess.
 
 ## Troubleshooting
 

@@ -150,6 +150,22 @@ async function handleMessage(msg: HostInboundMessage): Promise<void> {
       secretAckWaiters.delete(msg.requestId);
       return;
     }
+    case "view:message": {
+      const handler = viewHandlers.get(msg.viewId);
+      if (!handler) return;
+      const reply = (replyMessage: unknown) =>
+        post({ type: "view:push", viewId: msg.viewId, connectionId: msg.connectionId, message: replyMessage });
+      try {
+        await handler.onMessage(msg.message, { connectionId: msg.connectionId, reply });
+      } catch (err) {
+        reply({ error: describeError(err) });
+      }
+      return;
+    }
+    case "view:dispose": {
+      await viewHandlers.get(msg.viewId)?.onDispose?.(msg.connectionId);
+      return;
+    }
   }
 }
 

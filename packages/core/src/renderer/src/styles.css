@@ -139,6 +139,11 @@ textarea {
   padding: 16px;
 }
 
+.tab-content-bleed {
+  padding: 0;
+  overflow: hidden;
+}
+
 .status-bar {
   grid-column: 1 / -1;
   background: var(--accent);

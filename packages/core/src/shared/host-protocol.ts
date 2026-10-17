@@ -20,7 +20,9 @@ export type HostInboundMessage =
     }
   | { type: "deactivate" }
   | { type: "secret:result"; requestId: string; value?: string }
-  | { type: "secret:ack"; requestId: string };
+  | { type: "secret:ack"; requestId: string }
+  | { type: "view:message"; viewId: string; connectionId?: string; message: unknown }
+  | { type: "view:dispose"; viewId: string; connectionId?: string };
 
 export type RegisteredContribution =
   | { kind: "connection"; typeId: string; configSchema: unknown; uiSchema?: unknown }
@@ -38,4 +40,5 @@ export type HostOutboundMessage =
   | { type: "secret:get"; requestId: string; key: string }
   | { type: "secret:set"; requestId: string; key: string; value: string }
   | { type: "secret:delete"; requestId: string; key: string }
-  | { type: "deactivated" };
+  | { type: "deactivated" }
+  | { type: "view:push"; viewId: string; connectionId?: string; message: unknown };

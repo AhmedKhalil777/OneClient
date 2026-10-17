@@ -25,6 +25,11 @@ const api: OneClientApi = {
   deleteConnection: (id) => ipcRenderer.invoke(IpcChannel.ConnectionDelete, id),
 
   getExplorerChildren: (connectionId, node) => ipcRenderer.invoke(IpcChannel.ExplorerGetChildren, connectionId, node),
+
+  openView: (instanceId, pluginId, viewId, connectionId) =>
+    ipcRenderer.invoke(IpcChannel.ViewOpen, instanceId, pluginId, viewId, connectionId),
+  closeView: (instanceId) => ipcRenderer.invoke(IpcChannel.ViewClose, instanceId),
+  setViewBounds: (instanceId, bounds) => ipcRenderer.invoke(IpcChannel.ViewSetBounds, instanceId, bounds),
 };
 
 contextBridge.exposeInMainWorld("oneclient", api);

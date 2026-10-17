@@ -26,7 +26,18 @@ export const IpcChannel = {
   ConnectionsChanged: "oneclient:connection:changed",
 
   ExplorerGetChildren: "oneclient:explorer:getChildren",
+
+  ViewOpen: "oneclient:view:open",
+  ViewClose: "oneclient:view:close",
+  ViewSetBounds: "oneclient:view:setBounds",
 } as const;
+
+export interface ViewBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 /**
  * The renderer-facing API shape. Preload implements this by wrapping
@@ -56,4 +67,9 @@ export interface OneClientApi {
   deleteConnection(id: string): Promise<void>;
 
   getExplorerChildren(connectionId: string, node: TreeNode | null): Promise<TreeNode[]>;
+
+  /** Opens (or no-ops if already open) a Tier 2 view instance; resolves once the WebContentsView starts loading. */
+  openView(instanceId: string, pluginId: string, viewId: string, connectionId?: string): Promise<void>;
+  closeView(instanceId: string): Promise<void>;
+  setViewBounds(instanceId: string, bounds: ViewBounds): Promise<void>;
 }

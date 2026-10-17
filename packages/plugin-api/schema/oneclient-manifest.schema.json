@@ -152,6 +152,10 @@
         "entry": {
           "type": "string",
           "description": "Path, relative to manifest.ui, to this view's entry HTML. Required if tier is 2."
+        },
+        "connectionType": {
+          "$ref": "#/$defs/contributionId",
+          "description": "If set, this view is scoped to one saved connection of that type (e.g. a per-connection dashboard)."
         }
       },
       "allOf": [
@@ -179,6 +183,10 @@
         "when": {
           "type": "string",
           "description": "Context-menu visibility guard, e.g. \"contextValue == 'postgres.table'\". Omit to show only in the command palette."
+        },
+        "inputSchema": {
+          "type": "object",
+          "description": "JSON Schema for one object core should collect via a generic form before invoking this command, passed as args[0]."
         }
       }
     }

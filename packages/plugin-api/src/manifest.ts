@@ -1,3 +1,5 @@
+import type { JsonSchemaObject } from "./json-schema.js";
+
 /**
  * Shape of `oneclient.json`. This TS type and
  * `schema/oneclient-manifest.schema.json` describe the same thing by hand —
@@ -77,6 +79,15 @@ export interface ViewContribution {
   readonly icon?: string;
   /** Path, relative to `manifest.ui`, to this view's entry HTML. Required iff `tier === 2`. */
   readonly entry?: string;
+  /**
+   * If set, this view is scoped to one saved connection of that type —
+   * core offers it as a per-connection action (e.g. "Open Dashboard" next
+   * to a connection in the sidebar) rather than a standalone command, and
+   * every message the view's backend handler receives carries the
+   * relevant `connectionId` (see `ViewMessageContext`). Omit for a
+   * connection-agnostic view.
+   */
+  readonly connectionType?: string;
 }
 
 export interface CommandContribution {
@@ -87,4 +98,13 @@ export interface CommandContribution {
   readonly keybinding?: string;
   /** Context-menu visibility guard, e.g. `"contextValue == 'postgres.table'"`. Omit to show only in the command palette. */
   readonly when?: string;
+  /**
+   * If present, core collects one object matching this JSON Schema via a
+   * generic Tier 1 form (reusing the same renderer as a connection config
+   * form) before invoking the command, and passes it as `args[0]` —
+   * e.g. a "Pull Image" command asking for an image tag. Omit for
+   * commands that need no input, or that interpret `args` themselves
+   * (e.g. a context-menu command receiving the clicked TreeNode).
+   */
+  readonly inputSchema?: JsonSchemaObject;
 }

@@ -38,6 +38,9 @@ const COMMANDS = {
       args: ["--no-sandbox", CORE_DIR],
       timeout: 30_000,
     });
+    const proc = app.process();
+    proc.stdout?.on("data", (d) => process.stdout.write(`[main stdout] ${d}`));
+    proc.stderr?.on("data", (d) => process.stderr.write(`[main stderr] ${d}`));
     await new Promise((r) => setTimeout(r, 2_000));
     page = app.windows().find((w) => !w.url().startsWith("devtools://")) ?? (await app.firstWindow());
     await page.waitForLoadState("domcontentloaded");
@@ -47,11 +50,52 @@ const COMMANDS = {
     for (const w of app.windows()) console.log(" ", w.url());
   },
 
+  // Uses BrowserWindow.capturePage() in the MAIN process, not page.screenshot(),
+  // because Playwright's page.screenshot() only rasterizes the main renderer's
+  // own CDP frame — it shows a blank hole wherever a Tier 2 WebContentsView is
+  // layered on top. NOTE: BrowserWindow.capturePage() has the same blind spot —
+  // it does NOT composite child WebContentsViews either (confirmed empirically;
+  // a real user sees them fine via the OS compositor, this is a backing-store
+  // limitation of capturePage() specifically). Use `ss-view` to screenshot an
+  // open Tier 2 view's own content.
   async ss(name) {
-    if (!page) return console.log("ERROR: launch first");
+    if (!app) return console.log("ERROR: launch first");
     const f = path.join(SHOT_DIR, (name || `ss-${Date.now()}`) + ".png");
-    await page.screenshot({ path: f });
+    const base64 = await app.evaluate(async ({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      const img = await win.capturePage();
+      return img.toPNG().toString("base64");
+    });
+    fs.writeFileSync(f, Buffer.from(base64, "base64"));
     console.log("screenshot:", f);
+  },
+
+  // Screenshots a Tier 2 view's own WebContentsView by matching its URL
+  // (every view's entry lives under a manifest-declared "ui" dir, so any
+  // loaded webContents whose URL contains "/ui/" is one). Pass a substring
+  // to disambiguate when more than one view is open.
+  async "ss-view"(args) {
+    if (!app) return console.log("ERROR: launch first");
+    const [urlMatch, name] = args.includes(" ") ? [args.split(" ")[0], args.split(" ").slice(1).join(" ")] : [undefined, args];
+    const result = await app.evaluate(async ({ webContents }, match) => {
+      const all = webContents.getAllWebContents().map((wc) => wc.getURL());
+      const diag = all.map((u) => `${u} :: hasUi=${u.includes("/ui/")} hasMatch=${!match || u.includes(match)}`);
+      const candidates = webContents
+        .getAllWebContents()
+        .filter((wc) => wc.getURL().includes("/ui/") && (!match || wc.getURL().includes(match)));
+      if (candidates.length === 0) return { base64: null, all, diag, match };
+      const img = await candidates[0].capturePage();
+      return { base64: img.toPNG().toString("base64"), all, diag, match };
+    }, urlMatch);
+    if (!result.base64) {
+      console.log("ERROR: no matching Tier 2 view webContents found. match =", JSON.stringify(result.match));
+      for (const line of result.diag) console.log(" ", line);
+      return;
+    }
+    const base64 = result.base64;
+    const f = path.join(SHOT_DIR, (name || `ss-view-${Date.now()}`) + ".png");
+    fs.writeFileSync(f, Buffer.from(base64, "base64"));
+    console.log("view screenshot:", f);
   },
 
   async click(sel) {
