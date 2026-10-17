@@ -29,8 +29,12 @@ export interface PluginManifest {
     readonly oneclient: string;
   };
 
-  /** Path, relative to the plugin root, to the compiled entry module run in the extension host. Must export `activate` (and optionally `deactivate`). */
-  readonly main: string;
+  /**
+   * Path, relative to the plugin root, to the compiled entry module run in the extension host. Must export
+   * `activate` (and optionally `deactivate`). Omit for declarative plugins that only contribute data
+   * (themes, icons) — no extension-host process is started for those.
+   */
+  readonly main?: string;
 
   /** Path, relative to the plugin root, to the Tier 2 UI bundle root. Required iff any `contributes.views[].tier === 2`. */
   readonly ui?: string;
@@ -46,6 +50,12 @@ export interface PluginManifest {
     readonly iconThemes?: IconThemeContribution[];
     /** New icon ids, usable by any plugin as `$(id)`. */
     readonly icons?: IconContribution[];
+    /**
+     * Contributions to other plugins' extension points, keyed by point id (`<owning plugin id>.<name>`).
+     * Core only brokers them (views read them with `ViewHostApi.getContributions`); the plugin that owns the
+     * point defines and validates the item shape. Example: `"oneclient-files.editors"` — see file-editor.ts.
+     */
+    readonly extensions?: Record<string, ReadonlyArray<Record<string, unknown>>>;
   };
 
   /**
@@ -103,6 +113,8 @@ export interface CommandContribution {
   readonly category?: string;
   readonly icon?: string;
   readonly keybinding?: string;
+  /** Not offered in the command palette or plugin sections: the command exists only to be invoked by code (e.g. by a view or another plugin's extension point). */
+  readonly hidden?: boolean;
   /**
    * Context-menu visibility guard. Omit to show the command in the command
    * palette (and the plugin's Commands section) instead.

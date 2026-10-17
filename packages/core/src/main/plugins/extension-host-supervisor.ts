@@ -48,6 +48,8 @@ export class ExtensionHostSupervisor {
 
   async activate(record: PluginRecord): Promise<void> {
     if (this.hosts.has(record.id)) return;
+    const main = record.manifest.main;
+    if (!main) throw new Error(`Plugin "${record.id}" has no "main" entry — nothing to run in an extension host.`);
 
     const child = utilityProcess.fork(this.hostEntryPath, [], {
       serviceName: `oneclient-plugin:${record.id}`,
@@ -76,7 +78,7 @@ export class ExtensionHostSupervisor {
       handle.activation = { resolve, reject };
     });
 
-    const mainPath = join(record.rootDir, record.manifest.main);
+    const mainPath = join(record.rootDir, main);
     this.send(handle, { type: "activate", pluginId: record.id, extensionPath: record.rootDir, mainPath });
 
     const timeout = new Promise<void>((_, reject) =>

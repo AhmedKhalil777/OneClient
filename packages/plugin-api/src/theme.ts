@@ -54,10 +54,99 @@ export interface IconContribution {
   readonly colored?: boolean;
 }
 
+/**
+ * VS Code-style file icon mappings. Values are icon ids that the theme itself
+ * defines in its `icons` map (or any registry id). Keys are matched lower-case.
+ */
+export interface FileIconMappings {
+  /** Extension without the dot; multi-part ones ("spec.ts", "d.ts") win over their last part ("ts"). */
+  readonly fileExtensions?: Readonly<Record<string, string>>;
+  /** Exact file names ("package.json", "dockerfile", ".gitignore") — beat extensions. */
+  readonly fileNames?: Readonly<Record<string, string>>;
+  /** Exact folder names ("src", "node_modules"). A leading/trailing `.`, `_` or `-` is ignored on lookup, so "src" also covers ".src" / "__src__". */
+  readonly folderNames?: Readonly<Record<string, string>>;
+  readonly folderNamesExpanded?: Readonly<Record<string, string>>;
+}
+
+/**
+ * Shape of an icon theme file (`contributes.iconThemes[].path`). Everything is
+ * optional: a theme may only restyle a few registry ids (`icons`), or also be a
+ * full file-icon theme like VS Code's Seti / Material Icon Theme.
+ */
+export interface IconThemeFile extends FileIconMappings {
+  /** Treat every icon this theme defines as multi-colour (drawn as-is) unless it says otherwise. */
+  readonly colored?: boolean;
+  /** Icon id → SVG path relative to this file. Defines new ids or restyles existing ones. */
+  readonly icons?: Readonly<Record<string, string | { readonly path: string; readonly colored?: boolean }>>;
+  /** Fallbacks when no mapping matches. */
+  readonly file?: string;
+  readonly folder?: string;
+  readonly folderExpanded?: string;
+  /** Overrides applied on top of the mappings above in light / high-contrast color themes. */
+  readonly light?: FileIconMappings;
+  readonly hc?: FileIconMappings;
+}
+
+/** The active icon theme's file mappings, resolved for the active color theme (light/hc overrides merged in). */
+export interface FileIconAssociations {
+  readonly file?: string | undefined;
+  readonly folder?: string | undefined;
+  readonly folderExpanded?: string | undefined;
+  readonly fileExtensions: Readonly<Record<string, string>>;
+  readonly fileNames: Readonly<Record<string, string>>;
+  readonly folderNames: Readonly<Record<string, string>>;
+  readonly folderNamesExpanded: Readonly<Record<string, string>>;
+}
+
+/** Characters ignored at the ends of a folder name when looking it up (".git", "_git", "__git__" ≈ "git"). */
+const FOLDER_NAME_NOISE = /^[._-]+|[._-]+$/g;
+
+/** Canonical lookup key for a folder name — what theme authors store and the resolver searches. */
+export function normalizeFolderName(name: string): string {
+  const lower = name.toLowerCase();
+  return lower.replace(FOLDER_NAME_NOISE, "") || lower;
+}
+
+/**
+ * Icon id for a file or folder under the active icon theme's file associations,
+ * or undefined if the theme has none (the caller then uses the node's own icon).
+ * Files: exact name, then the longest matching extension ("a.spec.ts" → "spec.ts" → "ts"), then the theme's `file`.
+ * Folders: name (expanded variant when open), then the theme's `folder` / `folderExpanded`.
+ */
+export function resolveFileIcon(
+  assoc: FileIconAssociations | undefined,
+  name: string,
+  kind: "file" | "folder",
+  expanded = false,
+): string | undefined {
+  if (!assoc) return undefined;
+  const lower = name.toLowerCase();
+  if (kind === "folder") {
+    const key = normalizeFolderName(name);
+    return expanded
+      ? (assoc.folderNamesExpanded[key] ?? assoc.folderNamesExpanded[lower] ?? assoc.folderExpanded ?? assoc.folderNames[key] ?? assoc.folder)
+      : (assoc.folderNames[key] ?? assoc.folderNames[lower] ?? assoc.folder);
+  }
+  const byName = assoc.fileNames[lower];
+  if (byName) return byName;
+  const parts = lower.split(".");
+  for (let i = 1; i < parts.length; i++) {
+    const byExt = assoc.fileExtensions[parts.slice(i).join(".")];
+    if (byExt) return byExt;
+  }
+  return assoc.file;
+}
+
 /** What core tells views about the active theme. */
 export interface ThemeState {
   readonly colorTheme: { readonly id: string; readonly label: string; readonly kind: ThemeKind };
   readonly iconTheme: { readonly id: string; readonly label: string };
+  /**
+   * File/folder icon mappings of the active icon theme, if it has any. Large
+   * (thousands of entries for full file-icon themes), so core only sends it to
+   * the app shell, not to plugin views.
+   */
+  readonly fileIcons?: FileIconAssociations;
   /** Every color key → resolved value (built-in defaults already merged in). */
   readonly colors: Readonly<Record<string, string>>;
   /** Icon id → how to draw it. URL: `oneclient-asset://oneclient.icons/<id>.svg?v=<iconVersion>`. */

@@ -27,6 +27,8 @@ export interface ContributionRegistrySnapshot {
   themes: Array<ColorThemeContribution & { pluginId: string }>;
   iconThemes: Array<IconThemeContribution & { pluginId: string }>;
   icons: Array<IconContribution & { pluginId: string }>;
+  /** Contributions to other plugins' extension points, one entry per (point, contributing plugin). */
+  extensions: Array<{ point: string; pluginId: string; items: Array<Record<string, unknown>> }>;
 }
 
 export type PluginState =

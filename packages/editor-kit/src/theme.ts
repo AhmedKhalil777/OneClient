@@ -34,3 +34,17 @@ export function onThemeChange(listener: (theme: ThemeState) => void): () => void
 export function iconUrl(id: string, theme: ThemeState | null = getTheme()): string {
   return `oneclient-asset://oneclient.icons/${encodeURIComponent(id)}.svg?v=${theme?.iconVersion ?? 0}`;
 }
+
+/**
+ * A `:root { --oc-…: …; }` rule with every color of the active theme, as CSS text — for content
+ * rendered outside the view's own document (a sandboxed preview iframe, a generated HTML page)
+ * that should still follow the theme. Empty until the theme has loaded.
+ */
+export function themeCssText(theme: ThemeState | null = getTheme()): string {
+  if (!theme) return "";
+  const vars = Object.entries(theme.colors)
+    .map(([key, value]) => `--oc-${key.replace(/\./g, "-")}:${value};`)
+    .join("");
+  const scheme = theme.colorTheme.kind === "light" ? "light" : "dark";
+  return `:root{color-scheme:${scheme};${vars}}`;
+}

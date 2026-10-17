@@ -52,6 +52,37 @@ describe("oneclient-manifest.schema.json", () => {
     expect(validate(manifest)).toBe(true);
   });
 
+  it("accepts a declarative plugin with no `main` (themes/icons only)", () => {
+    const manifest = {
+      name: "oneclient-icons-only",
+      version: "1.0.0",
+      engines: { oneclient: "^0.1.0" },
+      contributes: { iconThemes: [{ id: "x", label: "X", path: "dist/icon-theme.json" }] },
+    };
+    expect(validate(manifest)).toBe(true);
+  });
+
+  it("accepts contributions to another plugin's extension point and hidden commands", () => {
+    const manifest = {
+      name: "oneclient-json",
+      version: "1.0.0",
+      engines: { oneclient: "^0.1.0" },
+      main: "dist/main.js",
+      contributes: {
+        commands: [{ id: "json.format", title: "JSON: Format", hidden: true }],
+        extensions: { "oneclient-files.editors": [{ id: "json", label: "JSON", extensions: ["json"], format: "json.format" }] },
+      },
+    };
+    expect(validate(manifest)).toBe(true);
+  });
+
+  it("rejects extension point ids that aren't <plugin>.<name> and non-array contributions", () => {
+    const base = { name: "oneclient-x", version: "1.0.0", engines: { oneclient: "^0.1.0" }, main: "m.js" };
+    expect(validate({ ...base, contributes: { extensions: { editors: [] } } })).toBe(false);
+    expect(validate({ ...base, contributes: { extensions: { "a.b": { id: "x" } } } })).toBe(false);
+    expect(validate({ ...base, contributes: { extensions: { "a.b": ["not an object"] } } })).toBe(false);
+  });
+
   it("rejects an unknown theme kind and a malformed icon id", () => {
     const base = { name: "oneclient-x", version: "1.0.0", engines: { oneclient: "^0.1.0" }, main: "m.js" };
     expect(validate({ ...base, contributes: { themes: [{ id: "t", label: "T", uiTheme: "sepia", path: "t.json" }] } })).toBe(false);

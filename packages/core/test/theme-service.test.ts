@@ -11,7 +11,7 @@ let registry: ContributionRegistrySnapshot;
 const logs: string[] = [];
 
 function emptyRegistry(): ContributionRegistrySnapshot {
-  return { connectionTypes: [], explorerNodes: [], views: [], commands: [], themes: [], iconThemes: [], icons: [] };
+  return { connectionTypes: [], explorerNodes: [], views: [], commands: [], themes: [], iconThemes: [], icons: [], extensions: [] };
 }
 
 function service() {
@@ -98,6 +98,73 @@ describe("ThemeService", () => {
     expect(svc.getState().icons.folder).toEqual({ colored: true });
     expect(svc.resolveIconFile("table")).toBe(join(dir, "builtin-icons", "table.svg")); // traversal rejected
     expect(svc.getState().iconVersion).toBeGreaterThan(before);
+  });
+
+  describe("file icon themes", () => {
+    beforeEach(() => {
+      mkdirSync(join(dir, "plugin", "fi", "icons"), { recursive: true });
+      for (const f of ["file", "folder", "folder-open", "ts", "ts-dark", "ts-light", "src"]) writeFileSync(join(dir, "plugin", "fi", "icons", `${f}.svg`), "<svg/>");
+      writeFileSync(
+        join(dir, "plugin", "fi", "theme.json"),
+        JSON.stringify({
+          colored: true,
+          icons: {
+            "x-file": "icons/file.svg",
+            "x-folder": "icons/folder.svg",
+            "x-folder-open": "icons/folder-open.svg",
+            "x-ts": "icons/ts-dark.svg",
+            "x-ts-light": "icons/ts-light.svg",
+            "x-src": "icons/src.svg",
+          },
+          file: "x-file",
+          folder: "x-folder",
+          folderExpanded: "x-folder-open",
+          fileExtensions: { TS: "x-ts", broken: "x-does-not-exist" },
+          fileNames: { "Package.JSON": "x-ts" },
+          folderNames: { ".src": "x-src" },
+          light: { fileExtensions: { ts: "x-ts-light" } },
+        }),
+      );
+      registry.iconThemes.push({ id: "fi", label: "File Icons", path: "fi/theme.json", pluginId: "theme-pack" });
+    });
+
+    it("exposes file/folder mappings (lower-cased, folder spellings normalized) and marks icons colored", () => {
+      const svc = service();
+      svc.setIconTheme("fi");
+      const { fileIcons, icons } = svc.getState();
+      expect(fileIcons?.file).toBe("x-file");
+      expect(fileIcons?.fileExtensions).toEqual({ ts: "x-ts" }); // "broken" dropped: its icon id doesn't exist
+      expect(fileIcons?.fileNames).toEqual({ "package.json": "x-ts" });
+      expect(fileIcons?.folderNames).toEqual({ src: "x-src" });
+      expect(icons["x-ts"]).toEqual({ colored: true });
+    });
+
+    it("applies the light overrides only in light color themes", () => {
+      const svc = service();
+      svc.setIconTheme("fi");
+      expect(svc.getState().fileIcons?.fileExtensions.ts).toBe("x-ts");
+      svc.setColorTheme("oneclient-light", false);
+      expect(svc.getState().fileIcons?.fileExtensions.ts).toBe("x-ts-light");
+      svc.setColorTheme("oneclient-dark", false);
+      expect(svc.getState().fileIcons?.fileExtensions.ts).toBe("x-ts");
+    });
+
+    it("has no file icons for themes that only restyle ids", () => {
+      expect(service().getState().fileIcons).toBeUndefined();
+    });
+
+    it("defaults to the preferred file icon theme when installed and nothing was chosen", () => {
+      registry.iconThemes.push({ id: "oneclient-material-icons", label: "Material", path: "fi/theme.json", pluginId: "theme-pack" });
+      expect(service().getState().iconTheme.id).toBe("oneclient-material-icons");
+    });
+
+    it("keeps an explicit choice of the plain default over the preferred theme", () => {
+      registry.iconThemes.push({ id: "oneclient-material-icons", label: "Material", path: "fi/theme.json", pluginId: "theme-pack" });
+      writeFileSync(join(dir, "settings.json"), JSON.stringify({ iconTheme: "oneclient-default" }));
+      const s = service().getState();
+      expect(s.iconTheme.id).toBe("oneclient-default");
+      expect(s.fileIcons).toBeUndefined();
+    });
   });
 
   it("rejects unknown theme ids", () => {

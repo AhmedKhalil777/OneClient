@@ -5,7 +5,7 @@
   "description": "Schema for oneclient.json. Mirrors packages/plugin-api/src/manifest.ts — keep both in sync.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "version", "engines", "main"],
+  "required": ["name", "version", "engines"],
   "properties": {
     "name": {
       "type": "string",
@@ -41,7 +41,7 @@
 
     "main": {
       "type": "string",
-      "description": "Path, relative to the plugin root, to the compiled entry module run in the extension host."
+      "description": "Path, relative to the plugin root, to the compiled entry module run in the extension host. Omit for declarative plugins that only contribute data (themes, icons)."
     },
     "ui": {
       "type": "string",
@@ -82,6 +82,12 @@
           "type": "array",
           "description": "New icon ids any plugin can use as $(id).",
           "items": { "$ref": "#/$defs/iconContribution" }
+        },
+        "extensions": {
+          "type": "object",
+          "description": "Contributions to other plugins' extension points, keyed by point id (<owning plugin id>.<name>). The owning plugin defines the item shape.",
+          "propertyNames": { "pattern": "^[a-z][a-z0-9-]*\\.[a-zA-Z][a-zA-Z0-9.-]*$" },
+          "additionalProperties": { "type": "array", "items": { "type": "object" } }
         }
       }
     },
@@ -230,6 +236,7 @@
         "category": { "type": "string" },
         "icon": { "type": "string" },
         "keybinding": { "type": "string" },
+        "hidden": { "type": "boolean", "description": "Not shown in the command palette; callable only by code." },
         "when": {
           "type": "string",
           "description": "Context-menu visibility guard, e.g. \"contextValue == 'postgres.table'\". Omit to show only in the command palette."

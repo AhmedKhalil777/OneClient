@@ -50,6 +50,7 @@ const icons = {
   "chevron-up": `<path ${S} d="M3.5 10 8 5.5 12.5 10"/>`,
   "split-horizontal": `<rect ${S} x="1.5" y="2.5" width="13" height="11" rx="1"/><path ${S} d="M1.5 8h13"/>`,
   "color-mode": `<circle ${S} cx="8" cy="8" r="6.3"/><path ${F} d="M8 1.7a6.3 6.3 0 0 1 0 12.6z"/>`,
+  preview: `<path ${S} d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8s-2.4 4.5-6.5 4.5S1.5 8 1.5 8z"/><circle ${S} cx="8" cy="8" r="1.9"/>`,
   symbol: `<path ${S} d="M5 2.5H3.5v11H5M11 2.5h1.5v11H11"/>`,
 };
 

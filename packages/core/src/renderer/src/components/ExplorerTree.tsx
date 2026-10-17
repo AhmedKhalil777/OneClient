@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { TreeNode } from "@oneclient/plugin-api";
-import { ThemeIcon } from "../theme.js";
+import { ThemeIcon, useResourceIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
 
 /** Called when a node with `openView` is clicked. */
@@ -30,6 +30,8 @@ export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenVi
   const [error, setError] = useState<string | null>(null);
 
   const canExpand = node.collapsible !== "none";
+  // File/folder nodes take their icon from the icon theme's file associations (open folders get their open variant).
+  const resourceIcon = useResourceIcon(node.resource, expanded);
 
   const loadChildren = useCallback(async () => {
     try {
@@ -73,7 +75,7 @@ export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenVi
         title={node.label}
       >
         <span className="tree-caret">{canExpand && <ThemeIcon id={expanded ? "chevron-down" : "chevron-right"} />}</span>
-        <AssetIcon pluginId={pluginId} icon={node.icon} size={14} fallback={canExpand ? "📁" : "•"} />
+        <AssetIcon pluginId={pluginId} icon={resourceIcon ?? node.icon} size={14} fallback={canExpand ? "📁" : "•"} />
         <span className="tree-label">{node.label}</span>
       </div>
       {expanded && error && (

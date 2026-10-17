@@ -1,0 +1,36 @@
+{
+  "name": "oneclient-text-tools",
+  "displayName": "Text Tools",
+  "description": "Built-in: line and whitespace actions for every file in the Files editor — sort, remove duplicates, trim trailing whitespace, ensure a final newline. Acts on the selection when there is one.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "$(output)",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/main.js",
+  "contributes": {
+    "commands": [
+      { "id": "texttools.sortAscending", "title": "Text Tools: Sort Lines Ascending", "hidden": true },
+      { "id": "texttools.sortDescending", "title": "Text Tools: Sort Lines Descending", "hidden": true },
+      { "id": "texttools.removeDuplicates", "title": "Text Tools: Remove Duplicate Lines", "hidden": true },
+      { "id": "texttools.trimTrailingWhitespace", "title": "Text Tools: Trim Trailing Whitespace", "hidden": true },
+      { "id": "texttools.ensureFinalNewline", "title": "Text Tools: Ensure Final Newline", "hidden": true }
+    ],
+    "extensions": {
+      "oneclient-files.editors": [
+        {
+          "id": "text-tools",
+          "label": "Text",
+          "extensions": ["*"],
+          "actions": [
+            { "id": "sort-asc", "label": "Sort Lines Ascending", "command": "texttools.sortAscending" },
+            { "id": "sort-desc", "label": "Sort Lines Descending", "command": "texttools.sortDescending" },
+            { "id": "dedupe", "label": "Remove Duplicate Lines", "command": "texttools.removeDuplicates" },
+            { "id": "trim", "label": "Trim Trailing Whitespace", "command": "texttools.trimTrailingWhitespace" },
+            { "id": "final-newline", "label": "Ensure Final Newline", "command": "texttools.ensureFinalNewline" }
+          ]
+        }
+      ]
+    }
+  }
+}

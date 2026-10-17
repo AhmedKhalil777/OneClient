@@ -1,0 +1,21 @@
+{
+  "name": "oneclient-text-tools",
+  "version": "0.1.0",
+  "description": "oneclient built-in plugin: line and whitespace actions (sort, dedupe, trim) for every file in the Files editor.",
+  "license": "MIT",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@oneclient/plugin-api": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^20.14.0",
+    "vitest": "^2.1.0"
+  }
+}

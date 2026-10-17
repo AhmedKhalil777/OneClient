@@ -1,0 +1,24 @@
+{
+  "name": "oneclient-markdown",
+  "version": "0.1.0",
+  "description": "oneclient built-in plugin: Markdown outline, highlighting and live preview for the Files editor.",
+  "license": "MIT",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@oneclient/plugin-api": "workspace:*",
+    "highlight.js": "11.11.1",
+    "markdown-it": "14.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^20.14.0",
+    "vitest": "^2.1.0",
+    "@types/markdown-it": "14.1.2"
+  }
+}

@@ -1,8 +1,16 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { basename, resolve, sep } from "node:path";
-import { THEME_COLOR_KEYS, type ThemeKind, type ThemeState } from "@oneclient/plugin-api";
+import {
+  type FileIconAssociations,
+  type FileIconMappings,
+  type IconThemeFile,
+  THEME_COLOR_KEYS,
+  type ThemeKind,
+  type ThemeState,
+  normalizeFolderName,
+} from "@oneclient/plugin-api";
 import type { ContributionRegistrySnapshot } from "../../shared/types.js";
-import { BUILTIN_COLOR_THEMES, DEFAULT_COLOR_THEME, DEFAULT_ICON_THEME, baseColorsFor } from "./builtin-themes.js";
+import { BUILTIN_COLOR_THEMES, DEFAULT_COLOR_THEME, DEFAULT_ICON_THEME, PREFERRED_FILE_ICON_THEME, baseColorsFor } from "./builtin-themes.js";
 
 export interface ThemeListItem {
   id: string;
@@ -33,10 +41,13 @@ const ICON_ID = /^[a-z0-9][a-z0-9-]*$/;
 export class ThemeService {
   private settings: Settings;
   private colorThemeId: string;
-  private iconThemeId: string;
+  /** The user's explicit icon theme choice; undefined = "no choice yet" → the best available default. */
+  private iconThemeId: string | undefined;
   private iconVersion = 1;
   private state!: ThemeState;
   private icons = new Map<string, IconEntry>();
+  /** Parsed file of the active icon theme (file/folder mappings), if it has one. */
+  private iconThemeFile: IconThemeFile | null = null;
   private readonly listeners = new Set<(state: ThemeState) => void>();
 
   constructor(
@@ -50,7 +61,7 @@ export class ThemeService {
   ) {
     this.settings = this.readSettings();
     this.colorThemeId = this.settings.colorTheme ?? DEFAULT_COLOR_THEME;
-    this.iconThemeId = this.settings.iconTheme ?? DEFAULT_ICON_THEME;
+    this.iconThemeId = this.settings.iconTheme;
     this.recompute();
   }
 
@@ -104,6 +115,17 @@ export class ThemeService {
 
   // ---- internals ----
 
+  /**
+   * The icon theme in effect: the user's choice if it still exists, otherwise
+   * (no choice, or its plugin was uninstalled) the preferred file-icon theme if
+   * one is installed, otherwise oneClient's plain default.
+   */
+  private effectiveIconThemeId(): string {
+    const ids = new Set(this.listIconThemes().map((t) => t.id));
+    if (this.iconThemeId && ids.has(this.iconThemeId)) return this.iconThemeId;
+    return ids.has(PREFERRED_FILE_ICON_THEME) ? PREFERRED_FILE_ICON_THEME : DEFAULT_ICON_THEME;
+  }
+
   private recompute(iconsChanged = true): void {
     const registry = this.opts.getRegistry();
 
@@ -126,16 +148,19 @@ export class ThemeService {
     }
     const colorThemeId = color?.id ?? contributed?.id ?? DEFAULT_COLOR_THEME;
 
-    // Icons: built-in set + plugin-registered ids, then the active icon theme's overrides.
+    // Icons: built-in set + plugin-registered ids, then the active icon theme's definitions.
+    const iconThemeId = this.effectiveIconThemeId();
     if (iconsChanged) {
-      this.icons = this.loadIcons(registry);
+      this.icons = this.loadIcons(registry, iconThemeId);
       this.iconVersion++;
     }
-    const iconTheme = this.listIconThemes().find((t) => t.id === this.iconThemeId) ?? this.listIconThemes()[0]!;
+    const iconTheme = this.listIconThemes().find((t) => t.id === iconThemeId)!;
+    const fileIcons = this.buildFileIcons(kind);
 
     this.state = {
       colorTheme: { id: colorThemeId, label, kind },
       iconTheme: { id: iconTheme.id, label: iconTheme.label },
+      ...(fileIcons ? { fileIcons } : {}),
       colors,
       icons: Object.fromEntries([...this.icons].map(([id, e]) => [id, { colored: e.colored }])),
       iconVersion: this.iconVersion,
@@ -143,8 +168,9 @@ export class ThemeService {
     for (const listener of this.listeners) listener(this.state);
   }
 
-  private loadIcons(registry: ContributionRegistrySnapshot): Map<string, IconEntry> {
+  private loadIcons(registry: ContributionRegistrySnapshot, iconThemeId: string): Map<string, IconEntry> {
     const icons = new Map<string, IconEntry>();
+    this.iconThemeFile = null;
     if (existsSync(this.opts.builtinIconDir)) {
       for (const file of readdirSync(this.opts.builtinIconDir)) {
         if (file.endsWith(".svg")) icons.set(basename(file, ".svg"), { file: resolve(this.opts.builtinIconDir, file), colored: false });
@@ -156,19 +182,55 @@ export class ThemeService {
       const file = this.pluginFile(icon.pluginId, icon.path);
       if (file) icons.set(icon.id, { file, colored: icon.colored ?? false });
     }
-    const theme = registry.iconThemes.find((t) => t.id === this.iconThemeId);
+    const theme = registry.iconThemes.find((t) => t.id === iconThemeId);
     if (theme) {
-      const json = this.readPluginJson(theme.pluginId, theme.path) as { icons?: Record<string, string | { path: string; colored?: boolean }> } | null;
+      const json = this.readPluginJson(theme.pluginId, theme.path) as IconThemeFile | null;
       const root = this.opts.getPluginRoot(theme.pluginId);
       const themeDir = root ? resolve(root, theme.path, "..") : undefined;
+      this.iconThemeFile = json;
       for (const [id, value] of Object.entries(json?.icons ?? {})) {
-        const entry = typeof value === "string" ? { path: value, colored: false } : value;
+        const entry = typeof value === "string" ? { path: value, colored: undefined } : value;
         // Paths in the theme file are relative to that file.
         const file = themeDir && root ? this.within(root, resolve(themeDir, entry.path)) : undefined;
-        if (file && ICON_ID.test(id)) icons.set(id, { file, colored: entry.colored ?? false });
+        if (file && ICON_ID.test(id)) icons.set(id, { file, colored: entry.colored ?? json?.colored ?? false });
       }
     }
     return icons;
+  }
+
+  /**
+   * The icon theme's file/folder mappings for the active color theme kind
+   * (its light/hc overrides merged in), keeping only entries whose icon id
+   * actually exists — a broken mapping must fall through to the default icon
+   * rather than draw a missing image.
+   */
+  private buildFileIcons(kind: ThemeKind): FileIconAssociations | undefined {
+    const f = this.iconThemeFile;
+    if (!f) return undefined;
+    const known = (id: string | undefined) => (id && this.icons.has(id) ? id : undefined);
+    const override: FileIconMappings | undefined = kind === "light" ? f.light : kind === "hc" ? f.hc : undefined;
+    const table = (key: keyof FileIconMappings, normalize: (k: string) => string): Record<string, string> => {
+      const out: Record<string, string> = {};
+      for (const source of [f[key], override?.[key]]) {
+        for (const [name, id] of Object.entries(source ?? {})) {
+          if (this.icons.has(id)) out[normalize(name)] = id;
+        }
+      }
+      return out;
+    };
+    const lower = (k: string) => k.toLowerCase();
+    const assoc: FileIconAssociations = {
+      file: known(f.file),
+      folder: known(f.folder),
+      folderExpanded: known(f.folderExpanded),
+      fileExtensions: table("fileExtensions", (k) => lower(k).replace(/^\./, "")),
+      fileNames: table("fileNames", lower),
+      folderNames: table("folderNames", normalizeFolderName),
+      folderNamesExpanded: table("folderNamesExpanded", normalizeFolderName),
+    };
+    const hasAny =
+      assoc.file || assoc.folder || assoc.folderExpanded || Object.keys(assoc.fileExtensions).length + Object.keys(assoc.fileNames).length + Object.keys(assoc.folderNames).length > 0;
+    return hasAny ? assoc : undefined;
   }
 
   private loadThemeColors(pluginId: string, path: string): Record<string, string> {

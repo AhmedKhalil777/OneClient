@@ -27,6 +27,12 @@ export default defineConfig({
   },
   renderer: {
     root: "src/renderer",
+    resolve: {
+      // plugin-api is published as CommonJS (the main process needs that), and neither Vite's dev server
+      // nor Rollup runs CJS interop on a symlinked workspace package. Read its ESM TypeScript source
+      // directly so the renderer can import its small runtime helpers (resolveFileIcon, colorVarName, …).
+      alias: { "@oneclient/plugin-api": resolve(__dirname, "../plugin-api/src/index.ts") },
+    },
     build: {
       rollupOptions: {
         input: resolve(__dirname, "src/renderer/index.html"),

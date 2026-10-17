@@ -25,6 +25,13 @@ export interface TreeNode {
   /** Must match one of the provider's `nodeTypes`, and a `contributes.explorerNodes[].id` in the manifest. */
   readonly nodeType: string;
   readonly icon?: string;
+  /**
+   * Marks this node as a file or folder so core picks its icon from the active
+   * icon theme's file associations (by name, then extension — like VS Code's
+   * file icon themes). `icon` is the fallback when the theme has no mapping,
+   * so set both (e.g. `icon: "$(file)"`).
+   */
+  readonly resource?: { readonly name: string; readonly kind: "file" | "folder" };
   /** Drives `when` clauses for context-menu commands (see manifest contributes.commands). */
   readonly contextValue?: string;
   readonly collapsible: "none" | "collapsed" | "expanded";

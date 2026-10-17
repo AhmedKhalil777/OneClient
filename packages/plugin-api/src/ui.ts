@@ -67,6 +67,13 @@ export interface ViewHostApi {
   getTheme(): ThemeState | null;
   /** Called with the new state whenever the user switches theme (and once when it first loads). */
   onThemeChange(listener: (theme: ThemeState) => void): () => void;
+  /**
+   * Contributions other plugins made to an extension point (`contributes.extensions[point]`),
+   * each tagged with the contributing `pluginId`. Read at load; plugins enabled later appear on next open.
+   */
+  getContributions(point: string): Promise<Array<Record<string, unknown> & { pluginId: string }>>;
+  /** Open an http(s)/mailto URL in the user's browser/mail client. Other schemes are ignored. */
+  openExternal(url: string): void;
 }
 
 /**

@@ -71,7 +71,7 @@ export function Sidebar({
       connections={connections.filter((c) => c.pluginId === plugin.id)}
       views={views.filter((v) => v.pluginId === plugin.id)}
       connectionTypes={connectionTypes.filter((t) => t.pluginId === plugin.id)}
-      commands={commands.filter((c) => c.pluginId === plugin.id && !c.when)}
+      commands={commands.filter((c) => c.pluginId === plugin.id && !c.when && !c.hidden)}
       onNewConnection={() => onNewConnection(plugin.id)}
       onRunCommand={onRunCommand}
       onOpenDashboard={onOpenDashboard}

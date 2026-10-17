@@ -67,6 +67,8 @@ const api: ViewHostApi = {
   setDirty: (dirty) => ipcRenderer.send("oneclient-view:dirty", Boolean(dirty)),
   revealView: (viewId) => ipcRenderer.send("oneclient-view:reveal", String(viewId)),
   getTheme: () => theme,
+  getContributions: (point) => ipcRenderer.invoke("oneclient-view:get-contributions", point),
+  openExternal: (url) => ipcRenderer.send("oneclient-view:open-external", String(url)),
   onThemeChange: (listener) => {
     themeListeners.add(listener);
     if (theme) listener(theme);

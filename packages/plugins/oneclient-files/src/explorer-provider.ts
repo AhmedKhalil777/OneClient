@@ -57,6 +57,8 @@ export function directoryNode(root: string, path: string): TreeNode {
     collapsible: "collapsed",
     icon: ICON.folder,
     contextValue: "files.directory",
+    // Icon comes from the active icon theme's folder-name mappings; ICON.folder is the fallback.
+    resource: { name: baseName(path), kind: "folder" },
     data: { path, fsPath: resolveInRoot(root, path) } satisfies EntryData,
   };
 }
@@ -71,6 +73,8 @@ export function fileNode(root: string, path: string): TreeNode {
     collapsible: "none",
     icon: ICON.file,
     contextValue: "files.file",
+    // Icon comes from the active icon theme's file name/extension mappings; ICON.file is the fallback.
+    resource: { name, kind: "file" },
     data: { path, fsPath: resolveInRoot(root, path) } satisfies EntryData,
     openView: { viewId: "files.editor", title: name, params: { path } },
   };

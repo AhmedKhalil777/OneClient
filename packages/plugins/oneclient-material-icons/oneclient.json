@@ -1,0 +1,13 @@
+{
+  "name": "oneclient-material-icons",
+  "displayName": "Material Icon Theme",
+  "description": "Built-in: file and folder icons for the explorer — 1,300+ file types, special file names and folders (the Material Icon Theme).",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "$(files)",
+  "engines": { "oneclient": "^0.1.0" },
+  "contributes": {
+    "iconThemes": [{ "id": "oneclient-material-icons", "label": "Material Icon Theme", "path": "dist/icon-theme.json" }]
+  }
+}

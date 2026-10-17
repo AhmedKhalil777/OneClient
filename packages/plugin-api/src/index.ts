@@ -14,14 +14,34 @@ export type {
 export type { ExplorerContext, ExplorerProvider, TreeNode, TreeNodeOpenView } from "./explorer.js";
 export type { CompletionContext, CompletionItem, CompletionItemKind, CompletionProvider } from "./completion.js";
 export type {
+  DocumentSymbol,
+  DocumentSymbolKind,
+  FileEditorAction,
+  FileEditorContribution,
+  FileEditorError,
+  FileEditorFeatures,
+  FileEditorRequest,
+  PreviewResult,
+  ResolvedFileEditorContribution,
+  SymbolsResult,
+  TokenClass,
+  TokensResult,
+  TransformRequest,
+  TransformResult,
+} from "./file-editor.js";
+export { FILE_EDITORS_POINT, matchFileEditors } from "./file-editor.js";
+export type {
   ColorThemeContribution,
+  FileIconAssociations,
+  FileIconMappings,
   IconContribution,
   IconThemeContribution,
+  IconThemeFile,
   ThemeColorKey,
   ThemeKind,
   ThemeState,
 } from "./theme.js";
-export { THEME_COLOR_KEYS, colorVarName, iconUrl, parseIconRef } from "./theme.js";
+export { THEME_COLOR_KEYS, colorVarName, iconUrl, normalizeFolderName, parseIconRef, resolveFileIcon } from "./theme.js";
 
 export type { CommandContext, CommandHandler } from "./commands.js";
 

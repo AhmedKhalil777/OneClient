@@ -100,6 +100,12 @@ async function main(): Promise<void> {
   );
 
   async function tryActivate(record: PluginRecord): Promise<void> {
+    // Declarative plugins (themes, icons) have no code to run: their contributions are
+    // already live from the manifest, so there's no extension-host process to start.
+    if (!record.manifest.main) {
+      pluginManager.setState(record.id, "active");
+      return;
+    }
     pluginManager.setState(record.id, "activating");
     try {
       await supervisor.activate(record);

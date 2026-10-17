@@ -992,3 +992,8 @@ pre.result {
   justify-content: center;
   width: 16px;
 }
+
+/* editor tab: file-type icon before the title */
+.tab {
+  gap: 6px;
+}

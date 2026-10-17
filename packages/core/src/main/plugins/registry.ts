@@ -35,6 +35,7 @@ export class ContributionRegistry {
       themes: [],
       iconThemes: [],
       icons: [],
+      extensions: [],
     };
     for (const [pluginId, contributes] of this.byPlugin) {
       for (const c of contributes.connectionTypes ?? []) {
@@ -52,8 +53,23 @@ export class ContributionRegistry {
       for (const c of contributes.themes ?? []) result.themes.push({ ...c, pluginId });
       for (const c of contributes.iconThemes ?? []) result.iconThemes.push({ ...c, pluginId });
       for (const c of contributes.icons ?? []) result.icons.push({ ...c, pluginId });
+      for (const [point, items] of Object.entries(contributes.extensions ?? {})) {
+        result.extensions.push({ point, pluginId, items: items.map((item) => ({ ...item })) });
+      }
     }
     return result;
+  }
+
+  /**
+   * Everything plugins contributed to extension point `point`, each item tagged with its plugin.
+   * Core doesn't interpret the items — the plugin that owns the point does.
+   */
+  getExtensions(point: string): Array<Record<string, unknown> & { pluginId: string }> {
+    const out: Array<Record<string, unknown> & { pluginId: string }> = [];
+    for (const [pluginId, contributes] of this.byPlugin) {
+      for (const item of contributes.extensions?.[point] ?? []) out.push({ ...item, pluginId });
+    }
+    return out;
   }
 
   /** Which plugin owns a given connection type, if any. */

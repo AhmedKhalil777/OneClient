@@ -5,7 +5,8 @@ import { ActivityBar, type ViewContainerId } from "./components/ActivityBar.js";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
 import { ContextMenu, type ContextMenuItem } from "./components/ContextMenu.js";
 import { Logo } from "./components/Logo.js";
-import { useThemeState } from "./theme.js";
+import { AssetIcon } from "./components/AssetIcon.js";
+import { useResourceIcon, useThemeState } from "./theme.js";
 import { Panel, usePanel } from "./components/Panel.js";
 import { usePrompts } from "./components/PromptDialogs.js";
 import { evaluateWhen, type WhenContext } from "./when.js";
@@ -27,6 +28,8 @@ type Tab =
       viewId: string;
       connectionId?: string;
       params?: Record<string, string>;
+      /** The tree node (file/folder) this tab was opened from — its icon is shown on the tab. */
+      resource?: { name: string; kind: "file" | "folder" };
     };
 
 const emptyRegistry: ContributionRegistrySnapshot = {
@@ -37,6 +40,7 @@ const emptyRegistry: ContributionRegistrySnapshot = {
   themes: [],
   iconThemes: [],
   icons: [],
+  extensions: [],
 };
 
 const SIDEBAR_MIN = 180;
@@ -416,6 +420,7 @@ export function App() {
       viewId,
       connectionId: connection.id,
       params: params ? { ...params } : undefined,
+      resource: node.resource,
     });
   }
 
@@ -474,7 +479,7 @@ export function App() {
       })),
     ];
     // Commands with a `when` guard need context (a tree node, a view) the palette can't supply.
-    const contributed: PaletteCommand[] = registry.commands.filter((c) => !c.when).map((c) => ({
+    const contributed: PaletteCommand[] = registry.commands.filter((c) => !c.when && !c.hidden).map((c) => ({
       id: c.id,
       title: c.title,
       run: () => void runContributedCommand(c.id, c.title),
@@ -539,6 +544,7 @@ export function App() {
                   if (e.button === 1 && t.id !== "welcome") void requestCloseTab(t.id);
                 }}
               >
+                {t.kind === "tier2-view" && t.resource && <TabIcon resource={t.resource} />}
                 {t.title}
                 {t.id !== "welcome" && (
                   <span
@@ -634,6 +640,12 @@ interface Toast {
   id: number;
   kind: "error" | "info";
   message: string;
+}
+
+/** File-type icon on an editor tab (from the icon theme's file associations), if the theme has one. */
+function TabIcon({ resource }: { resource: { name: string; kind: "file" | "folder" } }) {
+  const icon = useResourceIcon(resource);
+  return icon ? <AssetIcon pluginId="" icon={icon} size={14} /> : null;
 }
 
 function WelcomeTab() {

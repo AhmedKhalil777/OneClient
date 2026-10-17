@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { BrowserWindow, type OpenDialogOptions, dialog, ipcMain } from "electron";
-import type { TreeNode } from "@oneclient/plugin-api";
+import { BrowserWindow, type OpenDialogOptions, dialog, ipcMain, shell } from "electron";
+import type { ThemeState, TreeNode } from "@oneclient/plugin-api";
 import { IpcChannel, type ViewBounds } from "../../shared/ipc-contract.js";
 import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "../../shared/types.js";
 import type { ConnectionManager } from "../connections/connection-manager.js";
@@ -26,13 +26,32 @@ export function registerIpcHandlers(deps: IpcDeps): void {
   const { registry, pluginManager, connections, supervisor, views, ensureActivated, getWindows, themes } = deps;
 
   // Themes: shell gets the full state; every Tier 2 view gets it too (its preload applies the CSS variables).
+  // Plugin views don't draw file trees, so they skip the (potentially thousands of entries) file icon table.
+  const forViews = (state: ThemeState): ThemeState => {
+    const { fileIcons: _shellOnly, ...rest } = state;
+    return rest;
+  };
   themes.onChanged((state) => {
     broadcast(IpcChannel.ThemeChanged, state);
-    views.broadcastTheme(state);
+    views.broadcastTheme(forViews(state));
   });
   registry.onChanged(() => themes.onRegistryChanged());
   ipcMain.handle(IpcChannel.ThemeGetState, () => themes.getState());
-  ipcMain.handle("oneclient-view:get-theme", () => themes.getState());
+  ipcMain.handle("oneclient-view:get-theme", () => forViews(themes.getState()));
+
+  // Plugin-to-plugin extension points: views read what other plugins contributed (see ViewHostApi.getContributions).
+  ipcMain.handle("oneclient-view:get-contributions", (_e, point: unknown) =>
+    typeof point === "string" ? registry.getExtensions(point) : [],
+  );
+  // A sandboxed view can't open links itself; main does it, for web/mail links only.
+  ipcMain.on("oneclient-view:open-external", (_e, url: unknown) => {
+    try {
+      const parsed = new URL(String(url));
+      if (["http:", "https:", "mailto:"].includes(parsed.protocol)) void shell.openExternal(parsed.toString());
+    } catch {
+      /* not a URL */
+    }
+  });
   ipcMain.handle(IpcChannel.ThemeListColor, () => themes.listColorThemes());
   ipcMain.handle(IpcChannel.ThemeListIcon, () => themes.listIconThemes());
   ipcMain.handle(IpcChannel.ThemeSetColor, (_e, id: string, persist: boolean) => themes.setColorTheme(id, persist));

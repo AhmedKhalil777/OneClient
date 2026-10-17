@@ -1,0 +1,14 @@
+{
+  "name": "oneclient-material-icons",
+  "version": "0.1.0",
+  "description": "oneClient built-in plugin: Material Icon Theme — file and folder icons for 1,300+ file types.",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/generate.mjs",
+    "typecheck": "node --check scripts/generate.mjs"
+  },
+  "devDependencies": {
+    "material-icon-theme": "5.39.0"
+  }
+}

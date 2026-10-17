@@ -11,7 +11,7 @@ export { wordsProvider } from "./providers/words.js";
 export { fuzzyMatch, type FuzzyMatch } from "./fuzzy.js";
 export { rankCompletions, type RankedItem } from "./rank.js";
 export { applyCompletion, wordAt, linePrefixAt, DEFAULT_WORD_CHAR } from "./text.js";
-export { colorVar, getTheme, iconUrl, onThemeChange } from "./theme.js";
+export { colorVar, getTheme, iconUrl, onThemeChange, themeCssText } from "./theme.js";
 export type {
   CompletionContext,
   CompletionItem,
