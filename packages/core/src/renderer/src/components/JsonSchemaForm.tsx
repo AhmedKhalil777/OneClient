@@ -10,17 +10,28 @@ export function JsonSchemaForm({
   schema,
   value,
   onChange,
+  autoFocus,
 }: {
   schema: JsonSchemaObject;
   value: Record<string, unknown>;
   onChange: (next: Record<string, unknown>) => void;
+  /** Focus (and select) the first field on mount. */
+  autoFocus?: boolean;
 }) {
   const properties = schema.properties ?? {};
   const required = new Set(schema.required ?? []);
+  const focusFirst = (el: HTMLInputElement | null) => {
+    if (autoFocus && el && !el.dataset.focused) {
+      el.dataset.focused = "1";
+      el.focus();
+      el.select();
+    }
+  };
 
   return (
     <>
-      {Object.entries(properties).map(([key, prop]) => {
+      {Object.entries(properties).map(([key, prop], index) => {
+        const inputRef = index === 0 ? focusFirst : undefined;
         const isSecret = prop["x-secret"] === true;
         const inputType = isSecret ? "password" : prop.type === "number" || prop.type === "integer" ? "number" : "text";
 
@@ -45,8 +56,29 @@ export function JsonSchemaForm({
                   </option>
                 ))}
               </select>
+            ) : prop.format === "directory" ? (
+              <div className="input-with-button">
+                <input
+                  ref={inputRef}
+                  id={`field-${key}`}
+                  value={(value[key] as string) ?? (prop.default as string) ?? ""}
+                  onChange={(e) => onChange({ ...value, [key]: e.target.value })}
+                  placeholder="Choose a folder…"
+                />
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={async () => {
+                    const picked = await window.oneclient.pickDirectory((value[key] as string) || undefined);
+                    if (picked) onChange({ ...value, [key]: picked });
+                  }}
+                >
+                  Browse…
+                </button>
+              </div>
             ) : (
               <input
+                ref={inputRef}
                 id={`field-${key}`}
                 type={inputType}
                 value={(value[key] as string | number) ?? (prop.default as string | number) ?? ""}

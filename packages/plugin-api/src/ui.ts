@@ -47,6 +47,11 @@ export interface ViewHostApi {
   onMessage(listener: (message: unknown) => void): () => void;
   /** Invoke a contributed command by id, same as the command palette would. */
   invokeCommand(commandId: string, args?: unknown[]): Promise<unknown>;
+  /**
+   * Mark this view instance as having unsaved changes (or not). Core shows
+   * a ● on its tab and asks before closing a dirty tab.
+   */
+  setDirty(dirty: boolean): void;
 }
 
 /**

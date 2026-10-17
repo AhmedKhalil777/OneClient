@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "publisher": "oneclient",
   "license": "MIT",
+  "icon": "icon.svg",
   "engines": { "oneclient": "^0.1.0" },
   "main": "dist/main.js",
   "ui": "dist/ui",
@@ -19,7 +20,7 @@
         "connectionType": "docker"
       }
     ],
-    "connectionTypes": [{ "id": "docker", "label": "Docker", "category": "Infrastructure" }],
+    "connectionTypes": [{ "id": "docker", "label": "Docker", "category": "Infrastructure", "icon": "icon.svg" }],
     "explorerNodes": [
       { "id": "docker.containers", "connectionType": "docker" },
       { "id": "docker.container", "parentNodeType": "docker.containers" },
@@ -31,13 +32,35 @@
       { "id": "docker.network", "parentNodeType": "docker.networks" }
     ],
     "commands": [
-      { "id": "docker.listContainers", "title": "Docker: List Containers" },
-      { "id": "docker.listImages", "title": "Docker: List Images" },
-      { "id": "docker.startContainer", "title": "Docker: Start Container" },
-      { "id": "docker.stopContainer", "title": "Docker: Stop Container" },
-      { "id": "docker.restartContainer", "title": "Docker: Restart Container" },
-      { "id": "docker.removeContainer", "title": "Docker: Remove Container" },
-      { "id": "docker.pullImage", "title": "Docker: Pull Image" }
+      {
+        "id": "docker.listContainers",
+        "title": "Docker: List Containers",
+        "when": "contextValue == 'connection' && connectionType == 'docker' || nodeType == 'docker.containers'"
+      },
+      {
+        "id": "docker.listImages",
+        "title": "Docker: List Images",
+        "when": "contextValue == 'connection' && connectionType == 'docker' || nodeType == 'docker.images'"
+      },
+      { "id": "docker.startContainer", "title": "Docker: Start Container", "when": "contextValue == 'docker.container.stopped'" },
+      { "id": "docker.stopContainer", "title": "Docker: Stop Container", "when": "contextValue == 'docker.container.running'" },
+      { "id": "docker.restartContainer", "title": "Docker: Restart Container", "when": "contextValue == 'docker.container.running'" },
+      {
+        "id": "docker.removeContainer",
+        "title": "Docker: Remove Container",
+        "when": "contextValue =~ /^docker\\.container\\./",
+        "confirm": "Force-remove container \"{label}\"? A running container is stopped first."
+      },
+      {
+        "id": "docker.pullImage",
+        "title": "Docker: Pull Image…",
+        "when": "contextValue == 'connection' && connectionType == 'docker' || nodeType == 'docker.images'",
+        "inputSchema": {
+          "type": "object",
+          "required": ["image"],
+          "properties": { "image": { "type": "string", "title": "Image", "description": "e.g. nginx:latest" } }
+        }
+      }
     ]
   },
   "activationEvents": ["onConnectionType:docker"]

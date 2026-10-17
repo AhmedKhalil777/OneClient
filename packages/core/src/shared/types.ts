@@ -38,6 +38,8 @@ export interface PluginSummary {
   version: string;
   state: PluginState;
   error?: string;
+  /** Manifest `icon` path. Render via `oneclient-asset://<id>/<icon>` — never a raw filesystem path. */
+  icon?: string;
 }
 
 export interface ConnectionSummary {

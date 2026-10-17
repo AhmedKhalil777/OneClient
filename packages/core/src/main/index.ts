@@ -1,10 +1,13 @@
 import { join } from "node:path";
 import { BrowserWindow, app } from "electron";
+import { registerPluginAssetProtocolHandler, registerPluginAssetSchemeAsPrivileged } from "./assets/plugin-asset-protocol.js";
 
 // Must run before any app.getPath("userData") call — otherwise Electron
 // derives the userData folder name from package.json's "name" field
 // ("@oneclient/core"), which makes an ugly on-disk path.
 app.setName("oneClient");
+// Must run before app.whenReady() — see plugin-asset-protocol.ts.
+registerPluginAssetSchemeAsPrivileged();
 import { openDatabase } from "./db/database.js";
 import { PluginMetadataStore } from "./db/plugin-metadata-store.js";
 import { ConnectionManager } from "./connections/connection-manager.js";
@@ -19,7 +22,11 @@ import { createMainWindow } from "./windows.js";
 
 function pluginDirs(): string[] {
   const dirs = [join(app.getPath("userData"), "plugins")];
-  if (!app.isPackaged) {
+  if (app.isPackaged) {
+    // Built-in plugins (e.g. oneclient-files) ship inside the app bundle's
+    // resources — the packaging step copies packages/plugins/<built-in> there.
+    dirs.push(join(process.resourcesPath, "plugins"));
+  } else {
     // Dev-only fixture plugin(s) for exercising the loader/extension-host pipeline
     // without a real install flow — see packages/core/dev-plugins/README.md.
     dirs.push(join(__dirname, "../../dev-plugins"));
@@ -46,6 +53,7 @@ async function main(): Promise<void> {
   const providers = new ProviderDirectory();
   const secrets = new SqliteSecretStore(db);
   const pluginManager = new PluginManager(pluginDirs(), registry, metadata);
+  registerPluginAssetProtocolHandler(pluginManager);
 
   const mainWindow = createMainWindow();
 
@@ -100,9 +108,11 @@ async function main(): Promise<void> {
     await tryActivate(record);
   }
 
+  // Every enabled plugin is activated as soon as it loads, so its explorer is
+  // live in the activity bar right away. Activation never opens a connection —
+  // a plugin starts with zero connections until the user creates one.
   pluginManager.on("loaded", (record: PluginRecord) => {
-    const eager = !record.manifest.activationEvents || record.manifest.activationEvents.includes("*");
-    if (eager) void tryActivate(record);
+    void tryActivate(record);
   });
 
   const connections = new ConnectionManager(

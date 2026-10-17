@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ConnectionTypeContribution } from "@oneclient/plugin-api";
 import type { ConnectionTypeFormInfo } from "../../../shared/types.js";
 import { JsonSchemaForm } from "./JsonSchemaForm.js";
@@ -15,8 +15,15 @@ export function NewConnectionDialog({
   const [typeId, setTypeId] = useState<string>("");
   const [form, setForm] = useState<ConnectionTypeFormInfo | null>(null);
   const [name, setName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
   const [config, setConfig] = useState<Record<string, unknown>>({});
   const [status, setStatus] = useState<{ kind: "idle" | "busy" | "error" | "ok"; message?: string }>({ kind: "idle" });
+
+  // Opened from a single plugin's explorer — skip straight to its only type.
+  useEffect(() => {
+    const only = connectionTypes.length === 1 ? connectionTypes[0] : undefined;
+    if (only) void pickType(only.id);
+  }, []);
 
   async function pickType(id: string) {
     setTypeId(id);
@@ -80,9 +87,26 @@ export function NewConnectionDialog({
           <>
             <div className="form-field">
               <label htmlFor="conn-name">Name</label>
-              <input id="conn-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="My connection" />
+              <input id="conn-name" value={name} onChange={(e) => {
+                  setName(e.target.value);
+                  setNameTouched(true);
+                }}
+                placeholder="My connection"
+              />
             </div>
-            <JsonSchemaForm schema={form.configSchema} value={config} onChange={setConfig} />
+            <JsonSchemaForm
+              schema={form.configSchema}
+              value={config}
+              onChange={(next) => {
+                // The connection is named after the chosen folder until the user types a name themselves.
+                if (!nameTouched) {
+                  const dirKey = Object.entries(form.configSchema.properties ?? {}).find(([, p]) => p.format === "directory")?.[0];
+                  const dir = dirKey ? next[dirKey] : undefined;
+                  if (typeof dir === "string" && dir) setName(dir.split(/[\\/]/).filter(Boolean).pop() ?? dir);
+                }
+                setConfig(next);
+              }}
+            />
           </>
         )}
 

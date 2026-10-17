@@ -3,6 +3,14 @@ import { requireSession } from "./sessions.js";
 
 const ROOT_NODE_TYPES = ["docker.containers", "docker.images", "docker.volumes", "docker.networks"];
 
+const ICON = {
+  folder: "icons/folder.svg",
+  container: "icons/container.svg",
+  image: "icons/image.svg",
+  volume: "icons/volume.svg",
+  network: "icons/network.svg",
+};
+
 export function createExplorerProvider(): ExplorerProvider {
   return {
     nodeTypes: [...ROOT_NODE_TYPES, "docker.container", "docker.image", "docker.volume", "docker.network"],
@@ -12,10 +20,10 @@ export function createExplorerProvider(): ExplorerProvider {
 
       if (!node) {
         return [
-          { id: "containers", label: "Containers", nodeType: "docker.containers", collapsible: "collapsed" },
-          { id: "images", label: "Images", nodeType: "docker.images", collapsible: "collapsed" },
-          { id: "volumes", label: "Volumes", nodeType: "docker.volumes", collapsible: "collapsed" },
-          { id: "networks", label: "Networks", nodeType: "docker.networks", collapsible: "collapsed" },
+          { id: "containers", label: "Containers", nodeType: "docker.containers", collapsible: "collapsed", icon: ICON.folder },
+          { id: "images", label: "Images", nodeType: "docker.images", collapsible: "collapsed", icon: ICON.folder },
+          { id: "volumes", label: "Volumes", nodeType: "docker.volumes", collapsible: "collapsed", icon: ICON.folder },
+          { id: "networks", label: "Networks", nodeType: "docker.networks", collapsible: "collapsed", icon: ICON.folder },
         ];
       }
 
@@ -27,6 +35,7 @@ export function createExplorerProvider(): ExplorerProvider {
             label: `${(c.Names[0] ?? c.Id).replace(/^\//, "")}  (${c.State})`,
             nodeType: "docker.container",
             collapsible: "none",
+            icon: ICON.container,
             contextValue: c.State === "running" ? "docker.container.running" : "docker.container.stopped",
             data: { containerId: c.Id },
           }));
@@ -38,6 +47,7 @@ export function createExplorerProvider(): ExplorerProvider {
             label: img.RepoTags?.[0] ?? img.Id.replace("sha256:", "").slice(0, 12),
             nodeType: "docker.image",
             collapsible: "none",
+            icon: ICON.image,
             contextValue: "docker.image",
             data: { imageId: img.Id },
           }));
@@ -49,6 +59,7 @@ export function createExplorerProvider(): ExplorerProvider {
             label: v.Name,
             nodeType: "docker.volume",
             collapsible: "none",
+            icon: ICON.volume,
             contextValue: "docker.volume",
             data: { name: v.Name },
           }));
@@ -60,6 +71,7 @@ export function createExplorerProvider(): ExplorerProvider {
             label: n.Name ?? n.Id ?? "(unnamed)",
             nodeType: "docker.network",
             collapsible: "none",
+            icon: ICON.network,
             contextValue: "docker.network",
             data: { networkId: n.Id },
           }));

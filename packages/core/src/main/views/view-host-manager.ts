@@ -50,6 +50,18 @@ export class ViewHostManager {
       const instance = [...this.instances.values()].find((i) => i.view.webContents === event.sender);
       if (instance) this.onMessageFromView(instance.pluginId, instance.viewId, instance.connectionId, message);
     });
+    ipcMain.on("oneclient-view:dirty", (event, dirty: unknown) => {
+      const instance = [...this.instances.values()].find((i) => i.view.webContents === event.sender);
+      if (instance) for (const listener of this.dirtyListeners) listener(instance.instanceId, dirty === true);
+    });
+  }
+
+  private readonly dirtyListeners = new Set<(instanceId: string, dirty: boolean) => void>();
+
+  /** A view reported unsaved changes via `ViewHostApi.setDirty`. */
+  onDirtyChanged(listener: (instanceId: string, dirty: boolean) => void): () => void {
+    this.dirtyListeners.add(listener);
+    return () => this.dirtyListeners.delete(listener);
   }
 
   open(opts: {
@@ -57,6 +69,7 @@ export class ViewHostManager {
     pluginId: string;
     viewId: string;
     connectionId?: string;
+    params?: Record<string, string>;
     entryDir: string;
     entryFile: string;
   }): void {
@@ -75,7 +88,12 @@ export class ViewHostManager {
 
     const entryPath = join(opts.entryDir, opts.entryFile);
     const url = new URL(pathToFileURL(entryPath).href);
+    for (const [key, value] of Object.entries(opts.params ?? {})) {
+      if (typeof value === "string") url.searchParams.set(key, value);
+    }
+    // Set last so a plugin-supplied param can never spoof which connection this view belongs to.
     if (opts.connectionId) url.searchParams.set("connectionId", opts.connectionId);
+    else url.searchParams.delete("connectionId");
 
     view.webContents.on("did-fail-load", (_e, code, desc) => {
       console.error(`[view:${opts.instanceId}] did-fail-load`, code, desc, url.href);

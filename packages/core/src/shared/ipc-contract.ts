@@ -30,6 +30,9 @@ export const IpcChannel = {
   ViewOpen: "oneclient:view:open",
   ViewClose: "oneclient:view:close",
   ViewSetBounds: "oneclient:view:setBounds",
+  ViewDirtyChanged: "oneclient:view:dirtyChanged",
+
+  DialogPickDirectory: "oneclient:dialog:pickDirectory",
 } as const;
 
 export interface ViewBounds {
@@ -68,8 +71,22 @@ export interface OneClientApi {
 
   getExplorerChildren(connectionId: string, node: TreeNode | null): Promise<TreeNode[]>;
 
-  /** Opens (or no-ops if already open) a Tier 2 view instance; resolves once the WebContentsView starts loading. */
-  openView(instanceId: string, pluginId: string, viewId: string, connectionId?: string): Promise<void>;
+  /**
+   * Opens (or no-ops if already open) a Tier 2 view instance; resolves once the WebContentsView starts loading.
+   * `params` become URL query parameters on the view's entry page (see `TreeNode.openView`).
+   */
+  openView(
+    instanceId: string,
+    pluginId: string,
+    viewId: string,
+    connectionId?: string,
+    params?: Record<string, string>,
+  ): Promise<void>;
   closeView(instanceId: string): Promise<void>;
   setViewBounds(instanceId: string, bounds: ViewBounds): Promise<void>;
+  /** A Tier 2 view instance gained/lost unsaved changes (`ViewHostApi.setDirty`). */
+  onViewDirtyChanged(listener: (event: { instanceId: string; dirty: boolean }) => void): () => void;
+
+  /** Native "select folder" dialog; resolves to the chosen absolute path, or null if cancelled. */
+  pickDirectory(defaultPath?: string): Promise<string | null>;
 }

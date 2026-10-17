@@ -23,6 +23,7 @@ export interface JsonSchemaObject {
   default?: unknown;
   enum?: unknown[];
   const?: unknown;
+  /** Standard formats pass through; oneClient also understands `"directory"` (Tier 1 forms add a native folder picker). */
   format?: string;
   /** oneClient-specific hint, not standard JSON Schema: render as a secret/password input and route through SecretStore. */
   "x-secret"?: boolean;

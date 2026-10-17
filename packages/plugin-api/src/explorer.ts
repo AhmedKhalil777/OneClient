@@ -30,6 +30,24 @@ export interface TreeNode {
   readonly collapsible: "none" | "collapsed" | "expanded";
   readonly connectionId?: string;
   readonly data?: unknown;
+  /**
+   * Clicking this node opens a Tier 2 view (from this plugin's
+   * `contributes.views`) in its own editor tab — e.g. a file node opening
+   * an editor. One tab per node: clicking it again re-focuses that tab.
+   */
+  readonly openView?: TreeNodeOpenView;
+}
+
+export interface TreeNodeOpenView {
+  /** A `contributes.views[].id` with `tier: 2` from the same plugin. */
+  readonly viewId: string;
+  /** Tab title; defaults to the node's label. */
+  readonly title?: string;
+  /**
+   * Handed to the view as URL query parameters (alongside `connectionId`),
+   * readable via `new URLSearchParams(location.search)`.
+   */
+  readonly params?: Readonly<Record<string, string>>;
 }
 
 /**

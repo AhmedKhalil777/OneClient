@@ -26,10 +26,13 @@ const api: OneClientApi = {
 
   getExplorerChildren: (connectionId, node) => ipcRenderer.invoke(IpcChannel.ExplorerGetChildren, connectionId, node),
 
-  openView: (instanceId, pluginId, viewId, connectionId) =>
-    ipcRenderer.invoke(IpcChannel.ViewOpen, instanceId, pluginId, viewId, connectionId),
+  openView: (instanceId, pluginId, viewId, connectionId, params) =>
+    ipcRenderer.invoke(IpcChannel.ViewOpen, instanceId, pluginId, viewId, connectionId, params),
   closeView: (instanceId) => ipcRenderer.invoke(IpcChannel.ViewClose, instanceId),
   setViewBounds: (instanceId, bounds) => ipcRenderer.invoke(IpcChannel.ViewSetBounds, instanceId, bounds),
+  onViewDirtyChanged: (listener) => onEvent(IpcChannel.ViewDirtyChanged, listener),
+
+  pickDirectory: (defaultPath) => ipcRenderer.invoke(IpcChannel.DialogPickDirectory, defaultPath),
 };
 
 contextBridge.exposeInMainWorld("oneclient", api);

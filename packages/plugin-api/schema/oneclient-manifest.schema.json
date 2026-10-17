@@ -184,6 +184,10 @@
           "type": "string",
           "description": "Context-menu visibility guard, e.g. \"contextValue == 'postgres.table'\". Omit to show only in the command palette."
         },
+        "confirm": {
+          "type": "string",
+          "description": "If set, core asks the user to confirm before running. {label} is replaced with the right-clicked item's label."
+        },
         "inputSchema": {
           "type": "object",
           "description": "JSON Schema for one object core should collect via a generic form before invoking this command, passed as args[0]."

@@ -11,7 +11,7 @@ export type {
   ConnectionTestResult,
 } from "./connection.js";
 
-export type { ExplorerContext, ExplorerProvider, TreeNode } from "./explorer.js";
+export type { ExplorerContext, ExplorerProvider, TreeNode, TreeNodeOpenView } from "./explorer.js";
 
 export type { CommandContext, CommandHandler } from "./commands.js";
 

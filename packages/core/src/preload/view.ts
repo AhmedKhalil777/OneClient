@@ -24,6 +24,7 @@ const api: ViewHostApi = {
     return () => listeners.delete(listener);
   },
   invokeCommand: (commandId, args) => ipcRenderer.invoke("oneclient:command:execute", commandId, args),
+  setDirty: (dirty) => ipcRenderer.send("oneclient-view:dirty", Boolean(dirty)),
 };
 
 contextBridge.exposeInMainWorld("oneclientView", api);

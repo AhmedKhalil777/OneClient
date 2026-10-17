@@ -1,39 +1,79 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { TreeNode } from "@oneclient/plugin-api";
+import { AssetIcon } from "./AssetIcon.js";
+
+/** Called when a node with `openView` is clicked. */
+export type OpenNodeViewFn = (node: TreeNode) => void;
+
+/**
+ * Right-click on a node. `refresh` re-lists that node's children (expanding
+ * it) and its parent's — what a command that created, renamed or deleted
+ * something under/as this node needs afterwards.
+ */
+export type NodeContextMenuFn = (e: React.MouseEvent, node: TreeNode, refresh: () => void) => void;
 
 interface Props {
   connectionId: string;
+  pluginId: string;
   node: TreeNode;
   depth: number;
+  onOpenView: OpenNodeViewFn;
+  onContextMenu: NodeContextMenuFn;
+  reloadParent: () => void;
 }
 
-/** One lazily-expandable node. Root nodes are rendered by ConnectionRow, which owns depth 0. */
-export function ExplorerTreeNode({ connectionId, node, depth }: Props) {
+/** One lazily-expandable node. Root nodes are rendered by ConnectionRootNodes. */
+export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenView, onContextMenu, reloadParent }: Props) {
   const [expanded, setExpanded] = useState(node.collapsible === "expanded");
   const [children, setChildren] = useState<TreeNode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const canExpand = node.collapsible !== "none";
 
-  async function toggle() {
-    if (!canExpand) return;
-    const next = !expanded;
-    setExpanded(next);
-    if (next && children === null) {
-      try {
-        const kids = await window.oneclient.getExplorerChildren(connectionId, node);
-        setChildren(kids);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-      }
+  const loadChildren = useCallback(async () => {
+    try {
+      setChildren(await window.oneclient.getExplorerChildren(connectionId, node));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
+    // node identity changes on every parent reload; its id is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionId, node.id, node.nodeType]);
+
+  useEffect(() => {
+    if (expanded && children === null) void loadChildren();
+  }, [expanded, children, loadChildren]);
+
+  function onClick() {
+    if (node.openView) onOpenView(node);
+    if (canExpand) setExpanded((v) => !v);
+  }
+
+  function refresh() {
+    if (canExpand) {
+      setExpanded(true);
+      void loadChildren();
+    }
+    reloadParent();
   }
 
   return (
     <div>
-      <div className="tree-row" style={{ paddingLeft: 12 + depth * 14 }} onClick={toggle}>
+      <div
+        className="tree-row"
+        style={{ paddingLeft: 12 + depth * 14 }}
+        onClick={onClick}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onContextMenu(e, node, refresh);
+        }}
+        title={node.label}
+      >
         <span className="tree-caret">{canExpand ? (expanded ? "▾" : "▸") : ""}</span>
-        <span>{node.label}</span>
+        <AssetIcon pluginId={pluginId} icon={node.icon} size={14} fallback={canExpand ? "📁" : "•"} />
+        <span className="tree-label">{node.label}</span>
       </div>
       {expanded && error && (
         <div className="tree-row tree-row-error" style={{ paddingLeft: 12 + (depth + 1) * 14 }}>
@@ -42,22 +82,47 @@ export function ExplorerTreeNode({ connectionId, node, depth }: Props) {
       )}
       {expanded &&
         children?.map((child) => (
-          <ExplorerTreeNode key={child.id} connectionId={connectionId} node={child} depth={depth + 1} />
+          <ExplorerTreeNode
+            key={child.id}
+            connectionId={connectionId}
+            pluginId={pluginId}
+            node={child}
+            depth={depth + 1}
+            onOpenView={onOpenView}
+            onContextMenu={onContextMenu}
+            reloadParent={() => void loadChildren()}
+          />
         ))}
     </div>
   );
 }
 
-export function ConnectionRootNodes({ connectionId }: { connectionId: string }) {
+/** The top-level nodes under one connection. Bump `version` to re-fetch them. */
+export function ConnectionRootNodes({
+  connectionId,
+  pluginId,
+  version,
+  onOpenView,
+  onContextMenu,
+}: {
+  connectionId: string;
+  pluginId: string;
+  version: number;
+  onOpenView: OpenNodeViewFn;
+  onContextMenu: NodeContextMenuFn;
+}) {
   const [children, setChildren] = useState<TreeNode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [localVersion, setLocalVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     window.oneclient
       .getExplorerChildren(connectionId, null)
       .then((kids) => {
-        if (!cancelled) setChildren(kids);
+        if (cancelled) return;
+        setChildren(kids);
+        setError(null);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
@@ -65,7 +130,7 @@ export function ConnectionRootNodes({ connectionId }: { connectionId: string }) 
     return () => {
       cancelled = true;
     };
-  }, [connectionId]);
+  }, [connectionId, version, localVersion]);
 
   if (error) return <div className="tree-row tree-row-error">{error}</div>;
   if (children === null) return <div className="empty-hint">Loading…</div>;
@@ -74,7 +139,16 @@ export function ConnectionRootNodes({ connectionId }: { connectionId: string }) 
   return (
     <>
       {children.map((node) => (
-        <ExplorerTreeNode key={node.id} connectionId={connectionId} node={node} depth={0} />
+        <ExplorerTreeNode
+          key={node.id}
+          connectionId={connectionId}
+          pluginId={pluginId}
+          node={node}
+          depth={1}
+          onOpenView={onOpenView}
+          onContextMenu={onContextMenu}
+          reloadParent={() => setLocalVersion((v) => v + 1)}
+        />
       ))}
     </>
   );

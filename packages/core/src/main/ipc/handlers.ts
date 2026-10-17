@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { type BrowserWindow, ipcMain } from "electron";
+import { BrowserWindow, type OpenDialogOptions, dialog, ipcMain } from "electron";
 import type { TreeNode } from "@oneclient/plugin-api";
 import { IpcChannel, type ViewBounds } from "../../shared/ipc-contract.js";
 import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "../../shared/types.js";
@@ -31,6 +31,7 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 
   registry.onChanged((snapshot: ContributionRegistrySnapshot) => broadcast(IpcChannel.RegistryChanged, snapshot));
   pluginManager.on("changed", (summaries: PluginSummary[]) => broadcast(IpcChannel.PluginsChanged, summaries));
+  views.onDirtyChanged((instanceId, dirty) => broadcast(IpcChannel.ViewDirtyChanged, { instanceId, dirty }));
 
   ipcMain.handle(IpcChannel.RegistryGet, () => registry.snapshot());
 
@@ -41,6 +42,7 @@ export function registerIpcHandlers(deps: IpcDeps): void {
       version: r.manifest?.version ?? "0.0.0",
       state: r.state,
       error: r.error,
+      icon: r.manifest?.icon,
     })),
   );
 
@@ -91,7 +93,15 @@ export function registerIpcHandlers(deps: IpcDeps): void {
             supervisor.invoke(pluginId, "explorer", nodeType, "getChildren", [null], connectionId),
           ),
         );
-        return results.flat() as TreeNode[];
+        // One provider often owns several root node types and returns all of its
+        // roots for `getChildren(null)` — drop the repeats from the fan-out.
+        const seen = new Set<string>();
+        return (results.flat() as TreeNode[]).filter((n) => {
+          const key = `${n.nodeType}\u0000${n.id}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
       }
 
       return supervisor.invoke(pluginId, "explorer", node.nodeType, "getChildren", [node], connectionId) as Promise<
@@ -102,7 +112,14 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 
   ipcMain.handle(
     IpcChannel.ViewOpen,
-    async (_event, instanceId: string, pluginId: string, viewId: string, connectionId?: string) => {
+    async (
+      _event,
+      instanceId: string,
+      pluginId: string,
+      viewId: string,
+      connectionId?: string,
+      params?: Record<string, string>,
+    ) => {
       const viewContribution = registry
         .snapshot()
         .views.find((v) => v.id === viewId && v.pluginId === pluginId);
@@ -119,11 +136,19 @@ export function registerIpcHandlers(deps: IpcDeps): void {
         pluginId,
         viewId,
         connectionId,
+        params,
         entryDir: join(record.rootDir, record.manifest.ui),
         entryFile: viewContribution.entry,
       });
     },
   );
+
+  ipcMain.handle(IpcChannel.DialogPickDirectory, async (event, defaultPath?: string): Promise<string | null> => {
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    const options: OpenDialogOptions = { properties: ["openDirectory", "createDirectory"], defaultPath };
+    const result = owner ? await dialog.showOpenDialog(owner, options) : await dialog.showOpenDialog(options);
+    return result.canceled ? null : (result.filePaths[0] ?? null);
+  });
 
   ipcMain.handle(IpcChannel.ViewClose, (_event, instanceId: string) => {
     const instance = views.getInstance(instanceId);

@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import type { TreeNode } from "@oneclient/plugin-api";
 import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "../../shared/types.js";
+import { ActivityBar, type ViewContainerId } from "./components/ActivityBar.js";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
+import { ContextMenu, type ContextMenuItem } from "./components/ContextMenu.js";
+import { usePrompts } from "./components/PromptDialogs.js";
+import { evaluateWhen, type WhenContext } from "./when.js";
 import { NewConnectionDialog } from "./components/NewConnectionDialog.js";
 import { PluginManagerPanel } from "./components/PluginManagerPanel.js";
-import { Sidebar } from "./components/Sidebar.js";
+import { Sidebar, stripCategory } from "./components/Sidebar.js";
 import { Tier2ViewHost } from "./components/Tier2ViewHost.js";
 
 type Tab =
@@ -18,9 +23,87 @@ type Tab =
       pluginId: string;
       viewId: string;
       connectionId?: string;
+      params?: Record<string, string>;
     };
 
 const emptyRegistry: ContributionRegistrySnapshot = { connectionTypes: [], explorerNodes: [], views: [], commands: [] };
+
+const SIDEBAR_MIN = 180;
+const SIDEBAR_MAX = 560;
+const SIDEBAR_DEFAULT = 260;
+const SIDEBAR_STORAGE_KEY = "oneclient.sidebarWidth";
+/** Must match `--activity-bar-width` in styles.css. */
+const ACTIVITY_BAR_WIDTH = 48;
+
+function useResizableSidebar() {
+  const [width, setWidth] = useState(() => {
+    const stored = Number(localStorage.getItem(SIDEBAR_STORAGE_KEY));
+    return stored >= SIDEBAR_MIN && stored <= SIDEBAR_MAX ? stored : SIDEBAR_DEFAULT;
+  });
+  const [resizing, setResizing] = useState(false);
+
+  useEffect(() => {
+    if (!resizing) return;
+    function onMove(e: MouseEvent) {
+      setWidth(Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, e.clientX - ACTIVITY_BAR_WIDTH)));
+    }
+    function onUp() {
+      setResizing(false);
+    }
+    document.body.classList.add("sidebar-resizing");
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      document.body.classList.remove("sidebar-resizing");
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [resizing]);
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(width));
+  }, [width]);
+
+  return { width, resizing, startResizing: () => setResizing(true) };
+}
+
+const CONTAINER_STORAGE_KEY = "oneclient.activeViewContainer";
+
+/** Built-in plugins pinned to the top of the activity bar, in this order; everything else keeps load order. */
+const BUILT_IN_PLUGINS = ["oneclient-files"];
+function builtInRank(pluginId: string): number {
+  const i = BUILT_IN_PLUGINS.indexOf(pluginId);
+  return i === -1 ? BUILT_IN_PLUGINS.length : i;
+}
+
+/** Activity-bar selection: which view container the sidebar shows, and whether the sidebar is open. */
+function useViewContainer(explorerPlugins: PluginSummary[]) {
+  const [active, setActive] = useState<ViewContainerId | null>(
+    () => localStorage.getItem(CONTAINER_STORAGE_KEY) as ViewContainerId | null,
+  );
+  const [visible, setVisible] = useState(true);
+
+  // Fall back to the first plugin explorer (Files, on a fresh install) when nothing is
+  // remembered or the remembered one is gone (uninstalled/disabled).
+  const resolved: ViewContainerId =
+    active !== null && (active === "plugins" || explorerPlugins.some((p) => `plugin:${p.id}` === active))
+      ? active
+      : explorerPlugins[0]
+        ? `plugin:${explorerPlugins[0].id}`
+        : "plugins";
+
+  function select(id: ViewContainerId) {
+    if (id === resolved) {
+      setVisible((v) => !v);
+      return;
+    }
+    setActive(id);
+    setVisible(true);
+    localStorage.setItem(CONTAINER_STORAGE_KEY, id);
+  }
+
+  return { active: resolved, visible, select };
+}
 
 export function App() {
   const [registry, setRegistry] = useState<ContributionRegistrySnapshot>(emptyRegistry);
@@ -28,8 +111,34 @@ export function App() {
   const [connections, setConnections] = useState<ConnectionSummary[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([{ id: "welcome", title: "Welcome", kind: "welcome" }]);
   const [activeTabId, setActiveTabId] = useState("welcome");
+  const sidebar = useResizableSidebar();
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [newConnectionOpen, setNewConnectionOpen] = useState(false);
+  // `null` pluginId = every connection type (command palette); otherwise just that plugin's.
+  const [newConnectionFor, setNewConnectionFor] = useState<{ pluginId: string | null } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  /** Tier 2 view instances (= tab ids) that reported unsaved changes. */
+  const [dirtyViews, setDirtyViews] = useState<Set<string>>(new Set());
+  const prompts = usePrompts();
+  // Tier 2 views are native layers drawn *over* this DOM, so hide them while
+  // anything floating (menu, dialog, palette) is open or it'd be covered.
+  const overlayOpen = paletteOpen || newConnectionFor !== null || menu !== null || prompts.element !== null;
+
+  // Plugins that get an activity-bar explorer: anything not disabled/broken that contributes connection types.
+  const explorerPlugins = useMemo(
+    () =>
+      plugins
+        .filter(
+          (p) =>
+            p.state !== "disabled" &&
+            p.state !== "invalid" &&
+            p.state !== "incompatible" &&
+            registry.connectionTypes.some((t) => t.pluginId === p.id),
+        )
+        .sort((a, b) => builtInRank(a.id) - builtInRank(b.id)),
+    [plugins, registry.connectionTypes],
+  );
+  const container = useViewContainer(explorerPlugins);
 
   useEffect(() => {
     void window.oneclient.getRegistry().then(setRegistry);
@@ -39,10 +148,20 @@ export function App() {
     const offRegistry = window.oneclient.onRegistryChanged(setRegistry);
     const offPlugins = window.oneclient.onPluginsChanged(setPlugins);
     const offConnections = window.oneclient.onConnectionsChanged(setConnections);
+    const offDirty = window.oneclient.onViewDirtyChanged(({ instanceId, dirty }) =>
+      setDirtyViews((prev) => {
+        if (prev.has(instanceId) === dirty) return prev;
+        const next = new Set(prev);
+        if (dirty) next.add(instanceId);
+        else next.delete(instanceId);
+        return next;
+      }),
+    );
     return () => {
       offRegistry();
       offPlugins();
       offConnections();
+      offDirty();
     };
   }, []);
 
@@ -63,9 +182,140 @@ export function App() {
     setActiveTabId(tab.id);
   }
 
-  function closeTab(id: string) {
-    setTabs((prev) => prev.filter((t) => t.id !== id));
-    if (activeTabId === id) setActiveTabId("welcome");
+  function closeTabs(ids: string[]) {
+    const closing = new Set(ids);
+    const index = tabs.findIndex((t) => closing.has(t.id));
+    const remaining = tabs.filter((t) => !closing.has(t.id));
+    setTabs(remaining);
+    setDirtyViews((prev) => new Set([...prev].filter((id) => !closing.has(id))));
+    // Like VS Code: closing the active tab focuses its neighbour, not the first tab.
+    if (closing.has(activeTabId)) setActiveTabId(remaining[Math.min(index, remaining.length - 1)]?.id ?? "welcome");
+  }
+
+  async function requestCloseTab(id: string) {
+    const tab = tabs.find((t) => t.id === id);
+    if (tab && dirtyViews.has(id)) {
+      const discard = await prompts.confirm({
+        title: "Unsaved Changes",
+        message: `"${tab.title}" has unsaved changes. Close it and discard them?`,
+        confirmLabel: "Discard Changes",
+        danger: true,
+      });
+      if (!discard) return;
+    }
+    closeTabs([id]);
+  }
+
+  function pushToast(kind: Toast["kind"], message: string) {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, kind, message }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 6000);
+  }
+
+  function openExplorerContextMenu(
+    e: React.MouseEvent,
+    connection: ConnectionSummary,
+    node: TreeNode | undefined,
+    refresh: () => void,
+  ) {
+    const ctx: WhenContext = node
+      ? { contextValue: node.contextValue, nodeType: node.nodeType, connectionType: connection.typeId }
+      : { contextValue: "connection", connectionType: connection.typeId };
+
+    const items: ContextMenuItem[] = registry.commands
+      .filter((c) => c.pluginId === connection.pluginId && c.when && evaluateWhen(c.when, ctx))
+      .map((c) => ({
+        id: c.id,
+        label: stripCategory(c.title),
+        danger: Boolean(c.confirm),
+        run: () => void runContextCommand(c, connection, node, refresh),
+      }));
+
+    const builtIns: ContextMenuItem[] = [{ id: "core.refresh", label: "Refresh", run: refresh }];
+    if (!node) {
+      const dashboard = registry.views.find(
+        (v) => v.tier === 2 && v.connectionType === connection.typeId && v.pluginId === connection.pluginId,
+      );
+      if (dashboard) builtIns.push({ id: "core.openDashboard", label: `Open ${dashboard.title}`, run: () => openDashboard(connection, dashboard) });
+      builtIns.push({ id: "core.removeConnection", label: "Remove Connection", danger: true, run: () => void removeConnection(connection) });
+    }
+    if (items.length > 0) builtIns[0] = { ...builtIns[0]!, separator: true };
+
+    setMenu({ x: e.clientX, y: e.clientY, items: [...items, ...builtIns] });
+  }
+
+  async function runContextCommand(
+    command: ContributionRegistrySnapshot["commands"][number],
+    connection: ConnectionSummary,
+    node: TreeNode | undefined,
+    refresh: () => void,
+  ) {
+    const label = node?.label ?? connection.name;
+    const title = stripCategory(command.title);
+
+    if (command.confirm) {
+      const ok = await prompts.confirm({
+        title,
+        message: command.confirm.replaceAll("{label}", label),
+        confirmLabel: title,
+        danger: true,
+      });
+      if (!ok) return;
+    }
+
+    let input: Record<string, unknown> = {};
+    if (command.inputSchema) {
+      const initial: Record<string, unknown> = {};
+      for (const [key, prop] of Object.entries(command.inputSchema.properties ?? {})) {
+        if (prop.default !== undefined) {
+          initial[key] = typeof prop.default === "string" ? prop.default.replaceAll("{label}", label) : prop.default;
+        }
+      }
+      const answers = await prompts.input({ title, schema: command.inputSchema, initial });
+      if (!answers) return;
+      input = answers;
+    }
+
+    const data = node?.data && typeof node.data === "object" ? (node.data as Record<string, unknown>) : {};
+    const arg = { connectionId: connection.id, ...data, ...(node ? { node } : {}), ...input };
+
+    try {
+      const result = await window.oneclient.executeCommand(command.id, [arg]);
+      if (result === undefined || result === null) return;
+      if (typeof result === "object" && "ok" in result) {
+        const r = result as { ok: boolean; error?: string; openNode?: TreeNode };
+        if (!r.ok) {
+          pushToast("error", `${title}: ${r.error ?? "failed"}`);
+          return;
+        }
+        refresh();
+        if (r.openNode) openNodeView(connection, r.openNode);
+        return;
+      }
+      openTab({ id: `cmd:${command.id}:${Date.now()}`, title: `${title}: ${label}`, kind: "command-result", result });
+    } catch (err) {
+      pushToast("error", `${title}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function removeConnection(connection: ConnectionSummary) {
+    const openTabs = tabs.filter((t) => t.kind === "tier2-view" && t.connectionId === connection.id);
+    const unsaved = openTabs.filter((t) => dirtyViews.has(t.id)).length;
+    const ok = await prompts.confirm({
+      title: "Remove Connection",
+      message:
+        `Remove "${connection.name}"? This only forgets the connection in oneClient — nothing on the target is deleted.` +
+        (unsaved > 0 ? `\n\n${unsaved} open tab(s) have unsaved changes that will be lost.` : ""),
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
+    closeTabs(openTabs.map((t) => t.id));
+    try {
+      await window.oneclient.deleteConnection(connection.id);
+    } catch (err) {
+      pushToast("error", `Remove Connection: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   async function runContributedCommand(commandId: string, title: string) {
@@ -95,13 +345,30 @@ export function App() {
     });
   }
 
+  function openNodeView(connection: ConnectionSummary, node: TreeNode) {
+    if (!node.openView) return;
+    const { viewId, title, params } = node.openView;
+    const instanceId = `${connection.pluginId}:${viewId}:${connection.id}:${node.id}`;
+    openTab({
+      id: instanceId,
+      title: title ?? node.label,
+      kind: "tier2-view",
+      instanceId,
+      pluginId: connection.pluginId,
+      viewId,
+      connectionId: connection.id,
+      params: params ? { ...params } : undefined,
+    });
+  }
+
   const paletteCommands = useMemo<PaletteCommand[]>(() => {
     const builtins: PaletteCommand[] = [
       { id: "workbench.reloadWindow", title: "Reload Window", run: () => location.reload() },
       { id: "workbench.openPluginManager", title: "Open Plugin Manager", run: () => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" }) },
-      { id: "workbench.newConnection", title: "New Connection…", run: () => setNewConnectionOpen(true) },
+      { id: "workbench.newConnection", title: "New Connection…", run: () => setNewConnectionFor({ pluginId: null }) },
     ];
-    const contributed: PaletteCommand[] = registry.commands.map((c) => ({
+    // Commands with a `when` guard need context (a tree node, a view) the palette can't supply.
+    const contributed: PaletteCommand[] = registry.commands.filter((c) => !c.when).map((c) => ({
       id: c.id,
       title: c.title,
       run: () => void runContributedCommand(c.id, c.title),
@@ -112,38 +379,72 @@ export function App() {
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
 
   return (
-    <div className="app">
-      <Sidebar
-        connections={connections}
-        plugins={plugins}
-        views={registry.views}
-        onNewConnection={() => setNewConnectionOpen(true)}
-        onOpenPluginManager={() => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" })}
-        onOpenDashboard={openDashboard}
+    <div
+      className="app"
+      style={{
+        gridTemplateColumns: container.visible
+          ? `var(--activity-bar-width) ${sidebar.width}px 1fr`
+          : "var(--activity-bar-width) 1fr",
+      }}
+    >
+      <ActivityBar
+        plugins={explorerPlugins}
+        active={container.active}
+        sidebarVisible={container.visible}
+        onSelect={container.select}
       />
+
+      <div className="sidebar-wrapper" style={{ width: sidebar.width }} hidden={!container.visible}>
+        <Sidebar
+          container={container.active}
+          connections={connections}
+          plugins={plugins}
+          views={registry.views}
+          connectionTypes={registry.connectionTypes}
+          commands={registry.commands}
+          onNewConnection={(pluginId) => setNewConnectionFor({ pluginId })}
+          onRunCommand={(id, title) => void runContributedCommand(id, title)}
+          onOpenPluginManager={() => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" })}
+          onOpenDashboard={openDashboard}
+          onOpenNodeView={openNodeView}
+          onExplorerContextMenu={openExplorerContextMenu}
+        />
+        <div
+          className={`sidebar-resize-handle ${sidebar.resizing ? "active" : ""}`}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            sidebar.startResizing();
+          }}
+        />
+      </div>
 
       <div className="main-area">
         <div className="tab-bar">
-          {tabs.map((t) => (
-            <div
-              key={t.id}
-              className={`tab ${t.id === activeTabId ? "active" : ""}`}
-              onClick={() => setActiveTabId(t.id)}
-            >
-              {t.title}
-              {t.id !== "welcome" && (
-                <span
-                  style={{ marginLeft: 8, color: "var(--text-dim)" }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    closeTab(t.id);
-                  }}
-                >
-                  ×
-                </span>
-              )}
-            </div>
-          ))}
+          {tabs.map((t) => {
+            const dirty = dirtyViews.has(t.id);
+            return (
+              <div
+                key={t.id}
+                className={`tab ${t.id === activeTabId ? "active" : ""}`}
+                onClick={() => setActiveTabId(t.id)}
+                onAuxClick={(e) => {
+                  if (e.button === 1 && t.id !== "welcome") void requestCloseTab(t.id);
+                }}
+              >
+                {t.title}
+                {t.id !== "welcome" && (
+                  <span
+                    className={`tab-close ${dirty ? "dirty" : ""}`}
+                    title={dirty ? "Unsaved changes — close" : "Close"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void requestCloseTab(t.id);
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className={`tab-content ${activeTab?.kind === "tier2-view" ? "tab-content-bleed" : ""}`}>
@@ -152,14 +453,21 @@ export function App() {
           {activeTab?.kind === "command-result" && (
             <pre className="result">{JSON.stringify(activeTab.result, null, 2)}</pre>
           )}
-          {activeTab?.kind === "tier2-view" && (
-            <Tier2ViewHost
-              key={activeTab.instanceId}
-              instanceId={activeTab.instanceId}
-              pluginId={activeTab.pluginId}
-              viewId={activeTab.viewId}
-              connectionId={activeTab.connectionId}
-            />
+          {/* Every Tier 2 tab stays mounted (just hidden) so its view keeps its state across tab switches. */}
+          {tabs.map(
+            (t) =>
+              t.kind === "tier2-view" && (
+                <div key={t.instanceId} className="tier2-slot" hidden={t.id !== activeTab?.id}>
+                  <Tier2ViewHost
+                    instanceId={t.instanceId}
+                    pluginId={t.pluginId}
+                    viewId={t.viewId}
+                    connectionId={t.connectionId}
+                    params={t.params}
+                    active={t.id === activeTab?.id && !overlayOpen}
+                  />
+                </div>
+              ),
           )}
         </div>
       </div>
@@ -171,15 +479,38 @@ export function App() {
       </div>
 
       {paletteOpen && <CommandPalette commands={paletteCommands} onClose={() => setPaletteOpen(false)} />}
-      {newConnectionOpen && (
+      {newConnectionFor && (
         <NewConnectionDialog
-          connectionTypes={registry.connectionTypes}
-          onClose={() => setNewConnectionOpen(false)}
+          connectionTypes={registry.connectionTypes.filter(
+            (t) => newConnectionFor.pluginId === null || t.pluginId === newConnectionFor.pluginId,
+          )}
+          onClose={() => setNewConnectionFor(null)}
           onCreated={() => void window.oneclient.listConnections().then(setConnections)}
         />
       )}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}
+      {prompts.element}
+      {toasts.length > 0 && (
+        <div className="toasts">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              className={`toast toast-${t.kind}`}
+              onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+            >
+              {t.message}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
+}
+
+interface Toast {
+  id: number;
+  kind: "error" | "info";
+  message: string;
 }
 
 function WelcomeTab() {

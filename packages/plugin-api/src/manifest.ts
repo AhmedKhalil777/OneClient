@@ -42,11 +42,11 @@ export interface PluginManifest {
   };
 
   /**
-   * Events that trigger activation of this plugin's `main` module. Absent
-   * or `["*"]` means activate eagerly at app start. Otherwise the plugin
-   * stays dormant (no extension-host process spawned) until one fires,
-   * e.g. `"onConnectionType:postgres"`, `"onCommand:postgres.runQuery"`,
-   * `"onView:postgres.messageBrowser"`.
+   * Events that trigger activation of this plugin's `main` module, e.g.
+   * `"onConnectionType:postgres"`, `"onCommand:postgres.runQuery"`,
+   * `"onView:postgres.messageBrowser"`. Absent or `["*"]` means eager.
+   * Note: core currently activates every enabled plugin at app start
+   * regardless, so each plugin's explorer is live in the activity bar.
    */
   readonly activationEvents?: string[];
 }
@@ -96,8 +96,26 @@ export interface CommandContribution {
   readonly category?: string;
   readonly icon?: string;
   readonly keybinding?: string;
-  /** Context-menu visibility guard, e.g. `"contextValue == 'postgres.table'"`. Omit to show only in the command palette. */
+  /**
+   * Context-menu visibility guard. Omit to show the command in the command
+   * palette (and the plugin's Commands section) instead.
+   *
+   * Grammar: terms joined by `&&` / `||` (`&&` binds tighter). A term is
+   * `key == 'value'`, `key != 'value'`, `key =~ /regex/`, `key`, or `!key`.
+   * Keys: `contextValue` (the right-clicked TreeNode's, or `'connection'`
+   * for a connection row), `nodeType`, and `connectionType`.
+   * E.g. `"contextValue == 'connection' && connectionType == 'docker'"`.
+   *
+   * When run from a context menu, `args[0]` is
+   * `{ connectionId, ...node.data, node }` (`node` absent for a connection
+   * row), merged with the `inputSchema` answers if any.
+   */
   readonly when?: string;
+  /**
+   * If set, core asks the user to confirm before running (e.g. a delete).
+   * `{label}` is replaced with the right-clicked item's label.
+   */
+  readonly confirm?: string;
   /**
    * If present, core collects one object matching this JSON Schema via a
    * generic Tier 1 form (reusing the same renderer as a connection config
@@ -105,6 +123,8 @@ export interface CommandContribution {
    * e.g. a "Pull Image" command asking for an image tag. Omit for
    * commands that need no input, or that interpret `args` themselves
    * (e.g. a context-menu command receiving the clicked TreeNode).
+   * A string `default` may contain `{label}` (the right-clicked item's
+   * label), e.g. to prefill a rename field.
    */
   readonly inputSchema?: JsonSchemaObject;
 }

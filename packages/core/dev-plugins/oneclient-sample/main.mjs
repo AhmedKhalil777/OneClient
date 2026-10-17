@@ -44,12 +44,12 @@ export function activate(context) {
       const session = sessions.get(ctx.connectionId);
       const label = session?.label ?? "demo";
       if (!node) {
-        return [{ id: "root", label: `Items (${label})`, nodeType: "sample.item", collapsible: "collapsed" }];
+        return [{ id: "root", label: `Items (${label})`, nodeType: "sample.item", collapsible: "collapsed", icon: "icon.svg" }];
       }
       if (node.id === "root") {
         return [
-          { id: "a", label: "Item A", nodeType: "sample.item", collapsible: "none" },
-          { id: "b", label: "Item B", nodeType: "sample.item", collapsible: "none" },
+          { id: "a", label: "Item A", nodeType: "sample.item", collapsible: "none", icon: "icon.svg" },
+          { id: "b", label: "Item B", nodeType: "sample.item", collapsible: "none", icon: "icon.svg" },
         ];
       }
       return [];

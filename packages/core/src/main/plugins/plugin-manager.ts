@@ -153,6 +153,7 @@ export class PluginManager extends EventEmitter {
       version: r.manifest?.version ?? "0.0.0",
       state: r.state,
       error: r.error,
+      icon: r.manifest?.icon,
     }));
     this.emit("changed", summaries);
   }
