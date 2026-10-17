@@ -28,6 +28,7 @@ error at startup (e.g. after bumping the Electron version).
 ```sh
 node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/smoke-test.txt
 node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/tier2-smoke-test.txt  # Tier 2 view pipeline
+node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/docker-smoke-test.txt  # oneclient-docker (needs Docker running)
 ```
 
 This is non-interactive/batch mode: it runs every line in the file as a
@@ -49,7 +50,9 @@ node .claude/skills/run-desktop/driver.mjs
 |---|---|
 | `launch` | launch the app, find the real window |
 | `ss [name]` | screenshot of the main window -> `shots/<name>.png`. **Does not show Tier 2 views** — see Gotchas |
-| `ss-view [urlSubstring] [name]` | screenshot of an open Tier 2 view's own content -> `shots/<name>.png` |
+| `ss-view [urlSubstring] [name]` | screenshot of an open Tier 2 view's own content -> `shots/<name>.png`. **Unreliable** — see Gotchas |
+| `eval-view [urlSubstring] <js>` | evaluate JS inside a Tier 2 view's webContents (via `executeJavaScript`), print the result |
+| `click-text-view [urlSubstring] <text>` | `click-text`, but inside a Tier 2 view |
 | `click <css-sel>` | click element via DOM `.click()` (not coordinates) |
 | `click-text <text>` | click first `button/a/div/span/td/li` with matching text |
 | `fill <css-sel> <text>` | **use this for text inputs**, not `type`/`eval` — see Gotchas |
@@ -104,17 +107,27 @@ pnpm run dev     # electron-vite dev, hot reload, opens a real window
   session first** — the sqlite file and a running Electron instance both
   hold OS-level locks that make `rm -rf` on userData fail with "Device or
   resource busy".
-- **`BrowserWindow.capturePage()` does not composite child
-  `WebContentsView`s.** Tier 2 views are hosted as separate
+- **Neither `BrowserWindow.capturePage()` nor a Tier 2 view's own
+  `WebContents.capturePage()` can be trusted to produce a real screenshot
+  of that view's content.** Tier 2 views are hosted as separate
   `WebContentsView`s layered over the main window (see
-  `view-host-manager.ts`) — a real user sees them fine via the OS
-  compositor, but `ss` (which uses `capturePage()`) shows a blank hole
-  where one is. Use `ss-view` instead, which screenshots the view's own
-  `webContents` directly by matching its URL (every Tier 2 entry lives
-  under the plugin manifest's `ui` dir, so any loaded webContents URL
-  containing `/ui/` is one — pass a substring to disambiguate when
-  multiple views are open). Confirmed by a direct side-by-side comparison
-  while building the Docker dashboard's Tier 2 infra — not a guess.
+  `view-host-manager.ts`). `ss` (window-level `capturePage()`) shows a
+  blank hole where one is — expected, it doesn't composite child views.
+  `ss-view` targets the view's own `webContents.capturePage()` directly
+  (matching by URL — every Tier 2 entry lives under the plugin manifest's
+  `ui` dir, so any loaded webContents URL containing `/ui/` is one; pass a
+  substring to disambiguate multiple open views) and *usually* works, but
+  has been observed returning a 0×0 image even when the view is fully
+  loaded, responsive, correctly bounded on screen, and verified alive via
+  `eval-view` at the same moment — a real user sees it fine via the OS
+  compositor. Root cause not isolated (looks like `capturePage()`'s
+  backing store not tracking bounds set via `View.setBounds()` for a
+  child view, in this Electron version). **Don't block verification work
+  on getting a pixel screenshot of Tier 2 content** — `eval-view` (reads
+  DOM state / returns values via `executeJavaScript`, no paint required)
+  and `click-text-view` are the reliable way to confirm a Tier 2 view is
+  alive and behaving correctly; treat a captured screenshot as a nice-to-have
+  bonus, not the primary evidence.
 
 ## Troubleshooting
 

@@ -23,6 +23,31 @@ const require = createRequire(import.meta.url);
 let app = null;
 let page = null;
 
+// Enumerating a WebContentsView's webContents via app.evaluate occasionally
+// comes back empty on the very first call after a view opens (observed
+// empirically, cause not fully isolated — looks like a transient race
+// inside Electron's webContents registry right after creation). Retrying
+// a few times with a short delay is cheap and makes this reliable.
+async function evalInView(urlMatch, code, attempts = 6, delayMs = 400) {
+  for (let i = 0; i < attempts; i++) {
+    const result = await app.evaluate(
+      async ({ webContents }, { urlMatch, code }) => {
+        const wc = webContents.getAllWebContents().find((w) => w.getURL().includes("/ui/") && w.getURL().includes(urlMatch));
+        if (!wc) return { found: false };
+        try {
+          return { found: true, value: await wc.executeJavaScript(code) };
+        } catch (err) {
+          return { found: true, error: String(err) };
+        }
+      },
+      { urlMatch, code },
+    );
+    if (result.found) return result;
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+  return { found: false };
+}
+
 function electronBinary() {
   // `require('electron')` from a plain Node context resolves to the path
   // of the platform's electron executable (Electron's package.json trick).
@@ -74,28 +99,73 @@ const COMMANDS = {
   // (every view's entry lives under a manifest-declared "ui" dir, so any
   // loaded webContents whose URL contains "/ui/" is one). Pass a substring
   // to disambiguate when more than one view is open.
+  //
+  // KNOWN LIMITATION: WebContents.capturePage() on a WebContentsView added
+  // via contentView.addChildView() has been observed returning a 0x0 image
+  // even when the view is fully loaded, responsive, and on-screen with
+  // correct bounds (confirmed via img.getSize()). Root cause not isolated —
+  // looks like capturePage()'s backing store isn't tracking bounds set via
+  // View.setBounds() for child views in this Electron version. A few
+  // retries are attempted, but if this keeps failing, use `eval-view`
+  // instead (it proves content is alive/interactive without needing a
+  // paint) and don't block on getting a pixel screenshot of Tier 2 content.
   async "ss-view"(args) {
     if (!app) return console.log("ERROR: launch first");
     const [urlMatch, name] = args.includes(" ") ? [args.split(" ")[0], args.split(" ").slice(1).join(" ")] : [undefined, args];
-    const result = await app.evaluate(async ({ webContents }, match) => {
-      const all = webContents.getAllWebContents().map((wc) => wc.getURL());
-      const diag = all.map((u) => `${u} :: hasUi=${u.includes("/ui/")} hasMatch=${!match || u.includes(match)}`);
-      const candidates = webContents
-        .getAllWebContents()
-        .filter((wc) => wc.getURL().includes("/ui/") && (!match || wc.getURL().includes(match)));
-      if (candidates.length === 0) return { base64: null, all, diag, match };
-      const img = await candidates[0].capturePage();
-      return { base64: img.toPNG().toString("base64"), all, diag, match };
-    }, urlMatch);
-    if (!result.base64) {
-      console.log("ERROR: no matching Tier 2 view webContents found. match =", JSON.stringify(result.match));
-      for (const line of result.diag) console.log(" ", line);
-      return;
+    let shot = null;
+    for (let i = 0; i < 8 && !shot; i++) {
+      shot = await app.evaluate(async ({ webContents }, match) => {
+        const wc = webContents.getAllWebContents().find((w) => w.getURL().includes("/ui/") && w.getURL().includes(match));
+        if (!wc) return null;
+        const img = await wc.capturePage();
+        const b64 = img.toPNG().toString("base64");
+        return b64.length > 0 ? b64 : null;
+      }, urlMatch ?? "");
+      if (!shot) await new Promise((r) => setTimeout(r, 400));
     }
-    const base64 = result.base64;
+    if (!shot) {
+      return console.log(
+        "ERROR: no non-empty capture from a matching Tier 2 view for",
+        JSON.stringify(urlMatch),
+        "- this may be the capturePage() limitation noted above, not a missing view. Try eval-view to confirm the view is actually alive.",
+      );
+    }
     const f = path.join(SHOT_DIR, (name || `ss-view-${Date.now()}`) + ".png");
-    fs.writeFileSync(f, Buffer.from(base64, "base64"));
+    fs.writeFileSync(f, Buffer.from(shot, "base64"));
     console.log("view screenshot:", f);
+  },
+
+  // Runs arbitrary JS inside a Tier 2 view's own webContents via Electron's
+  // WebContents.executeJavaScript() in the MAIN process — the only way to
+  // reach into a WebContentsView's content, since Playwright's `page` only
+  // covers the main window and Tier 2 views don't show up in app.windows().
+  async "eval-view"(args) {
+    if (!app) return console.log("ERROR: launch first");
+    const [urlMatch, ...codeParts] = args.split(" ");
+    const result = await evalInView(urlMatch, codeParts.join(" "));
+    if (!result.found) return console.log("ERROR: no matching Tier 2 view found for", urlMatch);
+    if (result.error) return console.log("ERROR:", result.error);
+    console.log("eval-view ->", JSON.stringify(result.value));
+  },
+
+  // click-text, but inside a Tier 2 view's webContents (see eval-view).
+  async "click-text-view"(args) {
+    if (!app) return console.log("ERROR: launch first");
+    const [urlMatch, ...textParts] = args.split(" ");
+    const text = textParts.join(" ");
+    const code = `
+      (() => {
+        const els = [...document.querySelectorAll("button, a, [role='button'], div, span")];
+        const el = els.find(e => e.textContent?.trim() === ${JSON.stringify(text)})
+                ?? els.find(e => e.textContent?.includes(${JSON.stringify(text)}));
+        if (!el) return "NOT_FOUND";
+        el.click();
+        return "OK: " + el.tagName;
+      })()
+    `;
+    const result = await evalInView(urlMatch, code);
+    if (!result.found) return console.log("ERROR: no matching Tier 2 view found for", urlMatch);
+    console.log("click-text-view", JSON.stringify(text), "->", result.value);
   },
 
   async click(sel) {

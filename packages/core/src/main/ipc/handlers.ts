@@ -53,7 +53,7 @@ export function registerIpcHandlers(deps: IpcDeps): void {
     const pluginId = registry.findCommandOwner(commandId);
     if (!pluginId) throw new Error(`No installed plugin contributes command "${commandId}".`);
     await ensureActivated(pluginId);
-    return supervisor.invoke(pluginId, "command", commandId, "execute", [args]);
+    return supervisor.invoke(pluginId, "command", commandId, "execute", args);
   });
 
   ipcMain.handle(IpcChannel.ConnectionList, (): ConnectionSummary[] => connections.list());

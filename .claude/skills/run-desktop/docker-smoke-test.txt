@@ -1,0 +1,26 @@
+# Canonical smoke test for oneclient-docker (Phase 3). Requires Docker
+# Desktop/Engine running locally with at least one container that exists
+# (running or stopped) — the script picks whatever appears first in the
+# dashboard's container list, no fixed name required. Run with:
+#   node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/docker-smoke-test.txt
+launch
+wait 400
+click-text +
+wait 300
+select #conn-type docker
+wait 400
+click-text Test
+wait 1000
+ss d-01-test-result
+fill #conn-name Local Docker
+click-text Save
+wait 500
+click-text ⊞
+wait 3000
+ss-view ui d-02-dashboard-containers
+click-text-view ui Images (
+wait 800
+ss-view ui d-03-dashboard-images
+click-text-view ui Containers (
+wait 500
+eval-view ui (() => { const c = document.querySelector('.card'); if (!c) return 'NO_CONTAINERS'; const b = [...c.querySelectorAll('button')].find(b => b.textContent.trim() === 'Logs' || b.textContent.trim() === 'Start'); if (!b) return 'NO_ACTIONABLE_BUTTON'; return 'first card has: ' + [...c.querySelectorAll('button')].map(b => b.textContent.trim()).join(', '); })()

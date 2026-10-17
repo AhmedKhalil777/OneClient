@@ -23,6 +23,10 @@ function pluginDirs(): string[] {
     // Dev-only fixture plugin(s) for exercising the loader/extension-host pipeline
     // without a real install flow — see packages/core/dev-plugins/README.md.
     dirs.push(join(__dirname, "../../dev-plugins"));
+    // Real reference plugins (packages/plugins/*) load live from the repo in
+    // dev builds too, same as a packaged app's built-in extensions would —
+    // no install step needed while developing them.
+    dirs.push(join(__dirname, "../../../plugins"));
   }
   return dirs;
 }

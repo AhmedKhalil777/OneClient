@@ -1,0 +1,44 @@
+{
+  "name": "oneclient-docker",
+  "displayName": "Docker",
+  "description": "Connect to a local or remote Docker Engine: browse containers, images, volumes, networks.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "views": [
+      {
+        "id": "docker.dashboard",
+        "title": "Dashboard",
+        "tier": 2,
+        "location": "editor",
+        "entry": "index.html",
+        "connectionType": "docker"
+      }
+    ],
+    "connectionTypes": [{ "id": "docker", "label": "Docker", "category": "Infrastructure" }],
+    "explorerNodes": [
+      { "id": "docker.containers", "connectionType": "docker" },
+      { "id": "docker.container", "parentNodeType": "docker.containers" },
+      { "id": "docker.images", "connectionType": "docker" },
+      { "id": "docker.image", "parentNodeType": "docker.images" },
+      { "id": "docker.volumes", "connectionType": "docker" },
+      { "id": "docker.volume", "parentNodeType": "docker.volumes" },
+      { "id": "docker.networks", "connectionType": "docker" },
+      { "id": "docker.network", "parentNodeType": "docker.networks" }
+    ],
+    "commands": [
+      { "id": "docker.listContainers", "title": "Docker: List Containers" },
+      { "id": "docker.listImages", "title": "Docker: List Images" },
+      { "id": "docker.startContainer", "title": "Docker: Start Container" },
+      { "id": "docker.stopContainer", "title": "Docker: Stop Container" },
+      { "id": "docker.restartContainer", "title": "Docker: Restart Container" },
+      { "id": "docker.removeContainer", "title": "Docker: Remove Container" },
+      { "id": "docker.pullImage", "title": "Docker: Pull Image" }
+    ]
+  },
+  "activationEvents": ["onConnectionType:docker"]
+}

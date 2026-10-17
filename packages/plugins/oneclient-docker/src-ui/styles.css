@@ -1,0 +1,266 @@
+:root {
+  --bg: #16181d;
+  --bg-elevated: #1e2128;
+  --bg-card: #22262e;
+  --border: #30343c;
+  --text: #e4e6eb;
+  --text-dim: #8a8f98;
+  --accent: #1d63ed;
+  --accent-hover: #2e74ff;
+  --ok: #2ecc71;
+  --ok-bg: rgba(46, 204, 113, 0.12);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --warn: #f5a623;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+input {
+  font-family: inherit;
+  font-size: inherit;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.toolbar h1 {
+  font-size: 15px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: 16px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+.tab-btn.active {
+  background: var(--bg-card);
+  color: var(--text);
+}
+.tab-btn:hover:not(.active) {
+  color: var(--text);
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.refresh-indicator {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.card-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-sub {
+  color: var(--text-dim);
+  font-size: 11.5px;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.badge-running {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.badge-exited,
+.badge-dead {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.badge-other {
+  background: rgba(245, 166, 35, 0.12);
+  color: var(--warn);
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.icon-btn:hover {
+  background: var(--border);
+}
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.icon-btn-danger:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.empty-state {
+  color: var(--text-dim);
+  padding: 40px 0;
+  text-align: center;
+}
+
+.pull-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.pull-row input {
+  flex: 1;
+}
+
+.error-banner {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+/* Logs panel */
+.logs-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.logs-panel {
+  width: 86%;
+  height: 78%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.logs-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logs-header strong {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logs-body {
+  flex: 1;
+  overflow: auto;
+  padding: 10px 14px;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  color: #c7ccd6;
+}
+
+.logs-body .log-error {
+  color: var(--danger);
+}
