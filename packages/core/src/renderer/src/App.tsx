@@ -508,6 +508,44 @@ export function App() {
       { id: "workbench.colorTheme", title: "Preferences: Color Theme…", run: () => void openThemePicker("color") },
       { id: "workbench.iconTheme", title: "Preferences: Icon Theme…", run: () => void openThemePicker("icon") },
       { id: "workbench.newConnection", title: "New Connection…", run: () => setNewConnectionFor({ pluginId: null }) },
+      {
+        id: "workbench.exportConnections",
+        title: "Connections: Export…",
+        run: () =>
+          void window.oneclient
+            .exportConnections(false)
+            .then((r) => r && pushToast("info", `Exported ${r.count} connection${r.count === 1 ? "" : "s"} to ${r.path} (without passwords).`))
+            .catch((err: unknown) => pushToast("error", `Export: ${err instanceof Error ? err.message : String(err)}`)),
+      },
+      {
+        id: "workbench.exportConnectionsWithSecrets",
+        title: "Connections: Export with Passwords (plain text)…",
+        run: () => {
+          if (!confirm("The file will contain your saved passwords and secrets in PLAIN TEXT. Keep it private. Continue?")) return;
+          void window.oneclient
+            .exportConnections(true)
+            .then((r) => r && pushToast("info", `Exported ${r.count} connection${r.count === 1 ? "" : "s"} with passwords to ${r.path}.`))
+            .catch((err: unknown) => pushToast("error", `Export: ${err instanceof Error ? err.message : String(err)}`));
+        },
+      },
+      {
+        id: "workbench.importConnections",
+        title: "Connections: Import…",
+        run: () =>
+          void window.oneclient
+            .importConnections()
+            .then((r) => {
+              if (!r) return;
+              const parts = [`Imported ${r.added} connection${r.added === 1 ? "" : "s"}`];
+              if (r.skipped) parts.push(`${r.skipped} already existed`);
+              if (r.invalid) parts.push(`${r.invalid} invalid skipped`);
+              if (r.withoutSecrets) parts.push(`${r.withoutSecrets} need their password entered`);
+              pushToast(r.added > 0 ? "info" : "error", `${parts.join(", ")}.`);
+              for (const w of r.warnings.slice(0, 3)) pushToast("error", w);
+            })
+            .catch((err: unknown) => pushToast("error", `Import: ${err instanceof Error ? err.message : String(err)}`)),
+      },
+      { id: "workbench.revealConfig", title: "Preferences: Show oneclient.json in File Manager", run: () => void window.oneclient.revealConfigFile() },
       ...(panelViews.length ? [{ id: "workbench.togglePanel", title: "View: Toggle Panel", run: () => panel.toggle() }] : []),
       ...panelViews.map((v) => ({
         id: `workbench.showPanel.${v.pluginId}.${v.id}`,

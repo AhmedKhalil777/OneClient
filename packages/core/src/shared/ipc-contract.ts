@@ -47,6 +47,10 @@ export const IpcChannel = {
   OutputReveal: "oneclient:output:reveal",
   OutputClear: "oneclient:output:clear",
 
+  ConnectionExport: "oneclient:connection:export",
+  ConnectionImport: "oneclient:connection:import",
+  ConfigReveal: "oneclient:config:reveal",
+
   DialogPickDirectory: "oneclient:dialog:pickDirectory",
 
   ThemeGetState: "oneclient:theme:getState",
@@ -111,6 +115,13 @@ export interface OneClientApi {
     config: Record<string, unknown>,
   ): Promise<ConnectionSummary>;
   deleteConnection(id: string): Promise<void>;
+
+  /** Save the connections to a JSON file the user picks. Passwords are only included when asked (then in plain text). Null = cancelled. */
+  exportConnections(includeSecrets: boolean): Promise<{ path: string; count: number; includesSecrets: boolean } | null>;
+  /** Pick a JSON file (an export, or another oneclient.json) and add its connections. Null = cancelled. */
+  importConnections(): Promise<{ path: string; added: number; skipped: number; invalid: number; withoutSecrets: number; warnings: string[] } | null>;
+  /** Show ~/.oneclient/oneclient.json in the file manager. */
+  revealConfigFile(): Promise<void>;
 
   getExplorerChildren(connectionId: string, node: TreeNode | null): Promise<TreeNode[]>;
 

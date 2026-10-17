@@ -19,7 +19,16 @@ function service() {
     getRegistry: () => registry,
     getPluginRoot: (id) => (id === "theme-pack" ? join(dir, "plugin") : undefined),
     builtinIconDir: join(dir, "builtin-icons"),
-    settingsPath: join(dir, "settings.json"),
+    settings: {
+      load: () => {
+        try {
+          return JSON.parse(readFileSync(join(dir, "settings.json"), "utf-8"));
+        } catch {
+          return {};
+        }
+      },
+      save: (next) => writeFileSync(join(dir, "settings.json"), JSON.stringify(next)),
+    },
     log: (m) => logs.push(m),
   });
 }

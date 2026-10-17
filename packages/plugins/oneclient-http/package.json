@@ -1,0 +1,30 @@
+{
+  "name": "oneclient-http",
+  "version": "0.1.0",
+  "description": "oneClient plugin: send HTTP requests — collections, environments, variables, auth, history, and Postman / cURL import and export.",
+  "license": "MIT",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -b && vite build",
+    "build:node": "tsc -b",
+    "build:ui": "vite build",
+    "typecheck": "tsc -b --noEmit && tsc -p tsconfig.ui.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@oneclient/editor-kit": "workspace:*",
+    "@oneclient/plugin-api": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "vite": "^5.4.11",
+    "@vitejs/plugin-react": "^4.3.3",
+    "vitest": "^2.1.0"
+  }
+}

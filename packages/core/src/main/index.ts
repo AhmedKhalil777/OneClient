@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { BrowserWindow, app } from "electron";
+import { BrowserWindow, app, dialog } from "electron";
 import { registerPluginAssetProtocolHandler, registerPluginAssetSchemeAsPrivileged } from "./assets/plugin-asset-protocol.js";
 
 // Must run before any app.getPath("userData") call — otherwise Electron
@@ -8,7 +8,7 @@ import { registerPluginAssetProtocolHandler, registerPluginAssetSchemeAsPrivileg
 app.setName("oneClient");
 // Must run before app.whenReady() — see plugin-asset-protocol.ts.
 registerPluginAssetSchemeAsPrivileged();
-import { openDatabase } from "./db/database.js";
+import { ConfigStore, ConfigVersionError } from "./config/config-store.js";
 import { PluginMetadataStore } from "./db/plugin-metadata-store.js";
 import { ConnectionManager } from "./connections/connection-manager.js";
 import { registerIpcHandlers } from "./ipc/handlers.js";
@@ -17,7 +17,7 @@ import { ExtensionHostSupervisor } from "./plugins/extension-host-supervisor.js"
 import { PluginManager, type PluginRecord } from "./plugins/plugin-manager.js";
 import { ProviderDirectory } from "./plugins/provider-directory.js";
 import { ContributionRegistry } from "./plugins/registry.js";
-import { SqliteSecretStore } from "./secrets/secret-store.js";
+import { FileSecretStore } from "./secrets/secret-store.js";
 import { ThemeService } from "./themes/theme-service.js";
 import { ViewHostManager } from "./views/view-host-manager.js";
 import { createMainWindow } from "./windows.js";
@@ -49,18 +49,31 @@ function log(pluginId: string, level: "debug" | "info" | "warn" | "error", messa
 async function main(): Promise<void> {
   await app.whenReady();
 
-  const db = openDatabase(join(app.getPath("userData"), "oneclient.sqlite3"));
-  const metadata = new PluginMetadataStore(db);
+  // All app metadata lives in ~/.oneclient/oneclient.json (see config-store.ts); secrets in ~/.oneclient/secrets.json.
+  let config: ConfigStore;
+  let secrets: FileSecretStore;
+  try {
+    config = new ConfigStore(undefined, (message) => console.warn("[config]", message));
+    secrets = new FileSecretStore(config.secretsPath);
+  } catch (err) {
+    if (err instanceof ConfigVersionError) {
+      // A newer oneClient wrote these files; opening them with this one could lose data, so stop here.
+      dialog.showErrorBox("oneClient can't open its settings", err.message);
+      app.quit();
+      return;
+    }
+    throw err;
+  }
+  const metadata = new PluginMetadataStore(config);
   const registry = new ContributionRegistry();
   const providers = new ProviderDirectory();
-  const secrets = new SqliteSecretStore(db);
   const pluginManager = new PluginManager(pluginDirs(), registry, metadata);
   const themes = new ThemeService({
     getRegistry: () => registry.snapshot(),
     getPluginRoot: (pluginId) => pluginManager.getRecord(pluginId)?.rootDir,
     // out/main → packages/core/resources/icons (built-in product icons)
     builtinIconDir: join(__dirname, "../../resources/icons"),
-    settingsPath: join(app.getPath("userData"), "settings.json"),
+    settings: { load: () => config.getSettings(), save: (next) => config.setSettings(next) },
     log: (message) => console.warn("[themes]", message),
   });
   registerPluginAssetProtocolHandler(pluginManager, (id) => themes.resolveIconFile(id));
@@ -134,13 +147,14 @@ async function main(): Promise<void> {
   });
 
   const connections = new ConnectionManager(
-    db,
+    config,
     registry,
     providers,
     secrets,
     ensureActivated,
     (pluginId, kind, target, method, args, connectionId) =>
       supervisor.invoke(pluginId, kind, target, method, args, connectionId),
+    (pluginId) => pluginManager.getRecord(pluginId)?.manifest?.version,
   );
 
   registerIpcHandlers({
@@ -148,6 +162,7 @@ async function main(): Promise<void> {
     registry,
     pluginManager,
     connections,
+    config,
     supervisor,
     views,
     output,

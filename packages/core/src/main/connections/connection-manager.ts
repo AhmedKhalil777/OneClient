@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type Database from "better-sqlite3";
 import type { ConnectionTestResult, JsonSchemaObject } from "@oneclient/plugin-api";
 import type { ConnectionSummary, ConnectionTypeFormInfo } from "../../shared/types.js";
 import type { ContributionRegistry } from "../plugins/registry.js";
 import type { ProviderDirectory } from "../plugins/provider-directory.js";
-import type { SqliteSecretStore } from "../secrets/secret-store.js";
+import semver from "semver";
+import { type ConfigStore, type StoredConnection, isStoredConnection, migrateConfig } from "../config/config-store.js";
+import type { FileSecretStore } from "../secrets/secret-store.js";
 
 type EnsureActivated = (pluginId: string) => Promise<void>;
 type Invoke = (
@@ -16,16 +17,39 @@ type Invoke = (
   connectionId?: string,
 ) => Promise<unknown>;
 
-interface ConnectionRow {
-  id: string;
-  name: string;
-  type_id: string;
-  plugin_id: string;
-  config_json: string;
+export const EXPORT_FORMAT = "oneclient-connections";
+/** Version of the export document. Importers accept this and older; a newer one is refused with a clear message. */
+export const EXPORT_VERSION = 1;
+
+export interface ExportedConnection extends StoredConnection {
+  /** Plain-text secrets, only when exported with "include secrets". */
+  secrets?: Record<string, string>;
+}
+
+export interface ConnectionsExport {
+  format: typeof EXPORT_FORMAT;
+  version: number;
+  exportedAt: string;
+  /** Plugin versions the connections were saved with, so an import can warn about older plugins. */
+  plugins: Record<string, string>;
+  includesSecrets: boolean;
+  connections: ExportedConnection[];
+}
+
+export interface ImportResult {
+  added: number;
+  /** Already saved (same id). */
+  skipped: number;
+  /** Entries that weren't valid connections. */
+  invalid: number;
+  /** Added, but the file carried no passwords — the user has to enter them. */
+  withoutSecrets: number;
+  /** Things worth knowing: missing or older plugins. */
+  warnings: string[];
 }
 
 /**
- * Owns the saved-connections table, the secret-splitting boundary around
+ * Owns the saved connections (in oneclient.json), the secret-splitting boundary around
  * it, and lazy connect-on-first-use. Never holds a `ConnectionHandle`
  * itself — those stay inside the owning extension host; this class only
  * knows a connection has been `connect()`-ed once, not what came back.
@@ -34,19 +58,18 @@ export class ConnectionManager {
   private readonly connected = new Set<string>();
 
   constructor(
-    private readonly db: Database.Database,
+    private readonly config: ConfigStore,
     private readonly registry: ContributionRegistry,
     private readonly providers: ProviderDirectory,
-    private readonly secrets: SqliteSecretStore,
+    private readonly secrets: FileSecretStore,
     private readonly ensureActivated: EnsureActivated,
     private readonly invoke: Invoke,
+    /** Installed version of a plugin (undefined if it isn't installed). */
+    private readonly getPluginVersion: (pluginId: string) => string | undefined = () => undefined,
   ) {}
 
   list(): ConnectionSummary[] {
-    const rows = this.db
-      .prepare("SELECT id, name, type_id, plugin_id FROM connections ORDER BY created_at")
-      .all() as Array<Pick<ConnectionRow, "id" | "name" | "type_id" | "plugin_id">>;
-    return rows.map((r) => ({ id: r.id, name: r.name, typeId: r.type_id, pluginId: r.plugin_id }));
+    return this.config.listConnections().map((c) => ({ id: c.id, name: c.name, typeId: c.typeId, pluginId: c.pluginId }));
   }
 
   async getFormInfo(typeId: string): Promise<ConnectionTypeFormInfo> {
@@ -78,38 +101,107 @@ export class ConnectionManager {
     for (const [key, value] of Object.entries(secretValues)) {
       await this.secrets.set(`${id}:${key}`, value);
     }
-    this.db
-      .prepare("INSERT INTO connections (id, name, type_id, plugin_id, config_json) VALUES (?, ?, ?, ?, ?)")
-      .run(id, name, typeId, pluginId, JSON.stringify(publicConfig));
+    this.config.addConnections([{ id, name, typeId, pluginId, config: publicConfig, createdAt: new Date().toISOString(), ...pluginVersionField(this.getPluginVersion(pluginId)) }]);
     return { id, name, typeId, pluginId };
   }
 
   async delete(id: string): Promise<void> {
-    this.db.prepare("DELETE FROM connections WHERE id = ?").run(id);
+    this.config.removeConnection(id);
     await this.secrets.deleteByPrefix(`${id}:`);
     this.connected.delete(id);
   }
 
   /** Reconstructs full config (public + secrets) and calls `connect()` once; no-op if already connected this session. */
   async ensureConnected(connectionId: string): Promise<{ pluginId: string; typeId: string }> {
-    const row = this.db.prepare("SELECT * FROM connections WHERE id = ?").get(connectionId) as
-      | ConnectionRow
-      | undefined;
+    const row = this.config.getConnection(connectionId);
     if (!row) throw new Error(`Unknown connection "${connectionId}".`);
 
-    await this.ensureActivated(row.plugin_id);
-    if (this.connected.has(connectionId)) return { pluginId: row.plugin_id, typeId: row.type_id };
+    await this.ensureActivated(row.pluginId);
+    if (this.connected.has(connectionId)) return { pluginId: row.pluginId, typeId: row.typeId };
 
-    const info = this.providers.getConnectionInfo(row.type_id);
-    if (!info) throw new Error(`Plugin "${row.plugin_id}" has not registered connection type "${row.type_id}".`);
+    const info = this.providers.getConnectionInfo(row.typeId);
+    if (!info) throw new Error(`Plugin "${row.pluginId}" has not registered connection type "${row.typeId}".`);
 
-    const publicConfig = JSON.parse(row.config_json) as Record<string, unknown>;
+    const publicConfig = row.config;
     const fullConfig = await mergeSecrets(info.configSchema, publicConfig, (key) =>
       this.secrets.get(`${connectionId}:${key}`),
     );
-    await this.invoke(row.plugin_id, "connection", row.type_id, "connect", [fullConfig], connectionId);
+    await this.invoke(row.pluginId, "connection", row.typeId, "connect", [fullConfig], connectionId);
     this.connected.add(connectionId);
-    return { pluginId: row.plugin_id, typeId: row.type_id };
+    return { pluginId: row.pluginId, typeId: row.typeId };
+  }
+
+  /**
+   * The saved connections as a portable JSON document. Passwords and other secrets are left out unless
+   * `includeSecrets` is set — they are then written in PLAIN TEXT, so the file must be handled like a password.
+   */
+  async exportConnections(includeSecrets: boolean): Promise<ConnectionsExport> {
+    const connections: ExportedConnection[] = [];
+    for (const c of this.config.listConnections()) {
+      const secrets = includeSecrets ? await this.secrets.entriesByPrefix(`${c.id}:`) : {};
+      connections.push({ ...c, ...(Object.keys(secrets).length > 0 ? { secrets } : {}) });
+    }
+    const plugins: Record<string, string> = {};
+    for (const c of connections) {
+      const v = c.pluginVersion ?? this.getPluginVersion(c.pluginId);
+      if (v) plugins[c.pluginId] = v;
+    }
+    return { format: EXPORT_FORMAT, version: EXPORT_VERSION, exportedAt: new Date().toISOString(), includesSecrets: includeSecrets, plugins, connections };
+  }
+
+  /**
+   * Adds the connections from an export file (or any `oneclient.json`). Connections whose id is already saved are
+   * skipped, so importing the same file twice is harmless. Secrets in the file are stored encrypted.
+   */
+  async importConnections(document: unknown): Promise<ImportResult> {
+    const doc = document as { format?: unknown; version?: unknown; plugins?: unknown; connections?: unknown } | null;
+    let list = doc?.connections;
+    let exportedPlugins: Record<string, string> = {};
+    if (doc?.format === EXPORT_FORMAT) {
+      if (typeof doc.version === "number" && doc.version > EXPORT_VERSION) {
+        throw new Error(`This export was made by a newer version of oneClient (export format ${doc.version}; this version reads up to ${EXPORT_VERSION}). Update oneClient to import it.`);
+      }
+      if (doc.plugins && typeof doc.plugins === "object") exportedPlugins = doc.plugins as Record<string, string>;
+    } else if (doc && typeof doc === "object" && Array.isArray(doc.connections)) {
+      // Possibly a whole oneclient.json (any file-format version): bring it up to date first.
+      const migrated = migrateConfig(doc, "the imported file").data;
+      list = migrated.connections;
+    }
+    if (!Array.isArray(list)) throw new Error("This file has no \"connections\" list — it doesn't look like a oneClient export or oneclient.json.");
+    const existing = new Set(this.config.listConnections().map((c) => c.id));
+    const toAdd: StoredConnection[] = [];
+    let skipped = 0;
+    let invalid = 0;
+    let withoutSecrets = 0;
+    const warnings = new Set<string>();
+    for (const item of list) {
+      if (!isStoredConnection(item)) {
+        invalid++;
+        continue;
+      }
+      if (existing.has(item.id)) {
+        skipped++;
+        continue;
+      }
+      existing.add(item.id);
+      const wanted = item.pluginVersion ?? exportedPlugins[item.pluginId];
+      const have = this.getPluginVersion(item.pluginId);
+      if (!have) warnings.add(`Plugin "${item.pluginId}" isn't installed — "${item.name}" won't appear until it is.`);
+      else if (wanted && semver.valid(wanted) && semver.valid(have) && semver.lt(have, wanted)) {
+        warnings.add(`"${item.name}" was saved with ${item.pluginId} ${wanted}, but ${have} is installed — update the plugin if it misbehaves.`);
+      }
+      const secrets = (item as { secrets?: unknown }).secrets;
+      if (secrets && typeof secrets === "object") {
+        for (const [key, value] of Object.entries(secrets as Record<string, unknown>)) {
+          if (typeof value === "string") await this.secrets.set(`${item.id}:${key}`, value);
+        }
+      } else {
+        withoutSecrets++;
+      }
+      toAdd.push({ id: item.id, name: item.name, typeId: item.typeId, pluginId: item.pluginId, config: item.config, createdAt: typeof item.createdAt === "string" ? item.createdAt : new Date().toISOString(), ...pluginVersionField(typeof item.pluginVersion === "string" ? item.pluginVersion : have) });
+    }
+    if (toAdd.length > 0) this.config.addConnections(toAdd);
+    return { added: toAdd.length, skipped, invalid, withoutSecrets, warnings: [...warnings] };
   }
 
   private resolveOwner(typeId: string): string {
@@ -149,3 +241,5 @@ async function mergeSecrets(
   }
   return merged;
 }
+
+const pluginVersionField = (version: string | undefined): { pluginVersion?: string } => (version ? { pluginVersion: version } : {});

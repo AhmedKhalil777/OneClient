@@ -133,6 +133,11 @@ export class PluginManager extends EventEmitter {
       return;
     }
 
+    const previousVersion = this.metadata.recordVersion(manifest.name, manifest.version);
+    if (previousVersion && previousVersion !== manifest.version) {
+      // eslint-disable-next-line no-console
+      console.info(`[plugins] ${manifest.name} changed from ${previousVersion} to ${manifest.version}`);
+    }
     const enabled = this.metadata.isEnabled(manifest.name);
     const record: PluginRecord = {
       id: manifest.name,

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { utilityProcess, type UtilityProcess } from "electron";
 import type { HostInboundMessage, HostOutboundMessage, InvokeKind } from "../../shared/host-protocol.js";
-import type { SqliteSecretStore } from "../secrets/secret-store.js";
+import type { FileSecretStore } from "../secrets/secret-store.js";
 import type { OutputService } from "../output/output-service.js";
 import type { PluginRecord } from "./plugin-manager.js";
 
@@ -36,7 +36,7 @@ export class ExtensionHostSupervisor {
   private readonly hostEntryPath = join(__dirname, "extension-host.js");
 
   constructor(
-    private readonly secrets: SqliteSecretStore,
+    private readonly secrets: FileSecretStore,
     private readonly onRegistered: RegisteredFn,
     private readonly onExit: ExitFn,
     private readonly log: LogFn,

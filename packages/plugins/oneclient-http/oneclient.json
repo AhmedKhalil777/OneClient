@@ -1,0 +1,65 @@
+{
+  "name": "oneclient-http",
+  "displayName": "HTTP Client",
+  "description": "Send HTTP requests: collections, environments with {{variables}}, auth, history, cURL and Postman import, and Postman export.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "connectionTypes": [
+      { "id": "http", "label": "HTTP Workspace", "description": "Collections, environments and history for HTTP / REST requests (Postman-compatible).", "category": "API", "icon": "icon.svg" }
+    ],
+    "explorerNodes": [
+      { "id": "http.collection", "connectionType": "http" },
+      { "id": "http.environments", "connectionType": "http" },
+      { "id": "http.history", "connectionType": "http" },
+      { "id": "http.import", "connectionType": "http" },
+      { "id": "http.folder", "parentNodeType": "http.collection" },
+      { "id": "http.request", "parentNodeType": "http.folder" }
+    ],
+    "views": [
+      { "id": "http.request", "title": "Request", "tier": 2, "location": "editor", "entry": "request.html" },
+      { "id": "http.workspace", "title": "HTTP Workspace", "tier": 2, "location": "editor", "entry": "workspace.html", "connectionType": "http" }
+    ],
+    "commands": [
+      { "id": "http.api", "title": "HTTP: API", "hidden": true },
+      {
+        "id": "http.newCollection",
+        "title": "HTTP: New Collection…",
+        "when": "contextValue == 'connection' && connectionType == 'http'",
+        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "Collection name" } } }
+      },
+      { "id": "http.openImport", "title": "HTTP: Import from Postman / cURL…", "when": "contextValue == 'connection' && connectionType == 'http'" },
+      {
+        "id": "http.newRequest",
+        "title": "HTTP: New Request…",
+        "when": "contextValue == 'http.collection' || contextValue == 'http.folder'",
+        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "Request name" } } }
+      },
+      {
+        "id": "http.newFolder",
+        "title": "HTTP: New Folder…",
+        "when": "contextValue == 'http.collection' || contextValue == 'http.folder'",
+        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "Folder name" } } }
+      },
+      {
+        "id": "http.rename",
+        "title": "HTTP: Rename…",
+        "when": "contextValue == 'http.collection' || contextValue == 'http.folder' || contextValue == 'http.request'",
+        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "New name" } } }
+      },
+      { "id": "http.duplicate", "title": "HTTP: Duplicate", "when": "contextValue == 'http.collection' || contextValue == 'http.folder' || contextValue == 'http.request'" },
+      { "id": "http.exportCollection", "title": "HTTP: Export as Postman Collection…", "when": "contextValue == 'http.collection'" },
+      {
+        "id": "http.delete",
+        "title": "HTTP: Delete",
+        "when": "contextValue == 'http.collection' || contextValue == 'http.folder' || contextValue == 'http.request'",
+        "confirm": "Delete \"{label}\" and everything inside it? This can't be undone."
+      }
+    ]
+  }
+}

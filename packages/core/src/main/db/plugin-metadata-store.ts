@@ -1,33 +1,24 @@
-import type Database from "better-sqlite3";
+import type { ConfigStore } from "../config/config-store.js";
 
 /**
- * Persisted enable/disable state per plugin id, backed by the `plugins`
- * table. Plugin discovery itself is always a filesystem scan (see
- * PluginManager) — this store only remembers the user's enabled/disabled
- * choice across restarts, so a disabled plugin stays disabled after the
- * app reopens instead of silently re-activating.
+ * Enable/disable state per plugin id, kept in `oneclient.json`. Plugin discovery itself is always a filesystem
+ * scan (see PluginManager) — this only remembers the user's choice across restarts, so a disabled plugin stays
+ * disabled after the app reopens.
  */
 export class PluginMetadataStore {
-  constructor(private readonly db: Database.Database) {}
+  constructor(private readonly config: ConfigStore) {}
 
-  /** Defaults a never-seen-before plugin id to enabled, persisting that default. */
+  /** A plugin the user never turned off is enabled. */
   isEnabled(pluginId: string): boolean {
-    const row = this.db.prepare("SELECT enabled FROM plugins WHERE id = ?").get(pluginId) as
-      | { enabled: number }
-      | undefined;
-    if (!row) {
-      this.db.prepare("INSERT INTO plugins (id, enabled) VALUES (?, 1)").run(pluginId);
-      return true;
-    }
-    return row.enabled === 1;
+    return this.config.isPluginEnabled(pluginId);
+  }
+
+  /** Records the installed version; returns the one seen last time (undefined on first sight). */
+  recordVersion(pluginId: string, version: string): string | undefined {
+    return this.config.recordPluginVersion(pluginId, version);
   }
 
   setEnabled(pluginId: string, enabled: boolean): void {
-    this.db
-      .prepare(
-        `INSERT INTO plugins (id, enabled) VALUES (?, ?)
-         ON CONFLICT(id) DO UPDATE SET enabled = excluded.enabled`,
-      )
-      .run(pluginId, enabled ? 1 : 0);
+    this.config.setPluginEnabled(pluginId, enabled);
   }
 }

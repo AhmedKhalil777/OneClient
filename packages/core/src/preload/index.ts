@@ -24,6 +24,10 @@ const api: OneClientApi = {
   createConnection: (typeId, name, config) => ipcRenderer.invoke(IpcChannel.ConnectionCreate, typeId, name, config),
   deleteConnection: (id) => ipcRenderer.invoke(IpcChannel.ConnectionDelete, id),
 
+  exportConnections: (includeSecrets) => ipcRenderer.invoke(IpcChannel.ConnectionExport, includeSecrets),
+  importConnections: () => ipcRenderer.invoke(IpcChannel.ConnectionImport),
+  revealConfigFile: () => ipcRenderer.invoke(IpcChannel.ConfigReveal),
+
   getExplorerChildren: (connectionId, node) => ipcRenderer.invoke(IpcChannel.ExplorerGetChildren, connectionId, node),
 
   openView: (instanceId, pluginId, viewId, connectionId, params) =>

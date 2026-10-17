@@ -1,8 +1,10 @@
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { BrowserWindow, type OpenDialogOptions, dialog, ipcMain, shell } from "electron";
+import { BrowserWindow, type OpenDialogOptions, app, dialog, ipcMain, shell } from "electron";
 import type { ThemeState, TreeNode } from "@oneclient/plugin-api";
 import { IpcChannel, type ViewBounds } from "../../shared/ipc-contract.js";
 import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "../../shared/types.js";
+import type { ConfigStore } from "../config/config-store.js";
 import type { ConnectionManager } from "../connections/connection-manager.js";
 import type { ExtensionHostSupervisor } from "../plugins/extension-host-supervisor.js";
 import type { PluginManager } from "../plugins/plugin-manager.js";
@@ -16,6 +18,7 @@ export interface IpcDeps {
   registry: ContributionRegistry;
   pluginManager: PluginManager;
   connections: ConnectionManager;
+  config: ConfigStore;
   supervisor: ExtensionHostSupervisor;
   views: ViewHostManager;
   output: OutputService;
@@ -25,7 +28,7 @@ export interface IpcDeps {
 
 /** Registers every main-process IPC handler and wires registry/plugin change events to all open windows. */
 export function registerIpcHandlers(deps: IpcDeps): void {
-  const { registry, pluginManager, connections, supervisor, views, output, ensureActivated, getWindows, themes } = deps;
+  const { registry, pluginManager, connections, config, supervisor, views, output, ensureActivated, getWindows, themes } = deps;
 
   // Themes: shell gets the full state; every Tier 2 view gets it too (its preload applies the CSS variables).
   // Plugin views don't draw file trees, so they skip the (potentially thousands of entries) file icon table.
@@ -122,6 +125,39 @@ export function registerIpcHandlers(deps: IpcDeps): void {
     await connections.delete(id);
     broadcast(IpcChannel.ConnectionsChanged, connections.list());
   });
+
+  // Export / import saved connections (JSON), and a way to find the config file itself.
+  const dialogParent = () => BrowserWindow.getFocusedWindow() ?? getWindows()[0];
+  ipcMain.handle(IpcChannel.ConnectionExport, async (_event, includeSecrets: boolean) => {
+    const parent = dialogParent();
+    const options = {
+      title: includeSecrets ? "Export connections (with passwords)" : "Export connections",
+      defaultPath: join(app.getPath("documents"), "oneclient-connections.json"),
+      filters: [{ name: "JSON", extensions: ["json"] }],
+    };
+    const picked = parent ? await dialog.showSaveDialog(parent, options) : await dialog.showSaveDialog(options);
+    if (picked.canceled || !picked.filePath) return null;
+    const document = await connections.exportConnections(includeSecrets === true);
+    await writeFile(picked.filePath, `${JSON.stringify(document, null, 2)}\n`, { encoding: "utf-8", mode: includeSecrets ? 0o600 : 0o644 });
+    return { path: picked.filePath, count: document.connections.length, includesSecrets: document.includesSecrets };
+  });
+  ipcMain.handle(IpcChannel.ConnectionImport, async () => {
+    const parent = dialogParent();
+    const options: OpenDialogOptions = { title: "Import connections", properties: ["openFile"], filters: [{ name: "JSON", extensions: ["json"] }] };
+    const picked = parent ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options);
+    const file = picked.filePaths[0];
+    if (picked.canceled || !file) return null;
+    let document: unknown;
+    try {
+      document = JSON.parse(await readFile(file, "utf-8"));
+    } catch (err) {
+      throw new Error(`${file} is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    const result = await connections.importConnections(document);
+    broadcast(IpcChannel.ConnectionsChanged, connections.list());
+    return { path: file, ...result };
+  });
+  ipcMain.handle(IpcChannel.ConfigReveal, () => shell.showItemInFolder(config.filePath));
 
   ipcMain.handle(
     IpcChannel.ExplorerGetChildren,

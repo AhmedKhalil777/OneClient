@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, resolve, sep } from "node:path";
 import {
   type FileIconAssociations,
@@ -55,11 +55,12 @@ export class ThemeService {
       getRegistry: () => ContributionRegistrySnapshot;
       getPluginRoot: (pluginId: string) => string | undefined;
       builtinIconDir: string;
-      settingsPath: string;
+      /** Where the theme choices persist (oneclient.json in the app; a temp file in tests). */
+      settings: { load(): { colorTheme?: string; iconTheme?: string }; save(settings: { colorTheme?: string; iconTheme?: string }): void };
       log: (message: string) => void;
     },
   ) {
-    this.settings = this.readSettings();
+    this.settings = this.loadSettings();
     this.colorThemeId = this.settings.colorTheme ?? DEFAULT_COLOR_THEME;
     this.iconThemeId = this.settings.iconTheme;
     this.recompute();
@@ -265,9 +266,9 @@ export class ThemeService {
     return (file === r || file.startsWith(r + sep)) && existsSync(file) ? file : undefined;
   }
 
-  private readSettings(): Settings {
+  private loadSettings(): Settings {
     try {
-      return JSON.parse(readFileSync(this.opts.settingsPath, "utf-8")) as Settings;
+      return this.opts.settings.load();
     } catch {
       return {};
     }
@@ -276,7 +277,7 @@ export class ThemeService {
   private saveSettings(next: Settings): void {
     this.settings = next;
     try {
-      writeFileSync(this.opts.settingsPath, JSON.stringify(next, null, 2));
+      this.opts.settings.save(next);
     } catch (err) {
       this.opts.log(`could not save settings: ${err instanceof Error ? err.message : String(err)}`);
     }

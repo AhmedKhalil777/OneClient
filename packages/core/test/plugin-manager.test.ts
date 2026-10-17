@@ -1,8 +1,9 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type Database from "better-sqlite3";
-import { openDatabase } from "../src/main/db/database.js";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { ConfigStore } from "../src/main/config/config-store.js";
 import { PluginMetadataStore } from "../src/main/db/plugin-metadata-store.js";
 import { PluginManager } from "../src/main/plugins/plugin-manager.js";
 import { ContributionRegistry } from "../src/main/plugins/registry.js";
@@ -10,19 +11,21 @@ import { ContributionRegistry } from "../src/main/plugins/registry.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(here, "fixtures", "plugins");
 
-let db: Database.Database;
+let home: string;
+let config: ConfigStore;
 
 beforeEach(() => {
-  db = openDatabase(":memory:");
+  home = mkdtempSync(join(tmpdir(), "oneclient-pm-"));
+  config = new ConfigStore(home);
 });
 
 afterEach(() => {
-  db.close();
+  rmSync(home, { recursive: true, force: true });
 });
 
 function setup() {
   const registry = new ContributionRegistry();
-  const metadata = new PluginMetadataStore(db);
+  const metadata = new PluginMetadataStore(config);
   const pluginManager = new PluginManager([fixturesDir], registry, metadata);
   return { registry, pluginManager };
 }
@@ -87,9 +90,9 @@ describe("PluginManager.scan", () => {
     first.pluginManager.setEnabled("oneclient-good-fixture", false);
     expect(first.pluginManager.getRecord("oneclient-good-fixture")?.state).toBe("disabled");
 
-    // A fresh PluginManager over the SAME db simulates an app restart.
+    // A fresh ConfigStore over the SAME file simulates an app restart.
     const registry2 = new ContributionRegistry();
-    const metadata2 = new PluginMetadataStore(db);
+    const metadata2 = new PluginMetadataStore(new ConfigStore(home));
     const secondScan = new PluginManager([fixturesDir], registry2, metadata2);
     await secondScan.scan();
 
