@@ -10,6 +10,15 @@ export interface ConnectionContext {
   readonly logger: Logger;
   readonly secrets: SecretStore;
   readonly signal: AbortSignal;
+  /**
+   * The saved connection's id, if this call is against an already-saved
+   * connection (`connect`/`disconnect`). Absent during `test()`, which
+   * runs against a config the user hasn't saved yet. Cache any live
+   * session/handle under this id if you manage more than one connection
+   * of the same type concurrently — explorer/command calls receive the
+   * same id so they can look the session back up.
+   */
+  readonly connectionId?: string;
 }
 
 export interface ConnectionTestResult {

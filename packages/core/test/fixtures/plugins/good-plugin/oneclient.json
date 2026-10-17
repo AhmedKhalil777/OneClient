@@ -1,0 +1,12 @@
+{
+  "name": "oneclient-good-fixture",
+  "displayName": "Good Fixture",
+  "version": "0.1.0",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "main.js",
+  "contributes": {
+    "connectionTypes": [{ "id": "good", "label": "Good" }],
+    "commands": [{ "id": "good.ping", "title": "Good: Ping" }]
+  },
+  "activationEvents": ["*"]
+}

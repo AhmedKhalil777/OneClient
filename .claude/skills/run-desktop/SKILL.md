@@ -1,0 +1,110 @@
+---
+name: run-desktop
+description: Build, run, and drive the oneClient Electron desktop app (packages/core). Use when asked to start the app, take a screenshot of it, build it, or interact with its UI.
+---
+
+oneClient is an Electron + React desktop app at `packages/core`. For
+agent/automated use, drive it via the Playwright `_electron` REPL at
+`.claude/skills/run-desktop/driver.mjs`. This was built and validated on
+native Windows (no xvfb/tmux needed there) — on headless Linux you will
+additionally need xvfb and `--no-sandbox` is already passed by default.
+
+All paths below are relative to the repo root.
+
+## Build
+
+```sh
+pnpm install
+pnpm --filter @oneclient/plugin-api run build   # core depends on this
+pnpm --filter @oneclient/core run build         # electron-vite build -> packages/core/out/
+```
+
+`pnpm --filter @oneclient/core run rebuild-native` re-links `better-sqlite3`
+against Electron's ABI if you ever see a `NODE_MODULE_VERSION` mismatch
+error at startup (e.g. after bumping the Electron version).
+
+## Run (agent path)
+
+```sh
+node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/smoke-test.txt
+```
+
+This is non-interactive/batch mode: it runs every line in the file as a
+driver command, then quits. Screenshots land in
+`.claude/skills/run-desktop/shots/` (override with `SCREENSHOT_DIR`) —
+**open the PNG, don't just trust the text dump.**
+
+For interactive/iterative poking, run without a file argument and type
+commands at the `driver>` prompt (reads from `/dev/stdin` directly so
+Electron doesn't steal it):
+
+```sh
+node .claude/skills/run-desktop/driver.mjs
+```
+
+### Commands
+
+| command | what it does |
+|---|---|
+| `launch` | launch the app, find the real window |
+| `ss [name]` | screenshot -> `shots/<name>.png` |
+| `click <css-sel>` | click element via DOM `.click()` (not coordinates) |
+| `click-text <text>` | click first `button/a/div/span/td/li` with matching text |
+| `fill <css-sel> <text>` | **use this for text inputs**, not `type`/`eval` — see Gotchas |
+| `select <css-sel> <value>` | set a `<select>`'s value correctly |
+| `type <text>` / `press <key>` | raw keyboard input (e.g. `press Control+Shift+P`) |
+| `wait <ms>` | sleep |
+| `wait-sel <css-sel>` | wait for element, 10s timeout |
+| `eval <js>` | evaluate in the page, print JSON |
+| `text [css-sel]` | print `innerText` |
+| `windows` | list windows (there's normally just the one) |
+| `quit` | close app, exit |
+
+## Run (human path)
+
+```sh
+cd packages/core
+pnpm run dev     # electron-vite dev, hot reload, opens a real window
+```
+
+## Gotchas
+
+- **Never set `el.value = x` then dispatch an `input` event to fill a React
+  controlled input.** React patches `HTMLInputElement.prototype`'s value
+  setter, so a direct `.value =` assignment updates React's internal value
+  tracker *before* your event fires — React then sees "no change" and
+  skips `onChange`. The field *looks* filled (raw DOM value changed) but
+  the app's state never updated, and the next unrelated re-render snaps
+  the input back to its real (empty) state, which looks like a mysterious
+  "reset" bug. **Use the `fill`/`select` driver commands** (Playwright's
+  `page.fill()`/`selectOption()`), which go through a real low-level path
+  and trigger `onChange` correctly. Cost real debugging time to find —
+  see the Phase 2 implementation notes if curious.
+- **`better-sqlite3` is a native addon.** It's prebuilt for Electron's ABI
+  via `@electron/rebuild` (see Build above) — if you add/bump Electron or
+  `better-sqlite3`, rerun `pnpm --filter @oneclient/core run rebuild-native`
+  or you'll get a `NODE_MODULE_VERSION` mismatch at require() time.
+- **`@oneclient/plugin-api` is published as CommonJS, not ESM**, even
+  though its source uses `import`/`export`. This is deliberate: electron-vite's
+  main-process build output is CJS and leaves workspace deps un-bundled
+  (`externalizeDepsPlugin`), so a CJS `require()` of an ESM-only package
+  fails with `ERR_REQUIRE_ESM`. Keep plugin-api CJS unless core's main
+  build is also switched to ESM output.
+- **Dev-only fixture plugin**: `packages/core/dev-plugins/oneclient-sample`
+  loads automatically when `!app.isPackaged`, giving the smoke test a real
+  plugin to exercise (contributed command, connection type, explorer
+  tree) without needing a real infrastructure integration.
+- **SQLite persists across runs** in the real Electron userData dir
+  (`%APPDATA%/oneClient` on Windows). Repeated smoke-test runs will leave
+  behind multiple "My Sample" connections unless you delete that directory
+  between runs — this is expected (it's exactly the persistence Phase 2
+  was asked to add), not a bug.
+
+## Troubleshooting
+
+- **`electronApplication.firstWindow` timeout**: check the main process
+  actually started — run the electron binary directly (`node -e
+  "console.log(require('electron'))"` to find the path, then run it with
+  `--no-sandbox <packages/core dir>`) to see raw stdout/stderr instead of
+  Playwright's generic timeout.
+- **`ERR_REQUIRE_ESM` on startup**: see the plugin-api CJS gotcha above.

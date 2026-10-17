@@ -1,4 +1,4 @@
-# oneclient-kafka (Phase 4)
+# oneclient-kafka (Phase 5)
 
 Reference plugin, not implemented yet. Topics/consumer groups use the same
 Tier 1 explorer pattern as `oneclient-postgres`; the message browser is a

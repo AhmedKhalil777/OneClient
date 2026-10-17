@@ -5,6 +5,8 @@ export interface ExplorerContext {
   readonly logger: Logger;
   readonly secrets: SecretStore;
   readonly signal: AbortSignal;
+  /** Which saved connection this tree belongs to. Scope any internal session/handle cache by this. */
+  readonly connectionId: string;
 }
 
 /**

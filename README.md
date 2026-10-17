@@ -13,16 +13,18 @@ implement.
 
 ## Status
 
-**Phase 1** (current): monorepo layout, `@oneclient/plugin-api` interfaces,
-the `oneclient.json` manifest JSON Schema, and this architecture doc. No
-app yet — that starts in Phase 2.
+**Phase 2** (current): Electron + React shell — window layout, plugin
+loader, extension-host supervisor, connection manager, command palette.
+Phase 1 (`@oneclient/plugin-api` interfaces + `oneclient.json` schema +
+architecture doc) is done.
 
 ## Repo layout
 
 - `packages/plugin-api` — the only package plugins depend on
 - `packages/core` — the Electron shell (Phase 2)
-- `packages/plugins/*` — reference plugins: `oneclient-postgres` (Phase 3,
-  Tier 1), `oneclient-kafka` (Phase 4, Tier 1 + Tier 2)
+- `packages/plugins/*` — reference plugins: `oneclient-docker` (Phase 3,
+  first real plugin), `oneclient-postgres` (Phase 4), `oneclient-kafka`
+  (Phase 5, Tier 1 + Tier 2)
 
 ## Development
 

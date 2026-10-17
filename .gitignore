@@ -245,7 +245,9 @@ PublishScripts/
 !/packages/**
 packages/**/node_modules/
 packages/**/dist/
+packages/**/out/
 packages/**/*.tsbuildinfo
+.claude/skills/run-desktop/shots/
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files

@@ -1,0 +1,57 @@
+import type {
+  CommandContribution,
+  ConnectionTestResult,
+  ConnectionTypeContribution,
+  ExplorerNodeContribution,
+  JsonSchemaObject,
+  TreeNode,
+  UiSchema,
+  ViewContribution,
+} from "@oneclient/plugin-api";
+
+/**
+ * Runtime DTOs exchanged over IPC. Distinct from @oneclient/plugin-api's
+ * design-time interfaces (ConnectionProvider, etc.) — those are what a
+ * plugin implements *inside* its extension host; these are what the main
+ * process tells the renderer about the result.
+ */
+
+export interface ContributionRegistrySnapshot {
+  connectionTypes: Array<ConnectionTypeContribution & { pluginId: string }>;
+  explorerNodes: Array<ExplorerNodeContribution & { pluginId: string }>;
+  views: Array<ViewContribution & { pluginId: string }>;
+  commands: Array<CommandContribution & { pluginId: string }>;
+}
+
+export type PluginState =
+  | "inactive"
+  | "activating"
+  | "active"
+  | "crashed"
+  | "disabled"
+  | "incompatible"
+  | "invalid";
+
+export interface PluginSummary {
+  id: string;
+  displayName?: string;
+  version: string;
+  state: PluginState;
+  error?: string;
+}
+
+export interface ConnectionSummary {
+  id: string;
+  name: string;
+  typeId: string;
+  pluginId: string;
+}
+
+export interface ConnectionTypeFormInfo {
+  typeId: string;
+  pluginId: string;
+  configSchema: JsonSchemaObject;
+  uiSchema?: UiSchema;
+}
+
+export type { ConnectionTestResult, TreeNode };

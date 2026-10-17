@@ -1,0 +1,36 @@
+# Canonical smoke test: exercises the plugin loader, extension-host IPC,
+# command palette, connection manager, and explorer tree against the
+# oneclient-sample dev fixture plugin. Run with:
+#   node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/smoke-test.txt
+launch
+wait 400
+ss 01-landing
+
+press Control+Shift+P
+wait 300
+type Sample
+wait 200
+ss 02-palette-filtered
+press Enter
+wait 400
+ss 03-command-result
+
+click-text +
+wait 300
+select #conn-type sample
+wait 400
+fill #field-label demo-conn
+fill #conn-name My Sample
+ss 04-form-filled
+click-text Test
+wait 400
+ss 05-test-result
+click-text Save
+wait 500
+ss 06-connection-saved
+
+click-text My Sample
+wait 600
+click-text Items (demo-conn)
+wait 400
+ss 07-explorer-leaves

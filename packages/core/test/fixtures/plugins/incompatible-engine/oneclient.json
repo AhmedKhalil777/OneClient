@@ -1,0 +1,6 @@
+{
+  "name": "oneclient-future-fixture",
+  "version": "0.1.0",
+  "engines": { "oneclient": "^99.0.0" },
+  "main": "main.js"
+}

@@ -1,0 +1,5 @@
+{
+  "name": "oneclient-bad-fixture",
+  "version": "not-a-semver",
+  "main": "main.js"
+}

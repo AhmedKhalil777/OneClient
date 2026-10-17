@@ -1,4 +1,4 @@
-# oneclient-postgres (Phase 3)
+# oneclient-postgres (Phase 4)
 
 Reference plugin, not implemented yet. Will use **Tier 1** declarative UI
 only: `ConnectionProvider.configSchema` for the connection form, generic

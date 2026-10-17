@@ -1,0 +1,14 @@
+{
+  "name": "oneclient-sample",
+  "displayName": "Sample (dev fixture)",
+  "description": "In-memory fixture plugin for exercising the plugin loader and extension host.",
+  "version": "0.1.0",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "main.mjs",
+  "contributes": {
+    "connectionTypes": [{ "id": "sample", "label": "Sample (in-memory)", "category": "Dev" }],
+    "explorerNodes": [{ "id": "sample.item", "connectionType": "sample" }],
+    "commands": [{ "id": "sample.sayHello", "title": "Sample: Say Hello" }]
+  },
+  "activationEvents": ["*"]
+}

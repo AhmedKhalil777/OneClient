@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "The only surface oneClient plugins are allowed to depend on: contribution interfaces, manifest types, and the plugin activation context.",
   "license": "MIT",
-  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

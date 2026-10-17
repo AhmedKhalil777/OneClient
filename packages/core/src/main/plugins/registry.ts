@@ -1,0 +1,72 @@
+import type { PluginManifest } from "@oneclient/plugin-api";
+import type { ContributionRegistrySnapshot } from "../../shared/types.js";
+
+/**
+ * In-memory merge of every loaded plugin's `contributes` block. The
+ * renderer never sees plugin code — only snapshots of this registry,
+ * pushed over IPC whenever a plugin is added/removed.
+ */
+export class ContributionRegistry {
+  private readonly byPlugin = new Map<string, NonNullable<PluginManifest["contributes"]>>();
+  private readonly listeners = new Set<(snapshot: ContributionRegistrySnapshot) => void>();
+
+  addPlugin(pluginId: string, contributes: PluginManifest["contributes"]): void {
+    this.byPlugin.set(pluginId, contributes ?? {});
+    this.emit();
+  }
+
+  removePlugin(pluginId: string): void {
+    if (this.byPlugin.delete(pluginId)) {
+      this.emit();
+    }
+  }
+
+  onChanged(listener: (snapshot: ContributionRegistrySnapshot) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  snapshot(): ContributionRegistrySnapshot {
+    const result: ContributionRegistrySnapshot = {
+      connectionTypes: [],
+      explorerNodes: [],
+      views: [],
+      commands: [],
+    };
+    for (const [pluginId, contributes] of this.byPlugin) {
+      for (const c of contributes.connectionTypes ?? []) {
+        result.connectionTypes.push({ ...c, pluginId });
+      }
+      for (const c of contributes.explorerNodes ?? []) {
+        result.explorerNodes.push({ ...c, pluginId });
+      }
+      for (const c of contributes.views ?? []) {
+        result.views.push({ ...c, pluginId });
+      }
+      for (const c of contributes.commands ?? []) {
+        result.commands.push({ ...c, pluginId });
+      }
+    }
+    return result;
+  }
+
+  /** Which plugin owns a given connection type, if any. */
+  findConnectionTypeOwner(typeId: string): string | undefined {
+    for (const [pluginId, contributes] of this.byPlugin) {
+      if (contributes.connectionTypes?.some((c) => c.id === typeId)) return pluginId;
+    }
+    return undefined;
+  }
+
+  findCommandOwner(commandId: string): string | undefined {
+    for (const [pluginId, contributes] of this.byPlugin) {
+      if (contributes.commands?.some((c) => c.id === commandId)) return pluginId;
+    }
+    return undefined;
+  }
+
+  private emit(): void {
+    const snapshot = this.snapshot();
+    for (const listener of this.listeners) listener(snapshot);
+  }
+}

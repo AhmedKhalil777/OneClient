@@ -257,8 +257,9 @@ instead of three.
 
 | Plugin | Likely dependency | Native? | Notes |
 |---|---|---|---|
+| `oneclient-docker` | `dockerode` | No (talks to Docker Engine API over a Unix socket / Windows named pipe) | First reference plugin (Phase 3). No native deps, but `connect()` needs an OS-conditional transport path, and a clear error when the daemon isn't reachable. |
 | `oneclient-postgres` | `pg` | No (pure JS protocol) | Safe to bundle as-is. |
-| `oneclient-kafka` | `kafkajs` (default) vs `node-rdkafka` | `kafkajs`: no. `node-rdkafka`: yes (wraps librdkafka) | Default to `kafkajs` — Phase 4 README already calls this out. `node-rdkafka` needs prebuilt binaries per OS/arch/Node ABI (win32-x64, darwin-x64/arm64, linux-x64/arm64 at minimum) and complicates both plugin packaging and `electron-builder`/codesigning. |
+| `oneclient-kafka` | `kafkajs` (default) vs `node-rdkafka` | `kafkajs`: no. `node-rdkafka`: yes (wraps librdkafka) | Default to `kafkajs` — Phase 5 README already calls this out. `node-rdkafka` needs prebuilt binaries per OS/arch/Node ABI (win32-x64, darwin-x64/arm64, linux-x64/arm64 at minimum) and complicates both plugin packaging and `electron-builder`/codesigning. |
 | `oneclient-sqlserver` (future) | `mssql`/`tedious` | No | Pure JS (tedious). Safe. |
 | `oneclient-mongodb` (future) | `mongodb` | No | Pure JS driver. Safe. |
 | `oneclient-redis` (future) | `ioredis`/`redis` | No | Pure JS. Safe. |
@@ -288,8 +289,9 @@ oneClient/
 │   ├── core/                     @oneclient/core — Phase 2 (placeholder for now)
 │   │   └── (src/main, src/preload, src/renderer, src/extension-host — not yet implemented)
 │   └── plugins/
-│       ├── oneclient-postgres/   Phase 3 reference plugin (Tier 1 only)
-│       └── oneclient-kafka/      Phase 4 reference plugin (Tier 1 + Tier 2 message browser)
+│       ├── oneclient-docker/     Phase 3 reference plugin (Tier 1, + likely Tier 2 log view)
+│       ├── oneclient-postgres/   Phase 4 reference plugin (Tier 1 only)
+│       └── oneclient-kafka/      Phase 5 reference plugin (Tier 1 + Tier 2 message browser)
 ```
 
 ## Open questions carried into Phase 2
