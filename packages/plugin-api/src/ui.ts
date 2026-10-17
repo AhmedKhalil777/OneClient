@@ -90,6 +90,11 @@ export interface ViewHostApi {
    * Asking for the same view with the same params again focuses the existing tab instead of opening a copy.
    */
   openView(request: OpenViewRequest): void;
+  /**
+   * Re-fetch this view's connection in the explorer — e.g. after saving something that is listed there
+   * (a saved query, a faker…). No-op for views without a connection.
+   */
+  refreshExplorer(): void;
 }
 
 /**

@@ -1,0 +1,61 @@
+{
+  "name": "oneclient-redis",
+  "displayName": "Redis",
+  "description": "Browse Redis keys by namespace, view and edit every data type (string/JSON, hash, list, set, sorted set, stream), TTLs, server info, slow log and a CLI.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "connectionTypes": [
+      { "id": "redis", "label": "Redis", "description": "A Redis (or Valkey / compatible) server.", "category": "Databases", "icon": "icon.svg" }
+    ],
+    "explorerNodes": [
+      { "id": "redis.database", "connectionType": "redis" },
+      { "id": "redis.namespace", "parentNodeType": "redis.database" },
+      { "id": "redis.key", "parentNodeType": "redis.namespace" },
+      { "id": "redis.more", "parentNodeType": "redis.namespace" }
+    ],
+    "views": [
+      { "id": "redis.key", "title": "Key", "tier": 2, "location": "editor", "entry": "key.html" },
+      { "id": "redis.browser", "title": "Redis", "tier": 2, "location": "editor", "entry": "browser.html", "connectionType": "redis", "icon": "$(search)" }
+    ],
+    "searchProviders": [{ "id": "keys", "label": "Redis keys", "command": "redis.search", "connectionType": "redis", "order": 30, "icon": "$(key)" }],
+    "commands": [
+      { "id": "redis.api", "title": "Redis: API", "hidden": true },
+      { "id": "redis.search", "title": "Redis: Search Keys", "hidden": true },
+      {
+        "id": "redis.newKey",
+        "title": "Redis: New Key…",
+        "when": "contextValue == 'redis.database' || contextValue == 'redis.namespace'",
+        "inputSchema": {
+          "type": "object",
+          "required": ["name", "type"],
+          "properties": {
+            "name": { "type": "string", "title": "Key name (added to the namespace you right-clicked)" },
+            "type": { "type": "string", "title": "Type", "enum": ["string", "hash", "list", "set", "zset", "stream", "json"], "default": "string" },
+            "value": { "type": "string", "title": "First value (optional)" }
+          }
+        }
+      },
+      { "id": "redis.openBrowser", "title": "Redis: Open Key Browser", "when": "contextValue == 'redis.database' || contextValue == 'redis.namespace'" },
+      { "id": "redis.openCli", "title": "Redis: Open CLI", "when": "contextValue == 'redis.database' || contextValue == 'connection' && connectionType == 'redis'" },
+      { "id": "redis.deleteKey", "title": "Redis: Delete Key", "when": "contextValue == 'redis.key'", "confirm": "Delete key \"{label}\"?" },
+      {
+        "id": "redis.deleteNamespace",
+        "title": "Redis: Delete All Keys in Namespace",
+        "when": "contextValue == 'redis.namespace'",
+        "confirm": "Delete every key under \"{label}\"? This can't be undone."
+      },
+      {
+        "id": "redis.flushDb",
+        "title": "Redis: Flush Database",
+        "when": "contextValue == 'redis.database'",
+        "confirm": "Delete ALL keys in {label}? This can't be undone."
+      }
+    ]
+  }
+}

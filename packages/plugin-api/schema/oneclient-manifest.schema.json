@@ -60,6 +60,22 @@
           "type": "array",
           "items": { "$ref": "#/$defs/explorerNodeContribution" }
         },
+        "explorerSections": {
+          "type": "array",
+          "description": "Extra sidebar sections (under Connections), each a tree per connection rooted at rootNodeType.",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "rootNodeType"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-zA-Z0-9._-]+$" },
+              "title": { "type": "string", "maxLength": 40 },
+              "rootNodeType": { "type": "string" },
+              "connectionType": { "type": "string" },
+              "collapsed": { "type": "boolean" }
+            }
+          }
+        },
         "views": {
           "type": "array",
           "items": { "$ref": "#/$defs/viewContribution" }

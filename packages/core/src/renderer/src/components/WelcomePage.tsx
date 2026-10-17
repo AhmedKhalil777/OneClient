@@ -42,6 +42,7 @@ const PLUGIN_FEATURES: Record<string, string[]> = {
     "Connect to Microsoft SQL Server — an object explorer (databases, tables, views, procedures, functions…) and a query editor with result grids, like a small SSMS.",
     "IntelliSense: keywords, table and column names, and schema objects.",
     "Top search: type part of a table, view, procedure or function name to jump straight to it from any screen.",
+    "Fakers (Bogus-style fake data) in their own FAKERS section: attach a folder of *.faker.json files to a connection; create fakers per table with generators suggested from column names and types; nest child rows (e.g. 1–3 orders per customer, 2–4 lines per order) and let foreign keys create their parent rows; preview, then insert everything in one transaction. Files are plain JSON — keep them in a repo. Format: docs/FAKERS.md.",
     "Script tables as CREATE, select top 1000 rows, script procedures as EXECUTE; run and cancel queries; results and messages in the Query Results panel.",
   ],
   "oneclient-keycloak": [
@@ -50,6 +51,11 @@ const PLUGIN_FEATURES: Record<string, string[]> = {
     "Role mappings and group membership for users and groups; client secrets, installation config, realm export.",
     "Developer tools: get tokens (password, client-credentials, refresh), decode JWTs, introspect, UserInfo, evaluate what a client would receive.",
     "Every request is logged to the Output panel (secrets masked).",
+  ],
+  "oneclient-redis": [
+    "Connect to Redis (password, ACL user, TLS, any database); the explorer lists databases with key counts, then keys grouped by namespace (user:1:profile → user › 1 › profile).",
+    "Key editor for every type: strings (pretty JSON with the file-editor smarts), hashes, lists, sets, sorted sets and streams — add, edit and delete items; TTL, rename, delete.",
+    "Dashboard (⊞): key browser with pattern / type filters and bulk delete, a CLI with history and redis-cli style output, server info and the slow log. Keys show up in the top search; writes are logged to the Output panel.",
   ],
   "oneclient-http": [
     "A Postman-style HTTP client: collections with folders, a request builder (params, headers, raw / urlencoded / form-data bodies, auth), and a response viewer with pretty JSON, headers, cookies and images.",
@@ -85,7 +91,7 @@ export function WelcomePage({ plugins, onNewConnection, onCommandPalette, onPlug
       body: (
         <ul>
           <Feature title="Activity bar">one icon per plugin; click to open that plugin’s sidebar (connections and its explorer tree). Click the active one again to hide the sidebar.</Feature>
-          <Feature title="Sidebar">each plugin has a <em>Connections</em> section (use <strong>+</strong> to add one) and its explorer tree. Right-click any node for its commands; clicking a leaf opens it in an editor tab. Nothing is fetched until you expand it.</Feature>
+          <Feature title="Sidebar">each plugin has a <em>Connections</em> section (use <strong>+</strong> to add one) and its explorer tree; plugins can add more sections (like the SQL Server plugin's <em>Fakers</em>). Right-click any node for its commands; clicking a leaf opens it in an editor tab. Nothing is fetched until you expand it.</Feature>
           <Feature title="Editor tabs">requests, tables, editors and dashboards open as tabs (● marks unsaved changes and asks before closing). The ⊞ button on a connection opens its dashboard.</Feature>
           <Feature title="Bottom panel">Terminal, plugin result panels (for example SQL Query Results) and the <strong>Output</strong> log share one panel with an icon navigator. Toggle it with <Kbd>Ctrl+`</Kbd> or the Panel button in the status bar; drag its top edge to resize.</Feature>
           <Feature title="Search everything">the bar at the top (or <Kbd>Ctrl+P</Kbd>) searches <em>all</em> your connections at once. Every plugin that offers search answers in its own group: the Files plugin finds file names in your open folders (nested, fuzzy — "pm" finds plugin-manager.ts), the SQL Server plugin finds tables, views, procedures and functions across the databases and opens them directly. Results appear as each plugin answers; a slow or unreachable connection never blocks the rest.</Feature>

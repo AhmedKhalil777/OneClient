@@ -70,6 +70,7 @@ const api: ViewHostApi = {
   getContributions: (point) => ipcRenderer.invoke("oneclient-view:get-contributions", point),
   openExternal: (url) => ipcRenderer.send("oneclient-view:open-external", String(url)),
   openView: (request) => ipcRenderer.send("oneclient-view:open-view", request),
+  refreshExplorer: () => ipcRenderer.send("oneclient-view:refresh-explorer"),
   onThemeChange: (listener) => {
     themeListeners.add(listener);
     if (theme) listener(theme);

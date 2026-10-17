@@ -42,6 +42,7 @@ const api: OneClientApi = {
   onShortcut: (listener) => onEvent(IpcChannel.Shortcut, listener),
   onRevealView: (listener) => onEvent(IpcChannel.RevealView, listener),
   onOpenViewRequest: (listener) => onEvent(IpcChannel.OpenViewRequest, listener),
+  onExplorerRefresh: (listener) => onEvent(IpcChannel.ExplorerRefresh, listener),
 
   getOutput: () => ipcRenderer.invoke(IpcChannel.OutputList),
   onOutputEntry: (listener) => onEvent(IpcChannel.OutputEntry, listener),

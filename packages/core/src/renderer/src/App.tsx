@@ -41,6 +41,7 @@ type Tab =
 const emptyRegistry: ContributionRegistrySnapshot = {
   connectionTypes: [],
   explorerNodes: [],
+  explorerSections: [],
   views: [],
   commands: [],
   themes: [],
@@ -138,6 +139,8 @@ export function App() {
   const sidebar = useResizableSidebar();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  /** Bumped per connection when a view asks for its explorer tree to be re-fetched. */
+  const [explorerTokens, setExplorerTokens] = useState<Record<string, number>>({});
   /** A quick pick other than the command palette (theme pickers). */
   const [quickPick, setQuickPick] = useState<React.ComponentProps<typeof CommandPalette> | null>(null);
   const theme = useThemeState();
@@ -213,6 +216,7 @@ export function App() {
     });
     // A view revealing another view of its plugin — today that means a panel view (e.g. Query Results).
     // A plugin view asking for another of its views in a new tab (e.g. a table row → that row's editor).
+    const offExplorerRefresh = window.oneclient.onExplorerRefresh((connectionId) => setExplorerTokens((prev) => ({ ...prev, [connectionId]: (prev[connectionId] ?? 0) + 1 })));
     const offOpenView = window.oneclient.onOpenViewRequest((e) => {
       const known = registryRef.current.views.some((v) => v.pluginId === e.pluginId && v.id === e.viewId && v.tier === 2);
       if (!known) return;
@@ -252,6 +256,7 @@ export function App() {
       offShortcut();
       offReveal();
       offOpenView();
+      offExplorerRefresh();
     };
   }, []);
 
@@ -672,6 +677,8 @@ export function App() {
           onOpenPluginManager={() => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" })}
           onOpenDashboard={openDashboard}
           onOpenNodeView={openNodeView}
+          explorerTokens={explorerTokens}
+          explorerSections={registry.explorerSections}
           onExplorerContextMenu={openExplorerContextMenu}
         />
         <div

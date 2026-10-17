@@ -62,6 +62,11 @@ export class ViewHostManager {
       const clean: OpenViewRequest = { viewId: r.viewId, title: r.title, params, ...(typeof r.icon === "string" ? { icon: r.icon } : {}) };
       for (const listener of this.openViewListeners) listener(instance.pluginId, instance.connectionId, clean);
     });
+    ipcMain.on("oneclient-view:refresh-explorer", (event) => {
+      const instance = [...this.instances.values()].find((i) => i.view.webContents === event.sender);
+      // Only the view's own connection (from main-side state) can be refreshed.
+      if (instance?.connectionId) for (const listener of this.refreshListeners) listener(instance.connectionId);
+    });
     ipcMain.on("oneclient-view:reveal", (event, viewId: unknown) => {
       const instance = [...this.instances.values()].find((i) => i.view.webContents === event.sender);
       // Only the requesting plugin's own views can be revealed (pluginId comes from main-side state).
@@ -74,6 +79,13 @@ export class ViewHostManager {
   }
 
   private readonly dirtyListeners = new Set<(instanceId: string, dirty: boolean) => void>();
+  private readonly refreshListeners = new Set<(connectionId: string) => void>();
+
+  /** A view asked for its connection's explorer tree to be re-fetched. */
+  onRefreshExplorer(listener: (connectionId: string) => void): () => void {
+    this.refreshListeners.add(listener);
+    return () => this.refreshListeners.delete(listener);
+  }
   private readonly shortcutListeners = new Set<(shortcut: WorkbenchShortcut) => void>();
   private readonly revealListeners = new Set<(pluginId: string, viewId: string) => void>();
   private readonly openViewListeners = new Set<(pluginId: string, connectionId: string | undefined, request: OpenViewRequest) => void>();

@@ -1,10 +1,10 @@
 import { useState } from "react";
-import type { CommandContribution, ConnectionTypeContribution, TreeNode, ViewContribution } from "@oneclient/plugin-api";
+import type { CommandContribution, ConnectionTypeContribution, ExplorerSectionContribution, TreeNode, ViewContribution } from "@oneclient/plugin-api";
 import type { ConnectionSummary, PluginSummary } from "../../../shared/types.js";
 import type { ViewContainerId } from "./ActivityBar.js";
 import { ThemeIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
-import { ConnectionRootNodes, type NodeContextMenuFn, type OpenNodeViewFn } from "./ExplorerTree.js";
+import { ConnectionRootNodes, ExplorerTreeNode, type NodeContextMenuFn, type OpenNodeViewFn } from "./ExplorerTree.js";
 
 /** Right-click on a connection row (`node` undefined) or a tree node under it. */
 export type ExplorerContextMenuFn = (
@@ -17,6 +17,7 @@ export type ExplorerContextMenuFn = (
 type DashboardView = ViewContribution & { pluginId: string };
 type ConnectionType = ConnectionTypeContribution & { pluginId: string };
 type Command = CommandContribution & { pluginId: string };
+type Section = ExplorerSectionContribution & { pluginId: string };
 
 /**
  * The sidebar shows exactly one view container, picked in the activity bar:
@@ -36,6 +37,8 @@ export function Sidebar({
   onOpenDashboard,
   onOpenNodeView,
   onExplorerContextMenu,
+  explorerTokens = {},
+  explorerSections = [],
 }: {
   container: ViewContainerId;
   connections: ConnectionSummary[];
@@ -49,6 +52,9 @@ export function Sidebar({
   onOpenDashboard: (connection: ConnectionSummary, view: DashboardView) => void;
   onOpenNodeView: (connection: ConnectionSummary, node: TreeNode) => void;
   onExplorerContextMenu: ExplorerContextMenuFn;
+  /** Per connection: bumping it re-fetches that connection's tree. */
+  explorerTokens?: Record<string, number>;
+  explorerSections?: Section[];
 }) {
   if (container === "plugins") {
     return <PluginsContainer plugins={plugins} onOpenPluginManager={onOpenPluginManager} />;
@@ -77,6 +83,8 @@ export function Sidebar({
       onOpenDashboard={onOpenDashboard}
       onOpenNodeView={onOpenNodeView}
       onExplorerContextMenu={onExplorerContextMenu}
+      explorerTokens={explorerTokens}
+      sections={explorerSections.filter((x) => x.pluginId === plugin.id)}
     />
   );
 }
@@ -92,6 +100,8 @@ function PluginContainer({
   onOpenDashboard,
   onOpenNodeView,
   onExplorerContextMenu,
+  explorerTokens,
+  sections,
 }: {
   plugin: PluginSummary;
   connections: ConnectionSummary[];
@@ -103,6 +113,8 @@ function PluginContainer({
   onOpenDashboard: (connection: ConnectionSummary, view: DashboardView) => void;
   onOpenNodeView: (connection: ConnectionSummary, node: TreeNode) => void;
   onExplorerContextMenu: ExplorerContextMenuFn;
+  explorerTokens: Record<string, number>;
+  sections: Section[];
 }) {
   // Bumping this remounts every connection tree, re-fetching its children.
   const [refreshKey, setRefreshKey] = useState(0);
@@ -150,7 +162,7 @@ function PluginContainer({
               const connectionType = connectionTypes.find((t) => t.id === c.typeId);
               return (
                 <ConnectionRow
-                  key={`${c.id}:${refreshKey}`}
+                  key={`${c.id}:${refreshKey}:${explorerTokens[c.id] ?? 0}`}
                   connection={c}
                   icon={connectionType?.icon}
                   dashboard={dashboard}
@@ -163,6 +175,53 @@ function PluginContainer({
           )}
         </SidebarSection>
       )}
+
+      {sections.map((section) => {
+        const scoped = connections.filter((c) => !section.connectionType || c.typeId === section.connectionType);
+        return (
+          <SidebarSection
+            key={section.id}
+            containerId={containerId}
+            sectionId={`section:${section.id}`}
+            title={section.title}
+            defaultExpanded={!section.collapsed}
+            actions={
+              <button className="icon-button" title="Refresh" onClick={() => setRefreshKey((k) => k + 1)}>
+                <ThemeIcon id="refresh" />
+              </button>
+            }
+          >
+            {scoped.length === 0 ? (
+              <div className="empty-hint">Add a connection to use {section.title}.</div>
+            ) : (
+              scoped.map((c) => {
+                const connectionType = connectionTypes.find((t) => t.id === c.typeId);
+                // A synthetic root per connection; the plugin's provider supplies its children.
+                const root: TreeNode = {
+                  id: `section:${section.id}:${c.id}`,
+                  label: c.name,
+                  nodeType: section.rootNodeType,
+                  contextValue: section.rootNodeType,
+                  collapsible: scoped.length === 1 ? "expanded" : "collapsed",
+                  ...(connectionType?.icon ? { icon: connectionType.icon } : {}),
+                };
+                return (
+                  <ExplorerTreeNode
+                    key={`${section.id}:${c.id}:${refreshKey}:${explorerTokens[c.id] ?? 0}`}
+                    connectionId={c.id}
+                    pluginId={c.pluginId}
+                    node={root}
+                    depth={0}
+                    onOpenView={(node) => onOpenNodeView(c, node)}
+                    onContextMenu={(e, node, refresh) => onExplorerContextMenu(e, c, node, refresh)}
+                    reloadParent={() => setRefreshKey((k) => k + 1)}
+                  />
+                );
+              })
+            )}
+          </SidebarSection>
+        );
+      })}
 
       {commands.length > 0 && (
         <SidebarSection containerId={containerId} sectionId="commands" title="Commands" count={commands.length} defaultExpanded={false}>

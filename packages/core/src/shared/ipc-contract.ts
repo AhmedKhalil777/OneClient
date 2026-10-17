@@ -41,6 +41,8 @@ export const IpcChannel = {
   RevealView: "oneclient:view:reveal",
   /** A view asked to open another view of its plugin in a new tab. */
   OpenViewRequest: "oneclient:view:openRequest",
+  /** A view asked to re-fetch its connection's explorer tree. */
+  ExplorerRefresh: "oneclient:explorer:refresh",
 
   OutputList: "oneclient:output:list",
   OutputEntry: "oneclient:output:entry",
@@ -155,6 +157,7 @@ export interface OneClientApi {
   onRevealView(listener: (event: { pluginId: string; viewId: string }) => void): () => void;
   /** A plugin view asked for a new tab (`ViewHostApi.openView`); the shell decides whether it's allowed. */
   onOpenViewRequest(listener: (event: OpenViewEvent) => void): () => void;
+  onExplorerRefresh(listener: (connectionId: string) => void): () => void;
 
   /** The Output panel: every channel with its buffered entries, then live updates. */
   getOutput(): Promise<OutputChannelState[]>;

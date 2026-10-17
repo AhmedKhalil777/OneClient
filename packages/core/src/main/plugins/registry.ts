@@ -30,6 +30,7 @@ export class ContributionRegistry {
     const result: ContributionRegistrySnapshot = {
       connectionTypes: [],
       explorerNodes: [],
+      explorerSections: [],
       views: [],
       commands: [],
       themes: [],
@@ -45,6 +46,7 @@ export class ContributionRegistry {
       for (const c of contributes.explorerNodes ?? []) {
         result.explorerNodes.push({ ...c, pluginId });
       }
+      for (const c of contributes.explorerSections ?? []) result.explorerSections.push({ ...c, pluginId });
       for (const c of contributes.views ?? []) {
         result.views.push({ ...c, pluginId });
       }

@@ -1,7 +1,7 @@
 {
   "name": "oneclient-mssql",
   "displayName": "SQL Server",
-  "description": "Connect to Microsoft SQL Server: object explorer, query editor and result grids — a small SSMS.",
+  "description": "Connect to Microsoft SQL Server: object explorer, query editor, result grids and a fake-data generator — a small SSMS.",
   "version": "0.1.0",
   "publisher": "oneclient",
   "license": "MIT",
@@ -85,6 +85,17 @@
       {
         "id": "mssql.function",
         "parentNodeType": "mssql.functions"
+      },
+      {
+        "id": "mssql.fakersRoot"
+      },
+      {
+        "id": "mssql.fakerGroup",
+        "parentNodeType": "mssql.fakersRoot"
+      },
+      {
+        "id": "mssql.faker",
+        "parentNodeType": "mssql.fakerGroup"
       }
     ],
     "views": [
@@ -102,6 +113,14 @@
         "location": "panel",
         "entry": "results.html",
         "icon": "$(results)"
+      },
+      {
+        "id": "mssql.faker",
+        "title": "Fake Data",
+        "tier": 2,
+        "location": "editor",
+        "entry": "faker.html",
+        "icon": "$(wrench)"
       }
     ],
     "commands": [
@@ -159,6 +178,75 @@
         "id": "mssql.search",
         "title": "SQL Server: Search Objects",
         "hidden": true
+      },
+      {
+        "id": "mssql.faker",
+        "title": "SQL Server: Faker API",
+        "hidden": true
+      },
+      {
+        "id": "mssql.generateData",
+        "title": "SQL Server: Generate Fake Data…",
+        "when": "contextValue == 'mssql.table'"
+      },
+      {
+        "id": "mssql.newFaker",
+        "title": "SQL Server: New Faker…",
+        "when": "contextValue == 'mssql.fakersRoot' || contextValue == 'mssql.fakerGroup' || contextValue == 'mssql.fakersFolder'"
+      },
+      {
+        "id": "mssql.attachFakersFolder",
+        "title": "SQL Server: Attach Fakers Folder…",
+        "when": "contextValue == 'mssql.fakersRoot' || contextValue == 'mssql.fakersFolder'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "folder"
+          ],
+          "properties": {
+            "folder": {
+              "type": "string",
+              "title": "Folder with *.faker.json files",
+              "format": "directory"
+            }
+          }
+        }
+      },
+      {
+        "id": "mssql.detachFakersFolder",
+        "title": "SQL Server: Detach Fakers Folder",
+        "when": "contextValue == 'mssql.fakersFolder'",
+        "confirm": "Detach this folder? The faker files stay on disk."
+      },
+      {
+        "id": "mssql.runFaker",
+        "title": "SQL Server: Run Faker (insert rows)",
+        "when": "contextValue == 'mssql.faker'",
+        "confirm": "Run faker \"{label}\" and insert its rows into the database?"
+      },
+      {
+        "id": "mssql.renameFaker",
+        "title": "SQL Server: Rename Faker…",
+        "when": "contextValue == 'mssql.faker'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "newName"
+          ],
+          "properties": {
+            "newName": {
+              "type": "string",
+              "title": "New name",
+              "default": "{label}"
+            }
+          }
+        }
+      },
+      {
+        "id": "mssql.deleteFaker",
+        "title": "SQL Server: Delete Faker",
+        "when": "contextValue == 'mssql.faker' || contextValue == 'mssql.fakerBroken'",
+        "confirm": "Delete faker \"{label}\" (its .faker.json file)? Data it already inserted stays."
       }
     ],
     "searchProviders": [
@@ -168,6 +256,14 @@
         "command": "mssql.search",
         "order": 20,
         "icon": "$(database)"
+      }
+    ],
+    "explorerSections": [
+      {
+        "id": "fakers",
+        "title": "Fakers",
+        "rootNodeType": "mssql.fakersRoot",
+        "connectionType": "mssql"
       }
     ]
   },

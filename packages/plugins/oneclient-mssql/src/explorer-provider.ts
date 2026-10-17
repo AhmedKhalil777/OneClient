@@ -1,5 +1,6 @@
 import type { ExplorerProvider, TreeNode } from "@oneclient/plugin-api";
 import { formatType, listColumns, listDatabases, listIndexes, listObjects } from "./metadata.js";
+import { fakerSectionNodes } from "./faker/api.js";
 import { requireSession } from "./sessions.js";
 
 /** Registry icons (core's built-in set) — they follow the user's icon theme. */
@@ -18,6 +19,8 @@ const ICON = {
 /** Database-scoped nodes carry the database; object-scoped ones also carry schema + name. */
 export interface NodeData {
   database?: string;
+  /** A faker file (FAKERS section), relative to the attached folder. */
+  fakerFile?: string;
   schema?: string;
   name?: string;
 }
@@ -48,9 +51,12 @@ export function createExplorerProvider(): ExplorerProvider {
       "mssql.procedure",
       "mssql.functions",
       "mssql.function",
+      "mssql.fakersRoot",
+      "mssql.fakerGroup",
     ],
 
     async getChildren(node, ctx): Promise<TreeNode[]> {
+      if (node && (node.nodeType === "mssql.fakersRoot" || node.nodeType === "mssql.fakerGroup")) return fakerSectionNodes(ctx.connectionId, node);
       const { pool } = requireSession(ctx.connectionId);
       if (!node) return [{ ...folder("databases", "Databases", "mssql.databases", {}), collapsible: "expanded" }];
 
@@ -83,6 +89,10 @@ export function createExplorerProvider(): ExplorerProvider {
             folder(`${db}:views`, "Views", "mssql.views", { database: db }),
             folder(`${db}:programmability`, "Programmability", "mssql.programmability", { database: db }),
           ];
+
+        case "mssql.fakersRoot":
+        case "mssql.fakerGroup":
+          return fakerSectionNodes(ctx.connectionId, node);
 
         case "mssql.programmability":
           return [

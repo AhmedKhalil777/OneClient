@@ -7,6 +7,7 @@ import type {
   ConnectionTypeContribution,
   SearchProviderContribution,
   ExplorerNodeContribution,
+  ExplorerSectionContribution,
   JsonSchemaObject,
   TreeNode,
   UiSchema,
@@ -23,6 +24,7 @@ import type {
 export interface ContributionRegistrySnapshot {
   connectionTypes: Array<ConnectionTypeContribution & { pluginId: string }>;
   explorerNodes: Array<ExplorerNodeContribution & { pluginId: string }>;
+  explorerSections: Array<ExplorerSectionContribution & { pluginId: string }>;
   views: Array<ViewContribution & { pluginId: string }>;
   commands: Array<CommandContribution & { pluginId: string }>;
   themes: Array<ColorThemeContribution & { pluginId: string }>;

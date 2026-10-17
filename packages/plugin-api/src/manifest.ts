@@ -43,6 +43,12 @@ export interface PluginManifest {
   readonly contributes?: {
     readonly connectionTypes?: ConnectionTypeContribution[];
     readonly explorerNodes?: ExplorerNodeContribution[];
+    /**
+     * Extra collapsible sections in the plugin's sidebar, under Connections (like Source Control's
+     * "Changes" / "Graph" sections in VS Code). Each shows, per saved connection, the children of a
+     * `rootNodeType` node from the plugin's explorer provider. See ExplorerSectionContribution.
+     */
+    readonly explorerSections?: ExplorerSectionContribution[];
     readonly views?: ViewContribution[];
     readonly commands?: CommandContribution[];
     /** Color themes (see theme.ts). */
@@ -78,6 +84,23 @@ export interface ConnectionTypeContribution {
   readonly description?: string;
   readonly icon?: string;
   readonly category?: string;
+}
+
+export interface ExplorerSectionContribution {
+  readonly id: string;
+  /** Section heading, e.g. "Fakers". */
+  readonly title: string;
+  /**
+   * Node type the section asks the explorer provider about: core shows one row per connection (named after it)
+   * whose children come from `getChildren({ nodeType: rootNodeType, contextValue: rootNodeType, … })`.
+   * List it in the provider's `nodeTypes` and in `explorerNodes` (without `connectionType`, so it stays out of the
+   * main tree). Context-menu commands can target it with `when: "contextValue == '<rootNodeType>'"`.
+   */
+  readonly rootNodeType: string;
+  /** Only connections of this type (default: all of the plugin's). */
+  readonly connectionType?: string;
+  /** Start collapsed (default expanded). */
+  readonly collapsed?: boolean;
 }
 
 export interface ExplorerNodeContribution {

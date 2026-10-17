@@ -12,6 +12,8 @@ import {
   qualified,
 } from "./metadata.js";
 import { cancelQuery, executeQuery } from "./query-runner.js";
+import { callFakerApi, deleteSavedFaker, fakerTab, renameSavedFaker, runSavedFaker } from "./faker/api.js";
+import { attachFolder, detachFolder } from "./faker/store.js";
 import { searchObjects } from "./search.js";
 import { requireSession } from "./sessions.js";
 
@@ -58,13 +60,80 @@ async function action(fn: () => Promise<{ ok: true; openNode?: TreeNode }>): Pro
 
 export function createCommandHandlers(): CommandHandler[] {
   return [
+    // ---- Fake data ("fakers") ------------------------------------------------------------------
     {
-      // Global search provider (top bar): objects of every user database whose name matches.
-      commandId: "mssql.search",
+      // The Generate Data view's backend.
+      commandId: "mssql.faker",
       execute: (args) => {
-        const { connectionId, query, limit } = arg<{ connectionId: string; query: string; limit?: number }>(args);
-        return searchObjects(connectionId, String(query ?? ""), Math.min(50, Math.max(1, limit ?? 20)));
+        const { connectionId, method, params } = arg<{ connectionId?: string; method?: string; params?: Record<string, unknown> }>(args);
+        return callFakerApi(connectionId, String(method ?? ""), params ?? {});
       },
+    },
+    {
+      commandId: "mssql.generateData",
+      execute: (args) =>
+        action(async () => {
+          const { connectionId, database = "", schema = "", name = "" } = arg<NodeArg>(args);
+          requireSession(connectionId);
+          return { ok: true, openNode: fakerTab({ database, schema, table: name }, `Fake data: ${schema}.${name}`) };
+        }),
+    },
+    {
+      commandId: "mssql.newFaker",
+      execute: (args) =>
+        action(async () => {
+          const { connectionId, database } = arg<NodeArg>(args);
+          requireSession(connectionId);
+          return { ok: true, openNode: fakerTab(database ? { database } : {}, "New faker") };
+        }),
+    },
+    {
+      commandId: "mssql.attachFakersFolder",
+      execute: (args) =>
+        action(async () => {
+          const { connectionId, folder } = arg<NodeArg & { folder?: string }>(args);
+          await attachFolder(connectionId, String(folder ?? ""));
+          return { ok: true };
+        }),
+    },
+    {
+      commandId: "mssql.detachFakersFolder",
+      execute: (args) =>
+        action(async () => {
+          const { connectionId } = arg<NodeArg>(args);
+          detachFolder(connectionId);
+          return { ok: true };
+        }),
+    },
+    {
+      commandId: "mssql.runFaker",
+      execute: (args) =>
+        action(async () => {
+          const { connectionId, fakerFile, database } = arg<NodeArg>(args);
+          const { doc, database: db, result } = await runSavedFaker(connectionId, String(fakerFile ?? ""), database);
+          const { schema, table } = doc.rule;
+          const summary = result.tables.map((t) => `${t.rows} row(s) into ${t.schema}.${t.table}`).join("; ");
+          const sql = `-- Faker "${doc.name}" inserted ${summary}\nSELECT TOP (1000) * FROM ${qualified(db, schema, table)}`;
+          return { ok: true, openNode: queryWindow({ database: db, sql, autorun: true }) };
+        }),
+    },
+    {
+      commandId: "mssql.renameFaker",
+      execute: (args) =>
+        action(async () => {
+          const { connectionId, fakerFile, newName } = arg<NodeArg & { newName?: string }>(args);
+          await renameSavedFaker(connectionId, String(fakerFile ?? ""), String(newName ?? ""));
+          return { ok: true };
+        }),
+    },
+    {
+      commandId: "mssql.deleteFaker",
+      execute: (args) =>
+        action(async () => {
+          const { connectionId, fakerFile } = arg<NodeArg>(args);
+          await deleteSavedFaker(connectionId, String(fakerFile ?? ""));
+          return { ok: true };
+        }),
     },
     {
       commandId: "mssql.newQuery",
