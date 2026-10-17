@@ -7,7 +7,8 @@ import { ContextMenu, type ContextMenuItem } from "./components/ContextMenu.js";
 import { Logo } from "./components/Logo.js";
 import { AssetIcon } from "./components/AssetIcon.js";
 import { useResourceIcon, useThemeState } from "./theme.js";
-import { Panel, usePanel } from "./components/Panel.js";
+import { OUTPUT_PANEL_KEY, OUTPUT_VIEW, Panel, usePanel } from "./components/Panel.js";
+import { OUTPUT_SELECT_EVENT, OUTPUT_SELECT_KEY } from "./components/OutputView.js";
 import { usePrompts } from "./components/PromptDialogs.js";
 import { evaluateWhen, type WhenContext } from "./when.js";
 import { NewConnectionDialog } from "./components/NewConnectionDialog.js";
@@ -30,6 +31,8 @@ type Tab =
       params?: Record<string, string>;
       /** The tree node (file/folder) this tab was opened from — its icon is shown on the tab. */
       resource?: { name: string; kind: "file" | "folder" };
+      /** A `$(id)` registry icon for tabs opened by a plugin view (ViewHostApi.openView). */
+      icon?: string;
     };
 
 const emptyRegistry: ContributionRegistrySnapshot = {
@@ -160,15 +163,19 @@ export function App() {
 
   // Bottom panel: every Tier 2 view contributed with location "panel" (e.g. the Terminal).
   const panelViews = useMemo(
-    () =>
-      registry.views
+    () => [
+      ...registry.views
         .filter((v) => v.tier === 2 && v.location === "panel")
         .sort((a, b) => builtInRank(a.pluginId) - builtInRank(b.pluginId)),
+      OUTPUT_VIEW, // the shell's own Output log, always last
+    ],
     [registry.views],
   );
   const panel = usePanel(panelViews);
   const panelToggleRef = useRef(panel.toggle);
   panelToggleRef.current = panel.toggle;
+  const registryRef = useRef(registry);
+  registryRef.current = registry;
   const panelRef = useRef(panel);
   panelRef.current = panel;
 
@@ -195,17 +202,46 @@ export function App() {
       else if (shortcut === "commandPalette") setPaletteOpen((v) => !v);
     });
     // A view revealing another view of its plugin — today that means a panel view (e.g. Query Results).
+    // A plugin view asking for another of its views in a new tab (e.g. a table row → that row's editor).
+    const offOpenView = window.oneclient.onOpenViewRequest((e) => {
+      const known = registryRef.current.views.some((v) => v.pluginId === e.pluginId && v.id === e.viewId && v.tier === 2);
+      if (!known) return;
+      const key = Object.entries(e.params)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => `${k}=${v}`)
+        .join("&");
+      const instanceId = `${e.pluginId}:${e.viewId}:${e.connectionId ?? ""}:${key}`;
+      openTab({
+        id: instanceId,
+        title: e.title,
+        kind: "tier2-view",
+        instanceId,
+        pluginId: e.pluginId,
+        viewId: e.viewId,
+        ...(e.connectionId ? { connectionId: e.connectionId } : {}),
+        params: e.params,
+        ...(e.icon ? { icon: e.icon } : {}),
+      });
+    });
+    // A plugin asked to show one of its Output channels.
+    const offOutputReveal = window.oneclient.onOutputReveal((channelId) => {
+      localStorage.setItem(OUTPUT_SELECT_KEY, channelId);
+      window.dispatchEvent(new CustomEvent(OUTPUT_SELECT_EVENT, { detail: channelId }));
+      panelRef.current.show(OUTPUT_PANEL_KEY, { focus: false });
+    });
     const offReveal = window.oneclient.onRevealView(({ pluginId, viewId }) => {
       const key = `${pluginId}:${viewId}`;
       if (panelRef.current.views.some((v) => `${v.pluginId}:${v.id}` === key)) panelRef.current.show(key, { focus: false });
     });
     return () => {
       offRegistry();
+      offOutputReveal();
       offPlugins();
       offConnections();
       offDirty();
       offShortcut();
       offReveal();
+      offOpenView();
     };
   }, []);
 
@@ -409,7 +445,7 @@ export function App() {
 
   function openNodeView(connection: ConnectionSummary, node: TreeNode) {
     if (!node.openView) return;
-    const { viewId, title, params } = node.openView;
+    const { viewId, title, params, icon } = node.openView;
     const instanceId = `${connection.pluginId}:${viewId}:${connection.id}:${node.id}`;
     openTab({
       id: instanceId,
@@ -421,6 +457,7 @@ export function App() {
       connectionId: connection.id,
       params: params ? { ...params } : undefined,
       resource: node.resource,
+      ...(icon ? { icon } : {}),
     });
   }
 
@@ -545,6 +582,7 @@ export function App() {
                 }}
               >
                 {t.kind === "tier2-view" && t.resource && <TabIcon resource={t.resource} />}
+                {t.kind === "tier2-view" && !t.resource && t.icon && <AssetIcon pluginId={t.pluginId} icon={t.icon} size={14} />}
                 {t.title}
                 {t.id !== "welcome" && (
                   <span

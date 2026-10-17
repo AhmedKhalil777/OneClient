@@ -27,7 +27,7 @@ const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;")
 
 /**
  * Markup for the highlight layer drawn under the (transparent) textarea: the document text with each token
- * wrapped in `<span class="tok-…">`. Tokens that are out of order, overlapping or out of range are skipped.
+ * wrapped in `<span class="oce-tok-…">`. Tokens that are out of order, overlapping or out of range are skipped.
  * The trailing newline+space keeps the layer exactly as tall as the textarea when the text ends with "\n".
  */
 export function buildHighlightHtml(text: string, tokens: readonly number[], classes: readonly string[]): string {
@@ -38,7 +38,7 @@ export function buildHighlightHtml(text: string, tokens: readonly number[], clas
     const e = tokens[i + 1]!;
     const cls = classes[tokens[i + 2]!];
     if (s < pos || e <= s || e > text.length || !cls || !KNOWN_CLASSES.has(cls)) continue;
-    out += `${escapeHtml(text.slice(pos, s))}<span class="tok-${cls}">${escapeHtml(text.slice(s, e))}</span>`;
+    out += `${escapeHtml(text.slice(pos, s))}<span class="oce-tok-${cls}">${escapeHtml(text.slice(s, e))}</span>`;
     pos = e;
   }
   return `${out}${escapeHtml(text.slice(pos))}\n `;

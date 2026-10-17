@@ -8,6 +8,7 @@ import type { ExtensionHostSupervisor } from "../plugins/extension-host-supervis
 import type { PluginManager } from "../plugins/plugin-manager.js";
 import type { ContributionRegistry } from "../plugins/registry.js";
 import type { ThemeService } from "../themes/theme-service.js";
+import type { OutputService } from "../output/output-service.js";
 import type { ViewHostManager } from "../views/view-host-manager.js";
 
 export interface IpcDeps {
@@ -17,13 +18,14 @@ export interface IpcDeps {
   connections: ConnectionManager;
   supervisor: ExtensionHostSupervisor;
   views: ViewHostManager;
+  output: OutputService;
   ensureActivated: (pluginId: string) => Promise<void>;
   getWindows: () => BrowserWindow[];
 }
 
 /** Registers every main-process IPC handler and wires registry/plugin change events to all open windows. */
 export function registerIpcHandlers(deps: IpcDeps): void {
-  const { registry, pluginManager, connections, supervisor, views, ensureActivated, getWindows, themes } = deps;
+  const { registry, pluginManager, connections, supervisor, views, output, ensureActivated, getWindows, themes } = deps;
 
   // Themes: shell gets the full state; every Tier 2 view gets it too (its preload applies the CSS variables).
   // Plugin views don't draw file trees, so they skip the (potentially thousands of entries) file icon table.
@@ -68,6 +70,14 @@ export function registerIpcHandlers(deps: IpcDeps): void {
   views.onDirtyChanged((instanceId, dirty) => broadcast(IpcChannel.ViewDirtyChanged, { instanceId, dirty }));
   views.onShortcut((shortcut) => broadcast(IpcChannel.Shortcut, shortcut));
   views.onReveal((pluginId, viewId) => broadcast(IpcChannel.RevealView, { pluginId, viewId }));
+  // Output panel: snapshot on demand, then live entries/clears/reveals.
+  ipcMain.handle(IpcChannel.OutputList, () => output.snapshot());
+  ipcMain.handle(IpcChannel.OutputClear, (_e, channelId: string) => output.clear(String(channelId)));
+  output.onEntry((channel, entry) => broadcast(IpcChannel.OutputEntry, { channel, entry }));
+  output.onCleared((channelId) => broadcast(IpcChannel.OutputCleared, channelId));
+  output.onReveal((channelId) => broadcast(IpcChannel.OutputReveal, channelId));
+
+  views.onOpenView((pluginId, connectionId, request) => broadcast(IpcChannel.OpenViewRequest, { pluginId, connectionId, ...request }));
   ipcMain.handle(IpcChannel.ViewFocus, (_event, instanceId: string) => views.focus(instanceId));
 
   ipcMain.handle(IpcChannel.RegistryGet, () => registry.snapshot());

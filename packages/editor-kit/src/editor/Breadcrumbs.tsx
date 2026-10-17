@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { DocumentSymbol, DocumentSymbolKind } from "@oneclient/plugin-api";
-import { siblingsAt } from "./lib/symbols.js";
+import { siblingsAt } from "./symbols.js";
 
 const GLYPH: Record<DocumentSymbolKind, string> = {
   object: "{}",
@@ -18,7 +18,7 @@ const GLYPH: Record<DocumentSymbolKind, string> = {
 const MAX_LISTED = 400;
 
 function Glyph({ kind }: { kind: DocumentSymbolKind }) {
-  return <span className={`glyph glyph-${kind}`}>{GLYPH[kind]}</span>;
+  return <span className={`oce-glyph oce-glyph-${kind}`}>{GLYPH[kind]}</span>;
 }
 
 /**
@@ -62,41 +62,41 @@ export function Breadcrumbs({
 
   const folders = filePath.split("/");
   return (
-    <div className="breadcrumbs" ref={rootRef}>
+    <div className="oce-breadcrumbs" ref={rootRef}>
       {folders.map((part, i) => (
-        <span key={`f${i}`} className="crumb-wrap">
-          <span className={`crumb crumb-file ${i === folders.length - 1 ? "last" : ""}`}>{part}</span>
-          {(i < folders.length - 1 || path.length > 0) && <span className="crumb-sep">›</span>}
+        <span key={`f${i}`} className="oce-crumb-wrap">
+          <span className={`oce-crumb oce-crumb-file ${i === folders.length - 1 ? "last" : ""}`}>{part}</span>
+          {(i < folders.length - 1 || path.length > 0) && <span className="oce-crumb-sep">›</span>}
         </span>
       ))}
       {path.map((symbol, i) => {
         const siblings = siblingsAt(symbols, path, i);
         return (
-          <span key={`s${i}`} className="crumb-wrap">
-            <button className={`crumb crumb-symbol ${open === i ? "open" : ""}`} onClick={() => setOpen(open === i ? null : i)} title={symbol.detail ? `${symbol.name} — ${symbol.detail}` : symbol.name}>
+          <span key={`s${i}`} className="oce-crumb-wrap">
+            <button className={`oce-crumb oce-crumb-symbol ${open === i ? "open" : ""}`} onClick={() => setOpen(open === i ? null : i)} title={symbol.detail ? `${symbol.name} — ${symbol.detail}` : symbol.name}>
               <Glyph kind={symbol.kind} />
               {symbol.name}
             </button>
-            {i < path.length - 1 && <span className="crumb-sep">›</span>}
+            {i < path.length - 1 && <span className="oce-crumb-sep">›</span>}
             {open === i && (
-              <div className="crumb-menu" role="listbox">
+              <div className="oce-crumb-menu" role="listbox">
                 {siblings.slice(0, MAX_LISTED).map((s, k) => (
                   <div
                     key={k}
                     role="option"
                     aria-selected={s.start === symbol.start && s.end === symbol.end}
-                    className={`crumb-item ${s.start === symbol.start && s.end === symbol.end ? "current" : ""}`}
+                    className={`oce-crumb-item ${s.start === symbol.start && s.end === symbol.end ? "current" : ""}`}
                     onClick={() => {
                       setOpen(null);
                       onGoTo(s);
                     }}
                   >
                     <Glyph kind={s.kind} />
-                    <span className="crumb-item-name">{s.name}</span>
-                    {s.detail && <span className="crumb-item-detail">{s.detail}</span>}
+                    <span className="oce-crumb-item-name">{s.name}</span>
+                    {s.detail && <span className="oce-crumb-item-detail">{s.detail}</span>}
                   </div>
                 ))}
-                {siblings.length > MAX_LISTED && <div className="crumb-more">… {siblings.length - MAX_LISTED} more</div>}
+                {siblings.length > MAX_LISTED && <div className="oce-crumb-more">… {siblings.length - MAX_LISTED} more</div>}
               </div>
             )}
           </span>

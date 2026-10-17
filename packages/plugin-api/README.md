@@ -201,3 +201,20 @@ context.registerCommand({ commandId: "json.format", execute: ([req]) => formatJs
 Built-in examples: `oneclient-json` (format, minify, breadcrumbs, highlighting), `oneclient-xml`
 (format, element breadcrumbs, highlighting), `oneclient-markdown` (heading outline, highlighting, preview with
 code highlighting and task lists) and `oneclient-text-tools` (wildcard actions).
+
+## Output channels (the Output panel)
+
+The shell has one bottom-panel tab, **Output**, with a channel picker (like VS Code). Any plugin can write to it:
+
+```ts
+export function activate(context: PluginContext) {
+  const tasks = context.createOutputChannel("Tasks");
+  tasks.info("Started sync");
+  tasks.error("Sync failed", err.stack); // optional 2nd argument = expandable detail
+  tasks.show(); // open the panel on this channel
+}
+```
+
+- Channels are listed as "Plugin name — channel name". Every plugin also gets a **Log** channel fed by `context.logger`.
+- Entries live in memory only (most recent ~2000 per channel); users can filter by text and level, follow, and clear.
+- Don't log secrets. (The Keycloak plugin's **Requests** channel masks passwords, tokens and client secrets.)

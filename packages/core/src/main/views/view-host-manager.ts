@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type BrowserWindow, WebContentsView, ipcMain } from "electron";
+import type { OpenViewRequest } from "@oneclient/plugin-api";
 import type { WorkbenchShortcut } from "../../shared/ipc-contract.js";
 
 export interface ViewBounds {
@@ -51,6 +52,16 @@ export class ViewHostManager {
       const instance = [...this.instances.values()].find((i) => i.view.webContents === event.sender);
       if (instance) this.onMessageFromView(instance.pluginId, instance.viewId, instance.connectionId, message);
     });
+    ipcMain.on("oneclient-view:open-view", (event, request: unknown) => {
+      const instance = [...this.instances.values()].find((i) => i.view.webContents === event.sender);
+      const r = request as Partial<OpenViewRequest> | null;
+      if (!instance || !r || typeof r.viewId !== "string" || typeof r.title !== "string") return;
+      // pluginId/connectionId come from main-side state, never from the page: a view can only open its own plugin's views.
+      const params: Record<string, string> = {};
+      for (const [k, v] of Object.entries(r.params ?? {})) if (typeof v === "string") params[k] = v;
+      const clean: OpenViewRequest = { viewId: r.viewId, title: r.title, params, ...(typeof r.icon === "string" ? { icon: r.icon } : {}) };
+      for (const listener of this.openViewListeners) listener(instance.pluginId, instance.connectionId, clean);
+    });
     ipcMain.on("oneclient-view:reveal", (event, viewId: unknown) => {
       const instance = [...this.instances.values()].find((i) => i.view.webContents === event.sender);
       // Only the requesting plugin's own views can be revealed (pluginId comes from main-side state).
@@ -65,6 +76,13 @@ export class ViewHostManager {
   private readonly dirtyListeners = new Set<(instanceId: string, dirty: boolean) => void>();
   private readonly shortcutListeners = new Set<(shortcut: WorkbenchShortcut) => void>();
   private readonly revealListeners = new Set<(pluginId: string, viewId: string) => void>();
+  private readonly openViewListeners = new Set<(pluginId: string, connectionId: string | undefined, request: OpenViewRequest) => void>();
+
+  /** A view asked to open another view of its plugin in a new tab (`ViewHostApi.openView`). */
+  onOpenView(listener: (pluginId: string, connectionId: string | undefined, request: OpenViewRequest) => void): () => void {
+    this.openViewListeners.add(listener);
+    return () => this.openViewListeners.delete(listener);
+  }
 
   /** A view asked to show another view of its plugin (`ViewHostApi.revealView`). */
   onReveal(listener: (pluginId: string, viewId: string) => void): () => void {

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { utilityProcess, type UtilityProcess } from "electron";
 import type { HostInboundMessage, HostOutboundMessage, InvokeKind } from "../../shared/host-protocol.js";
 import type { SqliteSecretStore } from "../secrets/secret-store.js";
+import type { OutputService } from "../output/output-service.js";
 import type { PluginRecord } from "./plugin-manager.js";
 
 type LogFn = (pluginId: string, level: "debug" | "info" | "warn" | "error", message: string, meta?: unknown) => void;
@@ -40,6 +41,7 @@ export class ExtensionHostSupervisor {
     private readonly onExit: ExitFn,
     private readonly log: LogFn,
     private readonly onViewPush: ViewPushFn,
+    private readonly output: OutputService,
   ) {}
 
   isActive(pluginId: string): boolean {
@@ -155,6 +157,16 @@ export class ExtensionHostSupervisor {
       }
       case "log":
         this.log(handle.pluginId, msg.level, msg.message, msg.meta);
+        this.output.append(handle.pluginId, "Log", msg.level, msg.message, msg.meta === undefined ? undefined : safeJson(msg.meta));
+        break;
+      case "output":
+        this.output.append(handle.pluginId, msg.channel, msg.level, msg.message, msg.detail, msg.time);
+        break;
+      case "output:clear":
+        this.output.clear(`${handle.pluginId}/${msg.channel}`);
+        break;
+      case "output:show":
+        this.output.reveal(handle.pluginId, msg.channel);
         break;
       case "secret:get":
         this.secrets
@@ -183,5 +195,13 @@ export class ExtensionHostSupervisor {
 
   private send(handle: HostHandle, message: HostInboundMessage): void {
     handle.process.postMessage(message);
+  }
+}
+
+function safeJson(value: unknown): string {
+  try {
+    return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
   }
 }

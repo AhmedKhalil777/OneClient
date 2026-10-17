@@ -10,6 +10,8 @@ import type {
   ExplorerContext,
   ExplorerProvider,
   Logger,
+  OutputChannel,
+  OutputLevel,
   PluginContext,
   PluginModule,
   SecretStore,
@@ -47,6 +49,28 @@ function makeLogger(): Logger {
   return { debug: emit("debug"), info: emit("info"), warn: emit("warn"), error: emit("error") };
 }
 
+const outputChannels = new Map<string, OutputChannel>();
+
+function makeOutputChannel(name: string): OutputChannel {
+  const existing = outputChannels.get(name);
+  if (existing) return existing;
+  const log = (level: OutputLevel, message: string, detail?: string) =>
+    post({ type: "output", channel: name, level, message, time: Date.now(), ...(detail ? { detail } : {}) });
+  const channel: OutputChannel = {
+    name,
+    log,
+    debug: (m, d) => log("debug", m, d),
+    info: (m, d) => log("info", m, d),
+    warn: (m, d) => log("warn", m, d),
+    error: (m, d) => log("error", m, d),
+    appendLine: (m) => log("info", m),
+    clear: () => post({ type: "output:clear", channel: name }),
+    show: () => post({ type: "output:show", channel: name }),
+  };
+  outputChannels.set(name, channel);
+  return channel;
+}
+
 function makeSecrets(): SecretStore {
   return {
     get(key) {
@@ -77,6 +101,7 @@ function makeContext(extensionPath: string): PluginContext {
     extensionPath,
     logger: makeLogger(),
     secrets: makeSecrets(),
+    createOutputChannel: makeOutputChannel,
     subscriptions,
     registerConnectionProvider(provider) {
       connectionProviders.set(provider.typeId, provider);

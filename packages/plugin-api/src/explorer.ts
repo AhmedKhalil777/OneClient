@@ -50,6 +50,8 @@ export interface TreeNodeOpenView {
   readonly viewId: string;
   /** Tab title; defaults to the node's label. */
   readonly title?: string;
+  /** Tab icon as a `$(id)` registry icon (nodes with a `resource` get their file icon instead). */
+  readonly icon?: string;
   /**
    * Handed to the view as URL query parameters (alongside `connectionId`),
    * readable via `new URLSearchParams(location.search)`.

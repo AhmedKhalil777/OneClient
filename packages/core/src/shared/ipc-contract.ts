@@ -1,3 +1,4 @@
+import type { OutputChannelInfo, OutputChannelState, OutputEntry } from "./output.js";
 import type {
   ConnectionSummary,
   ConnectionTestResult,
@@ -37,6 +38,14 @@ export const IpcChannel = {
   Shortcut: "oneclient:shortcut",
   /** A view asked to show another view of its plugin. */
   RevealView: "oneclient:view:reveal",
+  /** A view asked to open another view of its plugin in a new tab. */
+  OpenViewRequest: "oneclient:view:openRequest",
+
+  OutputList: "oneclient:output:list",
+  OutputEntry: "oneclient:output:entry",
+  OutputCleared: "oneclient:output:cleared",
+  OutputReveal: "oneclient:output:reveal",
+  OutputClear: "oneclient:output:clear",
 
   DialogPickDirectory: "oneclient:dialog:pickDirectory",
 
@@ -49,6 +58,15 @@ export const IpcChannel = {
 } as const;
 
 import type { ThemeKind, ThemeState } from "@oneclient/plugin-api";
+
+export interface OpenViewEvent {
+  pluginId: string;
+  connectionId?: string | undefined;
+  viewId: string;
+  title: string;
+  params: Record<string, string>;
+  icon?: string;
+}
 
 export interface ThemeListItem {
   id: string;
@@ -115,6 +133,16 @@ export interface OneClientApi {
   focusView(instanceId: string): Promise<void>;
   onShortcut(listener: (shortcut: WorkbenchShortcut) => void): () => void;
   onRevealView(listener: (event: { pluginId: string; viewId: string }) => void): () => void;
+  /** A plugin view asked for a new tab (`ViewHostApi.openView`); the shell decides whether it's allowed. */
+  onOpenViewRequest(listener: (event: OpenViewEvent) => void): () => void;
+
+  /** The Output panel: every channel with its buffered entries, then live updates. */
+  getOutput(): Promise<OutputChannelState[]>;
+  onOutputEntry(listener: (event: { channel: OutputChannelInfo; entry: OutputEntry }) => void): () => void;
+  onOutputCleared(listener: (channelId: string) => void): () => void;
+  /** A plugin asked to show a channel (`OutputChannel.show()`). */
+  onOutputReveal(listener: (channelId: string) => void): () => void;
+  clearOutput(channelId: string): Promise<void>;
 
   /** Native "select folder" dialog; resolves to the chosen absolute path, or null if cancelled. */
   pickDirectory(defaultPath?: string): Promise<string | null>;

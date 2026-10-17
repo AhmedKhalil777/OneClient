@@ -1,8 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { FileEditorError, PreviewResult } from "@oneclient/plugin-api";
-import { themeCssText } from "@oneclient/editor-kit";
-import { useTheme } from "@oneclient/editor-kit/react";
-import { callFeature } from "./api.js";
+import { useTheme } from "../react.js";
+import { themeCssText } from "../theme.js";
+import { callFeature } from "./features.js";
 import { PREVIEW_SHELL } from "./previewDocument.js";
 
 export interface PreviewHandle {
@@ -95,8 +95,8 @@ export const PreviewPane = forwardRef<PreviewHandle, { text: string; command: st
   }
 
   return (
-    <div className="preview-pane">
-      {error && <div className="preview-error">Preview unavailable: {error.message}</div>}
+    <div className="oce-preview-pane">
+      {error && <div className="oce-preview-error">Preview unavailable: {error.message}</div>}
       <iframe ref={frameRef} title="Preview" sandbox="allow-same-origin" srcDoc={PREVIEW_SHELL} onLoad={onLoad} />
     </div>
   );

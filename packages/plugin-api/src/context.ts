@@ -2,6 +2,7 @@ import type { CommandHandler } from "./commands.js";
 import type { ConnectionProvider } from "./connection.js";
 import type { ExplorerProvider } from "./explorer.js";
 import type { Logger } from "./logging.js";
+import type { OutputChannel } from "./output.js";
 import type { SecretStore } from "./secrets.js";
 import type { ViewMessageHandler } from "./ui.js";
 
@@ -30,6 +31,12 @@ export interface PluginContext {
   registerCommand(handler: CommandHandler): Disposable;
   /** `viewId` must match a `contributes.views[].id` in the manifest. */
   registerView(viewId: string, handler: ViewMessageHandler): Disposable;
+
+  /**
+   * Creates (or returns) a named channel in the app-wide Output panel. Several channels per plugin are fine —
+   * e.g. "Requests" and "Tasks". `logger` output also appears there, in the plugin's "Log" channel.
+   */
+  createOutputChannel(name: string): OutputChannel;
 
   /** Disposables registered here are disposed automatically on deactivate/disable. */
   readonly subscriptions: Disposable[];

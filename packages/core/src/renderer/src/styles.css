@@ -997,3 +997,24 @@ pre.result {
 .tab {
   gap: 6px;
 }
+
+/* ---- Output panel (core) ---- */
+.output-view { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--oc-panel-background, var(--oc-editor-background, #1e1e1e)); }
+.output-bar { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-bottom: 1px solid var(--oc-panel-border, var(--oc-widget-border, #454545)); flex-wrap: wrap; }
+.output-spacer { flex: 1; }
+.output-select, .output-filter { background: var(--oc-input-background, #3c3c3c); color: var(--oc-input-foreground, #cccccc); border: 1px solid var(--oc-input-border, #3c3c3c); border-radius: 3px; padding: 3px 6px; font: inherit; font-size: 12px; }
+.output-filter { width: 180px; }
+.output-check { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; color: var(--text-dim); }
+.output-btn { background: transparent; color: inherit; border: 1px solid var(--oc-widget-border, #454545); border-radius: 3px; padding: 2px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.output-btn:disabled { opacity: 0.5; cursor: default; }
+.output-body { flex: 1; min-height: 0; overflow: auto; font-family: Consolas, "Courier New", monospace; font-size: 12px; padding: 4px 0; }
+.output-empty { padding: 14px; color: var(--text-dim); font-family: inherit; }
+.output-row { display: flex; gap: 10px; padding: 1px 10px; white-space: pre-wrap; word-break: break-word; }
+.output-row:hover { background: var(--oc-list-hoverBackground, #2a2d2e); }
+.output-time { color: var(--text-dim); flex: none; }
+.output-level { flex: none; width: 42px; color: var(--text-dim); }
+.output-msg { flex: 1; }
+.output-more { color: var(--text-dim); }
+.level-warn .output-level, .level-warn .output-msg { color: var(--oc-editorWarning-foreground, #cca700); }
+.level-error .output-level, .level-error .output-msg { color: var(--oc-errorForeground, #f48771); }
+.output-detail { margin: 2px 10px 6px 100px; padding: 6px 8px; background: var(--oc-textCodeBlock-background, #2a2a2a); border-radius: 3px; white-space: pre-wrap; word-break: break-all; }

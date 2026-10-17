@@ -48,6 +48,7 @@ export type { CommandContext, CommandHandler } from "./commands.js";
 export type {
   ColumnDescriptor,
   ColumnValueType,
+  OpenViewRequest,
   TableResult,
   ViewHostApi,
   ViewMessageContext,
@@ -69,3 +70,5 @@ export type {
   PluginDeactivate,
   PluginModule,
 } from "./context.js";
+
+export type { OutputChannel, OutputLevel } from "./output.js";

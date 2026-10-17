@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeContributions } from "../src-ui/lib/contributions.js";
-import { caretAfterReplace, diffEdit, lineOf, mapBack, mapForward, shiftTokens } from "../src-ui/lib/edit.js";
-import { buildHighlightHtml } from "../src-ui/lib/highlight.js";
-import { siblingsAt, symbolPath } from "../src-ui/lib/symbols.js";
+import { sanitizeContributions } from "../src/editor/contributions.js";
+import { caretAfterReplace, diffEdit, lineOf, mapBack, mapForward, shiftTokens } from "../src/editor/edit.js";
+import { buildHighlightHtml } from "../src/editor/highlight.js";
+import { siblingsAt, symbolPath } from "../src/editor/symbols.js";
 
 describe("diffEdit / offset mapping", () => {
   it("finds the one changed region", () => {
@@ -78,12 +78,12 @@ describe("lineOf", () => {
 describe("buildHighlightHtml", () => {
   it("wraps tokens, escapes everything and ends with a spacer line", () => {
     const html = buildHighlightHtml('<a b="1">', [1, 2, 0, 3, 8, 1], ["tag", "string"]);
-    expect(html).toBe('&lt;<span class="tok-tag">a</span> <span class="tok-string">b="1"</span>&gt;\n ');
+    expect(html).toBe('&lt;<span class="oce-tok-tag">a</span> <span class="oce-tok-string">b="1"</span>&gt;\n ');
   });
 
   it("skips overlapping, out-of-range and unknown-class tokens, and never lets a class name inject markup", () => {
     const html = buildHighlightHtml("abcdef", [0, 3, 0, 2, 4, 0, 4, 99, 0, 3, 5, 1, 5, 6, 2], ["keyword", 'x" onmouseover="evil', "string"]);
-    expect(html).toBe('<span class="tok-keyword">abc</span>de<span class="tok-string">f</span>\n ');
+    expect(html).toBe('<span class="oce-tok-keyword">abc</span>de<span class="oce-tok-string">f</span>\n ');
   });
 });
 

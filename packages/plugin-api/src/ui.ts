@@ -42,6 +42,17 @@ export interface TableResult {
  * receives messages posted via `ViewHostApi.postMessage` and can push
  * messages back via `onMessage`.
  */
+export interface OpenViewRequest {
+  /** A `contributes.views[].id` (tier 2) of the calling plugin. */
+  readonly viewId: string;
+  /** Tab title. */
+  readonly title: string;
+  /** Handed to the opened view as URL query parameters (`new URLSearchParams(location.search)`). */
+  readonly params?: Readonly<Record<string, string>>;
+  /** Tab icon: a `$(id)` registry icon. */
+  readonly icon?: string;
+}
+
 export interface ViewHostApi {
   /** Send a message from the view to this view's registered backend handler. */
   postMessage(message: unknown): void;
@@ -74,6 +85,11 @@ export interface ViewHostApi {
   getContributions(point: string): Promise<Array<Record<string, unknown> & { pluginId: string }>>;
   /** Open an http(s)/mailto URL in the user's browser/mail client. Other schemes are ignored. */
   openExternal(url: string): void;
+  /**
+   * Open another Tier 2 view of the same plugin in a new editor tab, on the same connection as the caller.
+   * Asking for the same view with the same params again focuses the existing tab instead of opening a copy.
+   */
+  openView(request: OpenViewRequest): void;
 }
 
 /**

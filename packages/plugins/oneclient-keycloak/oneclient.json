@@ -1,0 +1,114 @@
+{
+  "name": "oneclient-keycloak",
+  "displayName": "Keycloak",
+  "description": "Manage Keycloak: realms, users, groups, roles, clients, scopes, identity providers, sessions and events — with JSON editing, role mapping, and developer token tools (decode, get, introspect, evaluate).",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "connectionTypes": [
+      { "id": "keycloak", "label": "Keycloak", "description": "A Keycloak identity server (admin REST API).", "category": "Identity", "icon": "icon.svg" }
+    ],
+    "explorerNodes": [
+      { "id": "keycloak.realm", "connectionType": "keycloak" },
+      { "id": "keycloak.tools", "connectionType": "keycloak" },
+      { "id": "keycloak.serverInfo", "connectionType": "keycloak" },
+      { "id": "keycloak.users", "parentNodeType": "keycloak.realm" },
+      { "id": "keycloak.groups", "parentNodeType": "keycloak.realm" },
+      { "id": "keycloak.group", "parentNodeType": "keycloak.groups" },
+      { "id": "keycloak.roles", "parentNodeType": "keycloak.realm" },
+      { "id": "keycloak.clients", "parentNodeType": "keycloak.realm" },
+      { "id": "keycloak.clientScopes", "parentNodeType": "keycloak.realm" },
+      { "id": "keycloak.identityProviders", "parentNodeType": "keycloak.realm" },
+      { "id": "keycloak.sessions", "parentNodeType": "keycloak.realm" },
+      { "id": "keycloak.events", "parentNodeType": "keycloak.realm" },
+      { "id": "keycloak.adminEvents", "parentNodeType": "keycloak.realm" },
+      { "id": "keycloak.flows", "parentNodeType": "keycloak.realm" }
+    ],
+    "views": [
+      { "id": "keycloak.resource", "title": "Resource", "tier": 2, "location": "editor", "entry": "resource.html" },
+      { "id": "keycloak.table", "title": "List", "tier": 2, "location": "editor", "entry": "table.html" },
+      { "id": "keycloak.mappings", "title": "Access", "tier": 2, "location": "editor", "entry": "mappings.html" },
+      { "id": "keycloak.tools", "title": "Developer Tools", "tier": 2, "location": "editor", "entry": "tools.html", "connectionType": "keycloak" }
+    ],
+    "commands": [
+      { "id": "keycloak.api", "title": "Keycloak: API", "hidden": true },
+
+      {
+        "id": "keycloak.newRealm",
+        "title": "Keycloak: New Realm…",
+        "when": "contextValue == 'connection' && connectionType == 'keycloak'"
+      },
+      { "id": "keycloak.openRealm", "title": "Keycloak: Open Realm Settings (JSON)", "when": "contextValue == 'keycloak.realm'" },
+      { "id": "keycloak.exportRealm", "title": "Keycloak: Export Realm…", "when": "contextValue == 'keycloak.realm'" },
+      { "id": "keycloak.clearRealmCache", "title": "Keycloak: Clear Realm Cache", "when": "contextValue == 'keycloak.realm'" },
+      { "id": "keycloak.clearUserCache", "title": "Keycloak: Clear User Cache", "when": "contextValue == 'keycloak.realm'" },
+      { "id": "keycloak.clearKeysCache", "title": "Keycloak: Clear Keys Cache", "when": "contextValue == 'keycloak.realm'" },
+      {
+        "id": "keycloak.logoutAll",
+        "title": "Keycloak: Log Out All Sessions",
+        "when": "contextValue == 'keycloak.realm'",
+        "confirm": "Log out every user session in realm \"{label}\"?"
+      },
+      {
+        "id": "keycloak.deleteRealm",
+        "title": "Keycloak: Delete Realm",
+        "when": "contextValue == 'keycloak.realm'",
+        "confirm": "Permanently delete realm \"{label}\" with all its users, clients and settings? This can't be undone."
+      },
+
+      {
+        "id": "keycloak.newUser",
+        "title": "Keycloak: New User…",
+        "when": "contextValue == 'keycloak.users'",
+        "inputSchema": {
+          "type": "object",
+          "required": ["username"],
+          "properties": {
+            "username": { "type": "string", "title": "Username" },
+            "email": { "type": "string", "title": "Email" },
+            "firstName": { "type": "string", "title": "First name" },
+            "lastName": { "type": "string", "title": "Last name" },
+            "password": { "type": "string", "title": "Initial password", "x-secret": true },
+            "temporary": { "type": "boolean", "title": "Require password change at first login", "default": true }
+          }
+        }
+      },
+      {
+        "id": "keycloak.newRole",
+        "title": "Keycloak: New Role…",
+        "when": "contextValue == 'keycloak.roles'",
+        "inputSchema": {
+          "type": "object",
+          "required": ["name"],
+          "properties": { "name": { "type": "string", "title": "Role name" }, "description": { "type": "string", "title": "Description" } }
+        }
+      },
+      { "id": "keycloak.newClient", "title": "Keycloak: New Client…", "when": "contextValue == 'keycloak.clients'" },
+      { "id": "keycloak.newClientScope", "title": "Keycloak: New Client Scope…", "when": "contextValue == 'keycloak.clientScopes'" },
+      { "id": "keycloak.newIdentityProvider", "title": "Keycloak: New Identity Provider…", "when": "contextValue == 'keycloak.identityProviders'" },
+      {
+        "id": "keycloak.newGroup",
+        "title": "Keycloak: New Group…",
+        "when": "contextValue == 'keycloak.groups'",
+        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "Group name" } } }
+      },
+      {
+        "id": "keycloak.newGroup",
+        "title": "Keycloak: New Subgroup…",
+        "when": "contextValue == 'keycloak.group'",
+        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "Subgroup name" } } }
+      },
+      {
+        "id": "keycloak.deleteGroup",
+        "title": "Keycloak: Delete Group",
+        "when": "contextValue == 'keycloak.group'",
+        "confirm": "Delete group \"{label}\" and its subgroups?"
+      }
+    ]
+  }
+}

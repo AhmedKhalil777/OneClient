@@ -19,10 +19,12 @@ export function EditorSurface({
   onKeyDown,
   onCursor,
   onScrollFraction,
+  readOnly = false,
 }: {
   text: string;
   onChange: (value: string) => void;
   textareaRef: RefObject<HTMLTextAreaElement>;
+  readOnly?: boolean;
   /** Markup for the highlight layer, or null for a plain editor. */
   highlightHtml: string | null;
   cursorLine: number;
@@ -55,23 +57,24 @@ export function EditorSurface({
 
   const highlighted = highlightHtml !== null;
   return (
-    <div className="surface">
-      <div className="gutter" ref={gutterRef} aria-hidden>
-        <div className="gutter-inner">
-          <pre className="gutter-numbers">{numbers}</pre>
-          <div className="gutter-current" style={{ top: (cursorLine - 1) * LINE_HEIGHT }}>
+    <div className="oce-surface">
+      <div className="oce-gutter" ref={gutterRef} aria-hidden>
+        <div className="oce-gutter-inner">
+          <pre className="oce-gutter-numbers">{numbers}</pre>
+          <div className="oce-gutter-current" style={{ top: (cursorLine - 1) * LINE_HEIGHT }}>
             {cursorLine}
           </div>
         </div>
       </div>
-      <div className="text-layer">
-        {highlighted && <pre ref={layerRef} className="hl" aria-hidden dangerouslySetInnerHTML={{ __html: highlightHtml }} />}
+      <div className="oce-text-layer">
+        {highlighted && <pre ref={layerRef} className="oce-hl" aria-hidden dangerouslySetInnerHTML={{ __html: highlightHtml }} />}
         <textarea
           ref={textareaRef}
-          className={highlighted ? "transparent" : undefined}
+          className={highlighted ? "oce-transparent" : undefined}
           value={text}
           spellCheck={false}
           autoFocus
+          readOnly={readOnly}
           wrap="off"
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}

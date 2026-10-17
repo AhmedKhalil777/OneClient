@@ -37,6 +37,9 @@ export type HostOutboundMessage =
   | { type: "invoke:result"; requestId: string; ok: true; result: unknown }
   | { type: "invoke:result"; requestId: string; ok: false; error: string }
   | { type: "log"; level: "debug" | "info" | "warn" | "error"; message: string; meta?: unknown }
+  | { type: "output"; channel: string; level: "debug" | "info" | "warn" | "error"; message: string; detail?: string; time: number }
+  | { type: "output:clear"; channel: string }
+  | { type: "output:show"; channel: string }
   | { type: "secret:get"; requestId: string; key: string }
   | { type: "secret:set"; requestId: string; key: string; value: string }
   | { type: "secret:delete"; requestId: string; key: string }

@@ -2,9 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ViewContribution } from "@oneclient/plugin-api";
 import { ThemeIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
+import { OutputView } from "./OutputView.js";
 import { Tier2ViewHost } from "./Tier2ViewHost.js";
 
 export type PanelView = ViewContribution & { pluginId: string };
+
+/** The shell's own panel tab (no plugin behind it): the app-wide Output log. */
+export const OUTPUT_VIEW: PanelView = { pluginId: "core", id: "output", title: "Output", tier: 2, location: "panel", icon: "$(output)" };
+export const OUTPUT_PANEL_KEY = "core:output";
 
 const HEIGHT_KEY = "oneclient.panelHeight";
 const OPEN_KEY = "oneclient.panelOpen";
@@ -46,7 +51,7 @@ export function usePanel(views: PanelView[]) {
 
   const focusActive = useCallback((key: string | null) => {
     // Give the view a moment to open/receive bounds before focusing it.
-    if (key) setTimeout(() => void window.oneclient.focusView(instanceOf(key)), 60);
+    if (key && key !== OUTPUT_PANEL_KEY) setTimeout(() => void window.oneclient.focusView(instanceOf(key)), 60);
   }, []);
 
   const show = useCallback(
@@ -146,6 +151,13 @@ export function Panel({ state, overlayOpen }: { state: PanelState; overlayOpen: 
           const v = byKey.get(key);
           if (!v) return null;
           const visible = open && key === activeKey;
+          if (v.pluginId === "core") {
+            return (
+              <div key={key} className="tier2-slot" hidden={!visible}>
+                <OutputView visible={visible} />
+              </div>
+            );
+          }
           return (
             <div key={key} className="tier2-slot" hidden={!visible}>
               <Tier2ViewHost instanceId={instanceOf(key)} pluginId={v.pluginId} viewId={v.id} active={visible && !overlayOpen} />

@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { Editor } from "./Editor.js";
 import "@oneclient/editor-kit/theme.css";
+import "@oneclient/editor-kit/editor.css";
 import "./styles.css";
 
 const root = document.getElementById("root");

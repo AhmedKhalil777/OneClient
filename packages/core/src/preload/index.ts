@@ -34,6 +34,13 @@ const api: OneClientApi = {
   focusView: (instanceId) => ipcRenderer.invoke(IpcChannel.ViewFocus, instanceId),
   onShortcut: (listener) => onEvent(IpcChannel.Shortcut, listener),
   onRevealView: (listener) => onEvent(IpcChannel.RevealView, listener),
+  onOpenViewRequest: (listener) => onEvent(IpcChannel.OpenViewRequest, listener),
+
+  getOutput: () => ipcRenderer.invoke(IpcChannel.OutputList),
+  onOutputEntry: (listener) => onEvent(IpcChannel.OutputEntry, listener),
+  onOutputCleared: (listener) => onEvent(IpcChannel.OutputCleared, listener),
+  onOutputReveal: (listener) => onEvent(IpcChannel.OutputReveal, listener),
+  clearOutput: (channelId) => ipcRenderer.invoke(IpcChannel.OutputClear, channelId),
 
   pickDirectory: (defaultPath) => ipcRenderer.invoke(IpcChannel.DialogPickDirectory, defaultPath),
 

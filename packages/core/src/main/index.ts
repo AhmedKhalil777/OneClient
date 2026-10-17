@@ -12,6 +12,7 @@ import { openDatabase } from "./db/database.js";
 import { PluginMetadataStore } from "./db/plugin-metadata-store.js";
 import { ConnectionManager } from "./connections/connection-manager.js";
 import { registerIpcHandlers } from "./ipc/handlers.js";
+import { OutputService } from "./output/output-service.js";
 import { ExtensionHostSupervisor } from "./plugins/extension-host-supervisor.js";
 import { PluginManager, type PluginRecord } from "./plugins/plugin-manager.js";
 import { ProviderDirectory } from "./plugins/provider-directory.js";
@@ -72,6 +73,7 @@ async function main(): Promise<void> {
   // forwards it to the owning host). Forward-declare one side; both
   // closures below only ever fire after everything is constructed.
   let supervisor!: ExtensionHostSupervisor;
+  const output = new OutputService();
 
   const views = new ViewHostManager(
     mainWindow,
@@ -97,6 +99,7 @@ async function main(): Promise<void> {
     },
     log,
     (pluginId, viewId, connectionId, message) => views.push(viewId, connectionId, message),
+    output,
   );
 
   async function tryActivate(record: PluginRecord): Promise<void> {
@@ -147,6 +150,7 @@ async function main(): Promise<void> {
     connections,
     supervisor,
     views,
+    output,
     ensureActivated,
     getWindows: () => BrowserWindow.getAllWindows(),
   });
