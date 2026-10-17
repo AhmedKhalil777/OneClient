@@ -8,6 +8,8 @@ export default defineConfig({
   root: resolve(__dirname, "src-ui"),
   base: "./",
   plugins: [react()],
+  // Shared workspace packages (e.g. @oneclient/editor-kit) must use this bundle's single React copy.
+  resolve: { dedupe: ["react", "react-dom"] },
   build: {
     outDir: resolve(__dirname, "dist/ui"),
     emptyOutDir: true,

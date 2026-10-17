@@ -12,6 +12,7 @@ export type {
 } from "./connection.js";
 
 export type { ExplorerContext, ExplorerProvider, TreeNode, TreeNodeOpenView } from "./explorer.js";
+export type { CompletionContext, CompletionItem, CompletionItemKind, CompletionProvider } from "./completion.js";
 
 export type { CommandContext, CommandHandler } from "./commands.js";
 

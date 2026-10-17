@@ -35,6 +35,22 @@ export function JsonSchemaForm({
         const isSecret = prop["x-secret"] === true;
         const inputType = isSecret ? "password" : prop.type === "number" || prop.type === "integer" ? "number" : "text";
 
+        if (prop.type === "boolean") {
+          return (
+            <div className="form-field form-field-checkbox" key={key}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={Boolean(value[key] ?? prop.default)}
+                  onChange={(e) => onChange({ ...value, [key]: e.target.checked })}
+                />
+                {prop.title ?? key}
+              </label>
+              {prop.description && <div className="form-help">{prop.description}</div>}
+            </div>
+          );
+        }
+
         return (
           <div className="form-field" key={key}>
             <label htmlFor={`field-${key}`}>
@@ -44,7 +60,7 @@ export function JsonSchemaForm({
             {prop.enum ? (
               <select
                 id={`field-${key}`}
-                value={(value[key] as string) ?? ""}
+                value={(value[key] as string) ?? (prop.default as string) ?? ""}
                 onChange={(e) => onChange({ ...value, [key]: e.target.value })}
               >
                 <option value="" disabled>
@@ -82,14 +98,21 @@ export function JsonSchemaForm({
                 id={`field-${key}`}
                 type={inputType}
                 value={(value[key] as string | number) ?? (prop.default as string | number) ?? ""}
+                placeholder={prop.examples?.[0] !== undefined ? String(prop.examples[0]) : undefined}
                 onChange={(e) =>
                   onChange({
                     ...value,
-                    [key]: inputType === "number" ? Number(e.target.value) : e.target.value,
+                    [key]:
+                      inputType === "number"
+                        ? e.target.value === ""
+                          ? undefined
+                          : Number(e.target.value)
+                        : e.target.value,
                   })
                 }
               />
             )}
+            {prop.description && <div className="form-help">{prop.description}</div>}
           </div>
         );
       })}

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { wordsProvider } from "@oneclient/editor-kit";
+import { useAutocomplete } from "@oneclient/editor-kit/react";
 import { filePath, readFile, writeFile } from "./api.js";
+
+/** Plain files have no language service yet, so suggest words already in the file (VS Code's default). */
+const COMPLETION_PROVIDERS = [wordsProvider()];
 
 type LoadState =
   | { kind: "loading" }
@@ -21,6 +26,7 @@ export function Editor() {
   const [cursor, setCursor] = useState({ line: 1, col: 1 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
+  useAutocomplete(textareaRef, { providers: COMPLETION_PROVIDERS, minPrefixLength: 2 });
 
   const dirty = load.kind === "ready" && text !== savedText;
   const indent = useMemo(() => detectIndent(savedText), [savedText]);

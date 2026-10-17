@@ -559,3 +559,34 @@ pre.result {
 .toast-error {
   border-left-color: var(--danger);
 }
+
+.form-help {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.form-field-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.form-field-checkbox input {
+  width: auto;
+  margin: 0;
+}
+
+/* Long connection forms (e.g. SQL Server) scroll inside the dialog; the buttons stay pinned. */
+.dialog {
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+.dialog .dialog-actions {
+  position: sticky;
+  bottom: -16px;
+  margin: 14px -16px -16px;
+  padding: 12px 16px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border);
+}

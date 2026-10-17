@@ -1,0 +1,61 @@
+{
+  "name": "oneclient-mssql",
+  "displayName": "SQL Server",
+  "description": "Connect to Microsoft SQL Server: object explorer, query editor and result grids — a small SSMS.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "connectionTypes": [
+      { "id": "mssql", "label": "SQL Server", "description": "Microsoft SQL Server / Azure SQL", "category": "Databases", "icon": "icons/server.svg" }
+    ],
+    "explorerNodes": [
+      { "id": "mssql.databases", "connectionType": "mssql" },
+      { "id": "mssql.systemDatabases", "parentNodeType": "mssql.databases" },
+      { "id": "mssql.database", "parentNodeType": "mssql.databases" },
+      { "id": "mssql.tables", "parentNodeType": "mssql.database" },
+      { "id": "mssql.table", "parentNodeType": "mssql.tables" },
+      { "id": "mssql.views", "parentNodeType": "mssql.database" },
+      { "id": "mssql.view", "parentNodeType": "mssql.views" },
+      { "id": "mssql.columns", "parentNodeType": "mssql.table" },
+      { "id": "mssql.column", "parentNodeType": "mssql.columns" },
+      { "id": "mssql.indexes", "parentNodeType": "mssql.table" },
+      { "id": "mssql.index", "parentNodeType": "mssql.indexes" },
+      { "id": "mssql.programmability", "parentNodeType": "mssql.database" },
+      { "id": "mssql.procedures", "parentNodeType": "mssql.programmability" },
+      { "id": "mssql.procedure", "parentNodeType": "mssql.procedures" },
+      { "id": "mssql.functions", "parentNodeType": "mssql.programmability" },
+      { "id": "mssql.function", "parentNodeType": "mssql.functions" }
+    ],
+    "views": [{ "id": "mssql.query", "title": "Query", "tier": 2, "location": "editor", "entry": "index.html" }],
+    "commands": [
+      {
+        "id": "mssql.newQuery",
+        "title": "SQL Server: New Query",
+        "when": "contextValue == 'connection' && connectionType == 'mssql' || contextValue == 'mssql.database'"
+      },
+      {
+        "id": "mssql.selectTop",
+        "title": "SQL Server: Select Top 1000 Rows",
+        "when": "contextValue == 'mssql.table' || contextValue == 'mssql.view'"
+      },
+      { "id": "mssql.scriptCreate", "title": "SQL Server: Script Table as CREATE", "when": "contextValue == 'mssql.table'" },
+      {
+        "id": "mssql.scriptModify",
+        "title": "SQL Server: Modify",
+        "when": "contextValue == 'mssql.view' || contextValue == 'mssql.procedure' || contextValue == 'mssql.function'"
+      },
+      { "id": "mssql.scriptExecute", "title": "SQL Server: Script as EXECUTE", "when": "contextValue == 'mssql.procedure'" },
+      { "id": "mssql.executeQuery", "title": "SQL Server: Execute Query", "when": "view == 'mssql.query'" },
+      { "id": "mssql.cancelQuery", "title": "SQL Server: Cancel Query", "when": "view == 'mssql.query'" },
+      { "id": "mssql.listDatabases", "title": "SQL Server: List Databases", "when": "view == 'mssql.query'" },
+      { "id": "mssql.serverInfo", "title": "SQL Server: Server Info", "when": "view == 'mssql.query'" },
+      { "id": "mssql.completionCatalog", "title": "SQL Server: IntelliSense Catalog", "when": "view == 'mssql.query'" }
+    ]
+  },
+  "activationEvents": ["onConnectionType:mssql"]
+}

@@ -21,6 +21,8 @@ export interface JsonSchemaObject {
   title?: string;
   description?: string;
   default?: unknown;
+  /** Tier 1 forms show the first example as an input placeholder. */
+  examples?: unknown[];
   enum?: unknown[];
   const?: unknown;
   /** Standard formats pass through; oneClient also understands `"directory"` (Tier 1 forms add a native folder picker). */

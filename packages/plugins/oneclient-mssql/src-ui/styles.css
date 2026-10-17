@@ -1,0 +1,365 @@
+:root {
+  --bg: #1e1e1e;
+  --bg-bar: #252526;
+  --bg-elevated: #2d2d30;
+  --border: #3c3c3c;
+  --text: #d4d4d4;
+  --text-dim: #858585;
+  --accent: #0e70c0;
+  --danger: #f48771;
+  --mono: Consolas, "Cascadia Mono", "Courier New", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+body.dragging {
+  cursor: row-resize;
+  user-select: none;
+}
+
+.window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ---- toolbar ---- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-bar);
+  border-bottom: 1px solid var(--border);
+}
+.toolbar-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.db-select {
+  min-width: 160px;
+  background: #3c3c3c;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 6px;
+  font: inherit;
+}
+.btn {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 3px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) {
+  background: #3c3c3c;
+  border-color: var(--border);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn-run:not(:disabled) {
+  color: #89d185;
+}
+
+/* ---- layout ---- */
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.editor-pane {
+  flex-grow: 0;
+  flex-shrink: 0;
+  min-height: 0;
+  display: flex;
+}
+.splitter {
+  height: 5px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: var(--bg-bar);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.splitter:hover {
+  background: var(--accent);
+}
+.results-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.results-tabs {
+  display: flex;
+  background: var(--bg-bar);
+  border-bottom: 1px solid var(--border);
+}
+.results-tabs button {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  padding: 5px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+.results-tabs button.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.results-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.empty {
+  padding: 16px;
+  color: var(--text-dim);
+}
+
+/* ---- editor ---- */
+.sql-editor {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 19px;
+}
+.sql-gutter {
+  flex-shrink: 0;
+  min-width: 46px;
+  /* Bottom padding matches the textarea's horizontal scrollbar so numbers stay aligned. */
+  padding: 6px 10px 26px 6px;
+  text-align: right;
+  color: #6e7681;
+  overflow: hidden;
+  user-select: none;
+  border-right: 1px solid #2a2a2a;
+}
+.sql-gutter .current {
+  color: var(--text);
+}
+.sql-surface {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.sql-highlight,
+.sql-input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 6px 8px;
+  border: none;
+  font: inherit;
+  line-height: inherit;
+  white-space: pre;
+  tab-size: 4;
+  overflow: auto;
+}
+.sql-highlight {
+  pointer-events: none;
+  color: var(--text);
+  overflow: hidden;
+}
+.sql-input {
+  resize: none;
+  outline: none;
+  background: transparent;
+  color: transparent;
+  caret-color: #aeafad;
+}
+.sql-input::selection {
+  background: rgba(38, 79, 120, 0.85);
+  color: transparent;
+}
+.t-keyword {
+  color: #569cd6;
+}
+.t-op {
+  color: #9a9a9a;
+}
+.t-type {
+  color: #4ec9b0;
+}
+.t-func {
+  color: #dcdcaa;
+}
+.t-string {
+  color: #ce9178;
+}
+.t-comment {
+  color: #6a9955;
+}
+.t-number {
+  color: #b5cea8;
+}
+.t-var {
+  color: #9cdcfe;
+}
+
+/* ---- results grid ---- */
+.result-sets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px;
+}
+.result-sets.single {
+  height: 100%;
+}
+.grid-wrap {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+}
+.grid-wrap.fill {
+  flex: 1;
+  min-height: 0;
+}
+.grid-scroll {
+  overflow: auto;
+  outline: none;
+  flex: 1;
+  min-height: 0;
+}
+.grid {
+  position: relative;
+  font-size: 12.5px;
+}
+.grid-header {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-elevated);
+}
+.grid-row {
+  position: absolute;
+  left: 0;
+  display: flex;
+}
+.grid-cell {
+  flex-shrink: 0;
+  padding: 0 6px;
+  line-height: 21px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: 1px solid #2f2f2f;
+  border-bottom: 1px solid #2f2f2f;
+  cursor: default;
+}
+.grid-cell.num {
+  text-align: right;
+}
+.grid-cell.null {
+  font-style: italic;
+  color: #bfa94f;
+  background: rgba(255, 238, 150, 0.07);
+}
+.grid-head {
+  position: relative;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.grid-resize {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 1;
+}
+.grid-rownum {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  text-align: right;
+}
+.grid-corner {
+  z-index: 3;
+  cursor: pointer;
+}
+.grid-row.selected .grid-cell,
+.grid-cell.selected {
+  background: #264f78;
+  color: #fff;
+}
+.grid-note {
+  padding: 3px 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  background: var(--bg-bar);
+  border-top: 1px solid var(--border);
+}
+
+/* ---- messages ---- */
+.messages {
+  margin: 0;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.msg-error {
+  color: var(--danger);
+  cursor: default;
+}
+
+/* ---- status bar (SSMS colours it by outcome) ---- */
+.statusbar {
+  display: flex;
+  gap: 18px;
+  padding: 3px 10px;
+  font-size: 12px;
+  background: var(--bg-bar);
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+}
+.statusbar .spacer {
+  flex: 1;
+}
+.statusbar.running {
+  background: #3a3d41;
+  color: var(--text);
+}
+.statusbar.ok {
+  background: #1e3a24;
+  color: #b5e8bc;
+}
+.statusbar.error {
+  background: #4b1d1d;
+  color: #ffc6c6;
+}
+.statusbar.warn {
+  background: #4a3c12;
+  color: #ffe7a3;
+}

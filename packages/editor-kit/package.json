@@ -1,0 +1,31 @@
+{
+  "name": "@oneclient/editor-kit",
+  "version": "0.1.0",
+  "description": "Shared editor building blocks for plugin Tier 2 views — starting with autocomplete for <textarea> editors.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@oneclient/plugin-api": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/react": "^18.3.12",
+    "react": "^18.3.1",
+    "vitest": "^2.1.0"
+  }
+}
