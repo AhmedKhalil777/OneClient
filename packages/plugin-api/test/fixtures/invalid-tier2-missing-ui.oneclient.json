@@ -1,0 +1,17 @@
+{
+  "name": "oneclient-kafka",
+  "version": "0.1.0",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/extension/main.js",
+  "contributes": {
+    "views": [
+      {
+        "id": "kafka.messageBrowser",
+        "title": "Message Browser",
+        "tier": 2,
+        "location": "editor",
+        "entry": "index.html"
+      }
+    ]
+  }
+}

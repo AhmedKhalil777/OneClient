@@ -1,0 +1,6 @@
+{
+  "name": "OneClient_Broken!",
+  "version": "not-a-semver",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/extension/main.js"
+}

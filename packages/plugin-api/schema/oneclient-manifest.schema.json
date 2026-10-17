@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneclient.dev/schemas/oneclient-manifest.schema.json",
+  "title": "oneClient Plugin Manifest",
+  "description": "Schema for oneclient.json. Mirrors packages/plugin-api/src/manifest.ts — keep both in sync.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "version", "engines", "main"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique plugin id, conventionally oneclient-<tool>.",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "minLength": 3,
+      "maxLength": 64
+    },
+    "displayName": { "type": "string", "maxLength": 64 },
+    "description": { "type": "string", "maxLength": 300 },
+    "version": {
+      "type": "string",
+      "description": "Semver version of this plugin.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "publisher": { "type": "string", "maxLength": 64 },
+    "icon": { "type": "string" },
+    "license": { "type": "string" },
+    "repository": { "type": "string", "format": "uri" },
+
+    "engines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["oneclient"],
+      "properties": {
+        "oneclient": {
+          "type": "string",
+          "description": "Semver range this plugin is compatible with, checked against @oneclient/plugin-api's PLUGIN_API_VERSION.",
+          "examples": ["^0.1.0"]
+        }
+      }
+    },
+
+    "main": {
+      "type": "string",
+      "description": "Path, relative to the plugin root, to the compiled entry module run in the extension host."
+    },
+    "ui": {
+      "type": "string",
+      "description": "Path, relative to the plugin root, to the Tier 2 UI bundle root. Required if any contributes.views[].tier is 2."
+    },
+
+    "contributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "connectionTypes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/connectionTypeContribution" }
+        },
+        "explorerNodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/explorerNodeContribution" }
+        },
+        "views": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/viewContribution" }
+        },
+        "commands": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/commandContribution" }
+        }
+      }
+    },
+
+    "activationEvents": {
+      "type": "array",
+      "description": "Events that trigger activation. Omit, or use [\"*\"], to activate eagerly at app start.",
+      "items": { "type": "string" }
+    }
+  },
+
+  "allOf": [
+    {
+      "$comment": "If any contributed view is Tier 2, the top-level `ui` bundle path is mandatory.",
+      "if": {
+        "type": "object",
+        "properties": {
+          "contributes": {
+            "type": "object",
+            "properties": {
+              "views": {
+                "type": "array",
+                "contains": {
+                  "type": "object",
+                  "properties": { "tier": { "const": 2 } },
+                  "required": ["tier"]
+                }
+              }
+            },
+            "required": ["views"]
+          }
+        },
+        "required": ["contributes"]
+      },
+      "then": { "type": "object", "properties": { "ui": { "type": "string" } }, "required": ["ui"] }
+    }
+  ],
+
+  "$defs": {
+    "contributionId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_.-]*$",
+      "minLength": 1,
+      "maxLength": 128
+    },
+
+    "connectionTypeContribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "$ref": "#/$defs/contributionId" },
+        "label": { "type": "string" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" },
+        "category": { "type": "string" }
+      }
+    },
+
+    "explorerNodeContribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/contributionId" },
+        "label": { "type": "string" },
+        "parentNodeType": { "$ref": "#/$defs/contributionId" },
+        "connectionType": { "$ref": "#/$defs/contributionId" },
+        "icon": { "type": "string" }
+      }
+    },
+
+    "viewContribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "tier", "location"],
+      "properties": {
+        "id": { "$ref": "#/$defs/contributionId" },
+        "title": { "type": "string" },
+        "tier": { "type": "integer", "enum": [1, 2] },
+        "location": { "type": "string", "enum": ["sidebar", "panel", "editor"] },
+        "icon": { "type": "string" },
+        "entry": {
+          "type": "string",
+          "description": "Path, relative to manifest.ui, to this view's entry HTML. Required if tier is 2."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "type": "object", "properties": { "tier": { "const": 2 } } },
+          "then": {
+            "type": "object",
+            "properties": { "entry": { "type": "string" } },
+            "required": ["entry"]
+          }
+        }
+      ]
+    },
+
+    "commandContribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "$ref": "#/$defs/contributionId" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "icon": { "type": "string" },
+        "keybinding": { "type": "string" },
+        "when": {
+          "type": "string",
+          "description": "Context-menu visibility guard, e.g. \"contextValue == 'postgres.table'\". Omit to show only in the command palette."
+        }
+      }
+    }
+  }
+}

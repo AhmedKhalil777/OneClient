@@ -1,0 +1,19 @@
+{
+  "name": "oneclient",
+  "private": true,
+  "version": "0.1.0",
+  "description": "One client for everything — plug-and-play desktop console for infrastructure tools",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter=./packages/** run build",
+    "typecheck": "pnpm -r --filter=./packages/** run typecheck",
+    "test": "pnpm -r --filter=./packages/** run test"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

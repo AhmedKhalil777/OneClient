@@ -1,0 +1,28 @@
+{
+  "name": "oneclient-postgres",
+  "displayName": "PostgreSQL",
+  "description": "Connect to PostgreSQL, browse schemas/tables, run queries.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/extension/main.js",
+  "contributes": {
+    "connectionTypes": [
+      { "id": "postgres", "label": "PostgreSQL", "category": "Databases" }
+    ],
+    "explorerNodes": [
+      { "id": "postgres.schema", "connectionType": "postgres" },
+      { "id": "postgres.table", "parentNodeType": "postgres.schema" }
+    ],
+    "commands": [
+      {
+        "id": "postgres.runQuery",
+        "title": "Run Query",
+        "category": "PostgreSQL",
+        "when": "contextValue == 'postgres.table'"
+      }
+    ]
+  },
+  "activationEvents": ["onConnectionType:postgres"]
+}

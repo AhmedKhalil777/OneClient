@@ -1,0 +1,28 @@
+{
+  "name": "oneclient-kafka",
+  "displayName": "Kafka",
+  "version": "0.1.0",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/extension/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "connectionTypes": [{ "id": "kafka", "label": "Kafka", "category": "Message Brokers" }],
+    "explorerNodes": [
+      { "id": "kafka.topic", "connectionType": "kafka" },
+      { "id": "kafka.consumerGroup", "connectionType": "kafka" }
+    ],
+    "views": [
+      {
+        "id": "kafka.messageBrowser",
+        "title": "Message Browser",
+        "tier": 2,
+        "location": "editor",
+        "entry": "index.html"
+      }
+    ],
+    "commands": [
+      { "id": "kafka.produceMessage", "title": "Produce Message", "category": "Kafka" }
+    ]
+  },
+  "activationEvents": ["onConnectionType:kafka"]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "oneclient-broken",
+  "version": "0.1.0",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/extension/main.js",
+  "permissions": ["network", "filesystem"]
+}
