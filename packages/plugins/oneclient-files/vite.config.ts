@@ -17,5 +17,6 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, "dist/ui"),
     emptyOutDir: true,
+    rollupOptions: { input: { index: resolve(__dirname, "src-ui/index.html"), search: resolve(__dirname, "src-ui/search.html") } },
   },
 });

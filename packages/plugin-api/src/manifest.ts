@@ -1,3 +1,4 @@
+import type { SearchProviderContribution } from "./search.js";
 import type { JsonSchemaObject } from "./json-schema.js";
 import type { ColorThemeContribution, IconContribution, IconThemeContribution } from "./theme.js";
 
@@ -48,6 +49,8 @@ export interface PluginManifest {
     readonly themes?: ColorThemeContribution[];
     /** Icon themes that restyle icon ids. */
     readonly iconThemes?: IconThemeContribution[];
+    /** Take part in the global search (top bar / Ctrl+P) — see search.ts. */
+    readonly searchProviders?: SearchProviderContribution[];
     /** New icon ids, usable by any plugin as `$(id)`. */
     readonly icons?: IconContribution[];
     /**

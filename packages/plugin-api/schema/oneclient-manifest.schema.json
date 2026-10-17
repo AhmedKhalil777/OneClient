@@ -78,6 +78,23 @@
           "description": "Icon themes that restyle icon ids.",
           "items": { "$ref": "#/$defs/iconThemeContribution" }
         },
+        "searchProviders": {
+          "type": "array",
+          "description": "Global search providers: core calls each provider's command (once per saved connection) as the user types in the top search box.",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "command"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-zA-Z0-9._-]+$" },
+              "label": { "type": "string", "maxLength": 60 },
+              "command": { "type": "string" },
+              "connectionType": { "type": "string" },
+              "order": { "type": "number" },
+              "icon": { "type": "string" }
+            }
+          }
+        },
         "icons": {
           "type": "array",
           "description": "New icon ids any plugin can use as $(id).",

@@ -10,6 +10,7 @@ import type { ExtensionHostSupervisor } from "../plugins/extension-host-supervis
 import type { PluginManager } from "../plugins/plugin-manager.js";
 import type { ContributionRegistry } from "../plugins/registry.js";
 import type { ThemeService } from "../themes/theme-service.js";
+import type { SearchService } from "../search/search-service.js";
 import type { OutputService } from "../output/output-service.js";
 import type { ViewHostManager } from "../views/view-host-manager.js";
 
@@ -18,6 +19,7 @@ export interface IpcDeps {
   registry: ContributionRegistry;
   pluginManager: PluginManager;
   connections: ConnectionManager;
+  search: SearchService;
   config: ConfigStore;
   supervisor: ExtensionHostSupervisor;
   views: ViewHostManager;
@@ -28,7 +30,7 @@ export interface IpcDeps {
 
 /** Registers every main-process IPC handler and wires registry/plugin change events to all open windows. */
 export function registerIpcHandlers(deps: IpcDeps): void {
-  const { registry, pluginManager, connections, config, supervisor, views, output, ensureActivated, getWindows, themes } = deps;
+  const { registry, pluginManager, connections, search, config, supervisor, views, output, ensureActivated, getWindows, themes } = deps;
 
   // Themes: shell gets the full state; every Tier 2 view gets it too (its preload applies the CSS variables).
   // Plugin views don't draw file trees, so they skip the (potentially thousands of entries) file icon table.
@@ -89,6 +91,7 @@ export function registerIpcHandlers(deps: IpcDeps): void {
     pluginManager.getRecords().map((r) => ({
       id: r.id,
       displayName: r.manifest?.displayName,
+      description: r.manifest?.description,
       version: r.manifest?.version ?? "0.0.0",
       state: r.state,
       error: r.error,
@@ -125,6 +128,10 @@ export function registerIpcHandlers(deps: IpcDeps): void {
     await connections.delete(id);
     broadcast(IpcChannel.ConnectionsChanged, connections.list());
   });
+
+  // Global search: which providers exist, then one provider at a time (results stream in as each answers).
+  ipcMain.handle(IpcChannel.SearchProviders, () => search.providers());
+  ipcMain.handle(IpcChannel.SearchRun, (_e, providerId: string, query: string) => search.run(String(providerId), String(query)));
 
   // Export / import saved connections (JSON), and a way to find the config file itself.
   const dialogParent = () => BrowserWindow.getFocusedWindow() ?? getWindows()[0];

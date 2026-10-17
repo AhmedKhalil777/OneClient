@@ -1,24 +1,26 @@
 {
-  "name": "oneclient-markdown",
+  "name": "oneclient-misc",
   "version": "0.1.0",
-  "description": "oneclient built-in plugin: Markdown outline, highlighting and live preview for the Files editor.",
+  "description": "oneclient built-in plugin: miscellaneous editor and explorer support — JSON, XML and Markdown tools, text utilities and the Material Icon Theme.",
   "license": "MIT",
   "private": true,
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && node scripts/generate-material-icons.mjs",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@oneclient/plugin-api": "workspace:*",
     "highlight.js": "11.11.1",
+    "jsonc-parser": "3.3.1",
     "markdown-it": "14.1.0"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
     "@types/node": "^20.14.0",
     "vitest": "^2.1.0",
-    "@types/markdown-it": "14.1.2"
+    "@types/markdown-it": "14.1.2",
+    "material-icon-theme": "5.39.0"
   }
 }

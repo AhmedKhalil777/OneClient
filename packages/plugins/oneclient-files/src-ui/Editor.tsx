@@ -2,6 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { FeatureEditor } from "@oneclient/editor-kit/editor";
 import { fileName, filePath, readFile, writeFile } from "./api.js";
 
+interface RevealMessage {
+  type: "reveal";
+  path: string;
+  line: number;
+  col: number;
+  length: number;
+}
+
 type LoadState =
   | { kind: "loading" }
   | { kind: "error"; message: string }
@@ -20,6 +28,19 @@ export function Editor() {
   const [text, setText] = useState("");
   const [savedText, setSavedText] = useState("");
   const [save, setSave] = useState<SaveState>({ kind: "idle" });
+
+  // "Reveal this match" requests from the Search view (they reach every editor tab, so check the path).
+  const [reveal, setReveal] = useState<{ line: number; col: number; length: number; nonce: number } | undefined>();
+  const ready = load.kind === "ready";
+  useEffect(() => {
+    if (!ready) return;
+    const off = window.oneclientView.onMessage((raw) => {
+      const m = raw as RevealMessage;
+      if (m?.type === "reveal" && m.path === filePath) setReveal({ line: m.line, col: m.col, length: m.length, nonce: Date.now() });
+    });
+    window.oneclientView.postMessage({ type: "hello", path: filePath });
+    return off;
+  }, [ready]);
 
   const dirty = load.kind === "ready" && text !== savedText;
 
@@ -74,6 +95,7 @@ export function Editor() {
   return (
     <FeatureEditor
       value={text}
+      {...(reveal ? { reveal } : {})}
       onChange={(value) => {
         setText(value);
         if (save.kind === "saved" || save.kind === "error") setSave({ kind: "idle" });

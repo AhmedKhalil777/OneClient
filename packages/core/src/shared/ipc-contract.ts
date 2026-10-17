@@ -1,3 +1,4 @@
+import type { SearchHit, SearchOutcome, SearchProviderInfo } from "../main/search/search-service.js";
 import type { OutputChannelInfo, OutputChannelState, OutputEntry } from "./output.js";
 import type {
   ConnectionSummary,
@@ -47,6 +48,9 @@ export const IpcChannel = {
   OutputReveal: "oneclient:output:reveal",
   OutputClear: "oneclient:output:clear",
 
+  SearchProviders: "oneclient:search:providers",
+  SearchRun: "oneclient:search:run",
+
   ConnectionExport: "oneclient:connection:export",
   ConnectionImport: "oneclient:connection:import",
   ConfigReveal: "oneclient:config:reveal",
@@ -80,7 +84,8 @@ export interface ThemeListItem {
 }
 
 /** Workbench-level shortcuts that must work even while a Tier 2 view has focus. */
-export type WorkbenchShortcut = "togglePanel" | "commandPalette";
+export type WorkbenchShortcut = "togglePanel" | "commandPalette" | "quickSearch" | "findInFiles";
+export type { SearchHit, SearchOutcome, SearchProviderInfo };
 
 export interface ViewBounds {
   x: number;
@@ -115,6 +120,10 @@ export interface OneClientApi {
     config: Record<string, unknown>,
   ): Promise<ConnectionSummary>;
   deleteConnection(id: string): Promise<void>;
+
+  /** Global search: the providers plugins declared, then the hits of one provider for a query. */
+  searchProviders(): Promise<SearchProviderInfo[]>;
+  runSearch(providerId: string, query: string): Promise<SearchOutcome>;
 
   /** Save the connections to a JSON file the user picks. Passwords are only included when asked (then in plain text). Null = cancelled. */
   exportConnections(includeSecrets: boolean): Promise<{ path: string; count: number; includesSecrets: boolean } | null>;

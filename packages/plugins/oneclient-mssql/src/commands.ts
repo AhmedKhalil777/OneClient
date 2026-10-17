@@ -12,6 +12,7 @@ import {
   qualified,
 } from "./metadata.js";
 import { cancelQuery, executeQuery } from "./query-runner.js";
+import { searchObjects } from "./search.js";
 import { requireSession } from "./sessions.js";
 
 /** Context-menu args: core spreads the right-clicked node's `data` in (see CommandContribution.when). */
@@ -57,6 +58,14 @@ async function action(fn: () => Promise<{ ok: true; openNode?: TreeNode }>): Pro
 
 export function createCommandHandlers(): CommandHandler[] {
   return [
+    {
+      // Global search provider (top bar): objects of every user database whose name matches.
+      commandId: "mssql.search",
+      execute: (args) => {
+        const { connectionId, query, limit } = arg<{ connectionId: string; query: string; limit?: number }>(args);
+        return searchObjects(connectionId, String(query ?? ""), Math.min(50, Math.max(1, limit ?? 20)));
+      },
+    },
     {
       commandId: "mssql.newQuery",
       execute: (args) =>

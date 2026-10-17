@@ -177,6 +177,9 @@ importers:
       vite:
         specifier: ^5.4.11
         version: 5.4.21(@types/node@20.19.43)
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@20.19.43)
 
   packages/plugins/oneclient-http:
     dependencies:
@@ -211,25 +214,6 @@ importers:
       vite:
         specifier: ^5.4.11
         version: 5.4.21(@types/node@20.19.43)
-      vitest:
-        specifier: ^2.1.0
-        version: 2.1.9(@types/node@20.19.43)
-
-  packages/plugins/oneclient-json:
-    dependencies:
-      '@oneclient/plugin-api':
-        specifier: workspace:*
-        version: link:../../plugin-api
-      jsonc-parser:
-        specifier: 3.3.1
-        version: 3.3.1
-    devDependencies:
-      '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.43
-      typescript:
-        specifier: ^5.6.0
-        version: 5.9.3
       vitest:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@20.19.43)
@@ -271,7 +255,7 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@20.19.43)
 
-  packages/plugins/oneclient-markdown:
+  packages/plugins/oneclient-misc:
     dependencies:
       '@oneclient/plugin-api':
         specifier: workspace:*
@@ -279,6 +263,9 @@ importers:
       highlight.js:
         specifier: 11.11.1
         version: 11.11.1
+      jsonc-parser:
+        specifier: 3.3.1
+        version: 3.3.1
       markdown-it:
         specifier: 14.1.0
         version: 14.1.0
@@ -289,18 +276,15 @@ importers:
       '@types/node':
         specifier: ^20.14.0
         version: 20.19.43
+      material-icon-theme:
+        specifier: 5.39.0
+        version: 5.39.0
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
       vitest:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@20.19.43)
-
-  packages/plugins/oneclient-material-icons:
-    devDependencies:
-      material-icon-theme:
-        specifier: 5.39.0
-        version: 5.39.0
 
   packages/plugins/oneclient-mssql:
     dependencies:
@@ -384,38 +368,6 @@ importers:
       vite:
         specifier: ^5.4.11
         version: 5.4.21(@types/node@20.19.43)
-
-  packages/plugins/oneclient-text-tools:
-    dependencies:
-      '@oneclient/plugin-api':
-        specifier: workspace:*
-        version: link:../../plugin-api
-    devDependencies:
-      '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.43
-      typescript:
-        specifier: ^5.6.0
-        version: 5.9.3
-      vitest:
-        specifier: ^2.1.0
-        version: 2.1.9(@types/node@20.19.43)
-
-  packages/plugins/oneclient-xml:
-    dependencies:
-      '@oneclient/plugin-api':
-        specifier: workspace:*
-        version: link:../../plugin-api
-    devDependencies:
-      '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.43
-      typescript:
-        specifier: ^5.6.0
-        version: 5.9.3
-      vitest:
-        specifier: ^2.1.0
-        version: 2.1.9(@types/node@20.19.43)
 
 packages:
 

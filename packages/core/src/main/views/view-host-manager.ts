@@ -145,6 +145,8 @@ export class ViewHostManager {
       let shortcut: WorkbenchShortcut | null = null;
       if (mod && !input.shift && !input.alt && (input.key === "`" || input.code === "Backquote")) shortcut = "togglePanel";
       else if (mod && input.shift && input.key.toLowerCase() === "p") shortcut = "commandPalette";
+      else if (mod && !input.shift && !input.alt && input.key.toLowerCase() === "p") shortcut = "quickSearch";
+      else if (mod && input.shift && !input.alt && input.key.toLowerCase() === "f") shortcut = "findInFiles";
       if (!shortcut) return;
       event.preventDefault();
       for (const listener of this.shortcutListeners) listener(shortcut);

@@ -2,12 +2,12 @@
  * Turns the `material-icon-theme` npm package (https://github.com/material-extensions/vscode-material-icon-theme,
  * MIT) into a oneClient icon theme:
  *
- *   dist/icon-theme.json   file/folder mappings in oneClient's IconThemeFile format
- *   dist/icons/*.svg       the icons it references
- *   dist/LICENSE-material-icon-theme.txt
+ *   dist/material-icons/icon-theme.json   file/folder mappings in oneClient's IconThemeFile format
+ *   dist/material-icons/icons/*.svg       the icons it references
+ *   dist/material-icons/LICENSE-material-icon-theme.txt
  *
- * `dist/` is generated (git-ignored): run `pnpm --filter oneclient-material-icons run build`
- * (the root `pnpm build` does it).
+ * `dist/` is generated (git-ignored): run `pnpm --filter oneclient-misc run build`
+ * (the root `pnpm build` does it). Only `dist/material-icons` is touched — the plugin's compiled code lives beside it.
  */
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -19,7 +19,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 const pkgDir = dirname(require.resolve("material-icon-theme/package.json", { paths: [root] }).replace(/\\/g, "/"));
 const manifest = JSON.parse(readFileSync(join(pkgDir, "dist", "material-icons.json"), "utf8"));
-const out = join(root, "dist");
+const out = join(root, "dist", "material-icons");
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, "icons"), { recursive: true });
@@ -81,5 +81,5 @@ copyFileSync(join(pkgDir, "LICENSE"), join(out, "LICENSE-material-icon-theme.txt
 const count = (o) => Object.keys(o).length;
 console.log(
   `material icons: ${count(icons)} icons, ${count(theme.fileExtensions)} extensions, ${count(theme.fileNames)} file names, ` +
-    `${count(theme.folderNames)} folder names → ${join("dist", "icon-theme.json")}`,
+    `${count(theme.folderNames)} folder names → ${join("dist", "material-icons", "icon-theme.json")}`,
 );

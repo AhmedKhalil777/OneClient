@@ -277,13 +277,12 @@ export const BUILTIN_COLOR_THEMES: BuiltinColorTheme[] = [
 ];
 
 export const DEFAULT_COLOR_THEME = "oneclient-dark";
-export const DEFAULT_ICON_THEME = "oneclient-default";
 /**
- * Used instead of DEFAULT_ICON_THEME when installed and the user hasn't chosen
- * one — the Material Icon Theme plugin that ships with the app, so the file
- * explorer shows per-file-type icons out of the box (like VS Code's Seti).
+ * The icon theme used when the user hasn't chosen one (or their choice is gone): the Material Icon Theme that ships in
+ * the built-in Miscellaneous plugin. There is no separate built-in theme — if no icon theme is installed at all, the
+ * explorer simply shows each node's own `$(icon)`.
  */
-export const PREFERRED_FILE_ICON_THEME = "oneclient-material-icons";
+export const DEFAULT_ICON_THEME = "oneclient-material-icons";
 
 /** Base palette a theme of `kind` inherits unset keys from. */
 export function baseColorsFor(kind: ThemeKind): Record<string, string> {

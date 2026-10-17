@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TreeNode } from "@oneclient/plugin-api";
+import type { SearchHit } from "../../shared/ipc-contract.js";
 import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "../../shared/types.js";
 import { ActivityBar, type ViewContainerId } from "./components/ActivityBar.js";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
 import { ContextMenu, type ContextMenuItem } from "./components/ContextMenu.js";
 import { Logo } from "./components/Logo.js";
 import { AssetIcon } from "./components/AssetIcon.js";
-import { useResourceIcon, useThemeState } from "./theme.js";
+import { ThemeIcon, useResourceIcon, useThemeState } from "./theme.js";
+import { QuickSearch } from "./components/QuickSearch.js";
+import { WelcomePage } from "./components/WelcomePage.js";
 import { OUTPUT_PANEL_KEY, OUTPUT_VIEW, Panel, usePanel } from "./components/Panel.js";
 import { OUTPUT_SELECT_EVENT, OUTPUT_SELECT_KEY } from "./components/OutputView.js";
 import { usePrompts } from "./components/PromptDialogs.js";
@@ -42,6 +45,7 @@ const emptyRegistry: ContributionRegistrySnapshot = {
   commands: [],
   themes: [],
   iconThemes: [],
+  searchProviders: [],
   icons: [],
   extensions: [],
 };
@@ -127,10 +131,13 @@ export function App() {
   const [registry, setRegistry] = useState<ContributionRegistrySnapshot>(emptyRegistry);
   const [plugins, setPlugins] = useState<PluginSummary[]>([]);
   const [connections, setConnections] = useState<ConnectionSummary[]>([]);
-  const [tabs, setTabs] = useState<Tab[]>([{ id: "welcome", title: "Welcome", kind: "welcome" }]);
-  const [activeTabId, setActiveTabId] = useState("welcome");
+  // The Welcome tab can be closed; closing it keeps it closed on the next start (reopen it from the palette or the gear menu).
+  const welcomeClosed = localStorage.getItem("oneclient.welcomeClosed") === "1";
+  const [tabs, setTabs] = useState<Tab[]>(welcomeClosed ? [] : [{ id: "welcome", title: "Welcome", kind: "welcome" }]);
+  const [activeTabId, setActiveTabId] = useState(welcomeClosed ? "" : "welcome");
   const sidebar = useResizableSidebar();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   /** A quick pick other than the command palette (theme pickers). */
   const [quickPick, setQuickPick] = useState<React.ComponentProps<typeof CommandPalette> | null>(null);
   const theme = useThemeState();
@@ -143,7 +150,7 @@ export function App() {
   const prompts = usePrompts();
   // Tier 2 views are native layers drawn *over* this DOM, so hide them while
   // anything floating (menu, dialog, palette) is open or it'd be covered.
-  const overlayOpen = paletteOpen || quickPick !== null || newConnectionFor !== null || menu !== null || prompts.element !== null;
+  const overlayOpen = paletteOpen || searchOpen || quickPick !== null || newConnectionFor !== null || menu !== null || prompts.element !== null;
 
   // Plugins that get an activity-bar explorer: anything not disabled/broken that contributes connection types.
   const explorerPlugins = useMemo(
@@ -172,6 +179,7 @@ export function App() {
     [registry.views],
   );
   const panel = usePanel(panelViews);
+  const findInFilesRef = useRef<() => void>(() => {});
   const panelToggleRef = useRef(panel.toggle);
   panelToggleRef.current = panel.toggle;
   const registryRef = useRef(registry);
@@ -200,6 +208,8 @@ export function App() {
     const offShortcut = window.oneclient.onShortcut((shortcut) => {
       if (shortcut === "togglePanel") panelToggleRef.current();
       else if (shortcut === "commandPalette") setPaletteOpen((v) => !v);
+      else if (shortcut === "quickSearch") setSearchOpen((v) => !v);
+      else if (shortcut === "findInFiles") findInFilesRef.current();
     });
     // A view revealing another view of its plugin — today that means a panel view (e.g. Query Results).
     // A plugin view asking for another of its views in a new tab (e.g. a table row → that row's editor).
@@ -251,6 +261,12 @@ export function App() {
       if (mod && e.shiftKey && e.key.toLowerCase() === "p") {
         e.preventDefault();
         setPaletteOpen((v) => !v);
+      } else if (mod && e.shiftKey && !e.altKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        findInFilesRef.current();
+      } else if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
       } else if (mod && !e.shiftKey && (e.key === "`" || e.code === "Backquote")) {
         e.preventDefault();
         panelToggleRef.current();
@@ -270,6 +286,26 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTabId]);
 
+  function openWelcome() {
+    localStorage.removeItem("oneclient.welcomeClosed");
+    openTab({ id: "welcome", title: "Welcome", kind: "welcome" });
+  }
+
+  function importConnections() {
+    void window.oneclient
+      .importConnections()
+      .then((r) => {
+        if (!r) return;
+        const parts = [`Imported ${r.added} connection${r.added === 1 ? "" : "s"}`];
+        if (r.skipped) parts.push(`${r.skipped} already existed`);
+        if (r.invalid) parts.push(`${r.invalid} invalid skipped`);
+        if (r.withoutSecrets) parts.push(`${r.withoutSecrets} need their password entered`);
+        pushToast(r.added > 0 ? "info" : "error", `${parts.join(", ")}.`);
+        for (const w of r.warnings.slice(0, 3)) pushToast("error", w);
+      })
+      .catch((err: unknown) => pushToast("error", `Import: ${err instanceof Error ? err.message : String(err)}`));
+  }
+
   function openTab(tab: Tab) {
     setTabs((prev) => (prev.some((t) => t.id === tab.id) ? prev : [...prev, tab]));
     setActiveTabId(tab.id);
@@ -279,10 +315,11 @@ export function App() {
     const closing = new Set(ids);
     const index = tabs.findIndex((t) => closing.has(t.id));
     const remaining = tabs.filter((t) => !closing.has(t.id));
+    if (closing.has("welcome")) localStorage.setItem("oneclient.welcomeClosed", "1");
     setTabs(remaining);
     setDirtyViews((prev) => new Set([...prev].filter((id) => !closing.has(id))));
     // Like VS Code: closing the active tab focuses its neighbour, not the first tab.
-    if (closing.has(activeTabId)) setActiveTabId(remaining[Math.min(index, remaining.length - 1)]?.id ?? "welcome");
+    if (closing.has(activeTabId)) setActiveTabId(remaining[Math.min(index, remaining.length - 1)]?.id ?? "");
   }
 
   async function requestCloseTab(id: string) {
@@ -443,6 +480,46 @@ export function App() {
     });
   }
 
+  /** Ctrl+Shift+F: the Files plugin's Search view for an open folder (the one in the sidebar if there is one). */
+  function openFindInFiles() {
+    const view = registry.views.find((v) => v.id === "files.search" && v.tier === 2);
+    const candidates = view ? connections.filter((c) => c.pluginId === view.pluginId) : [];
+    const connection = candidates[0];
+    if (!view || !connection) return pushToast("error", "Search needs an open folder — add a Folder connection in the Files plugin first.");
+    openDashboard(connection, { pluginId: view.pluginId, id: view.id, title: "Search" });
+  }
+  findInFilesRef.current = openFindInFiles;
+
+  /** Opens a global-search result: a view as a tab, or runs the plugin command it names (and opens what that returns). */
+  async function openSearchHit(hit: SearchHit) {
+    setSearchOpen(false);
+    const connection = connections.find((c) => c.id === hit.connectionId);
+    if (!connection) return pushToast("error", "That connection no longer exists.");
+    if (hit.openView) {
+      openNodeView(connection, {
+        id: hit.id ?? hit.label,
+        label: hit.label,
+        nodeType: "search.result",
+        collapsible: "none",
+        ...(hit.resource ? { resource: hit.resource } : {}),
+        openView: hit.openView,
+      });
+      return;
+    }
+    if (!hit.command) return;
+    try {
+      const result = (await window.oneclient.executeCommand(hit.command.id, [{ connectionId: connection.id, ...(hit.command.args ?? {}) }])) as
+        | { ok: boolean; error?: string; openNode?: TreeNode; revealView?: string }
+        | undefined;
+      if (result && result.ok === false) return pushToast("error", `${hit.label}: ${result.error ?? "failed"}`);
+      if (result?.openNode) openNodeView(connection, result.openNode);
+      const panelKey = result?.revealView ? panel.keyForViewId(result.revealView) : null;
+      if (panelKey) panel.show(panelKey);
+    } catch (err) {
+      pushToast("error", `${hit.label}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   function openNodeView(connection: ConnectionSummary, node: TreeNode) {
     if (!node.openView) return;
     const { viewId, title, params, icon } = node.openView;
@@ -496,6 +573,7 @@ export function App() {
         { id: "palette", label: "Command Palette…", run: () => setPaletteOpen(true) },
         { id: "color", label: "Color Theme…", separator: true, run: () => void openThemePicker("color") },
         { id: "icon", label: "Icon Theme…", run: () => void openThemePicker("icon") },
+        { id: "welcome", label: "Welcome / Feature Guide", run: openWelcome },
         { id: "plugins", label: "Plugins", separator: true, run: () => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" }) },
       ],
     });
@@ -503,6 +581,9 @@ export function App() {
 
   const paletteCommands = useMemo<PaletteCommand[]>(() => {
     const builtins: PaletteCommand[] = [
+      { id: "workbench.search", title: "Go to Anything… (Search Files, SQL Objects, …)", description: "Ctrl+P", run: () => setSearchOpen(true) },
+      { id: "workbench.findInFiles", title: "Search: Find in Files", description: "Ctrl+Shift+F", run: openFindInFiles },
+      { id: "workbench.welcome", title: "Help: Welcome / Feature Guide", run: openWelcome },
       { id: "workbench.reloadWindow", title: "Reload Window", run: () => location.reload() },
       { id: "workbench.openPluginManager", title: "Open Plugin Manager", run: () => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" }) },
       { id: "workbench.colorTheme", title: "Preferences: Color Theme…", run: () => void openThemePicker("color") },
@@ -531,19 +612,7 @@ export function App() {
       {
         id: "workbench.importConnections",
         title: "Connections: Import…",
-        run: () =>
-          void window.oneclient
-            .importConnections()
-            .then((r) => {
-              if (!r) return;
-              const parts = [`Imported ${r.added} connection${r.added === 1 ? "" : "s"}`];
-              if (r.skipped) parts.push(`${r.skipped} already existed`);
-              if (r.invalid) parts.push(`${r.invalid} invalid skipped`);
-              if (r.withoutSecrets) parts.push(`${r.withoutSecrets} need their password entered`);
-              pushToast(r.added > 0 ? "info" : "error", `${parts.join(", ")}.`);
-              for (const w of r.warnings.slice(0, 3)) pushToast("error", w);
-            })
-            .catch((err: unknown) => pushToast("error", `Import: ${err instanceof Error ? err.message : String(err)}`)),
+        run: importConnections,
       },
       { id: "workbench.revealConfig", title: "Preferences: Show oneclient.json in File Manager", run: () => void window.oneclient.revealConfigFile() },
       ...(panelViews.length ? [{ id: "workbench.togglePanel", title: "View: Toggle Panel", run: () => panel.toggle() }] : []),
@@ -574,6 +643,14 @@ export function App() {
           : "var(--activity-bar-width) 1fr",
       }}
     >
+      <div className="topbar">
+        <button className="topbar-search" onClick={() => setSearchOpen(true)} title="Search files, SQL objects and more (Ctrl+P)">
+          <ThemeIcon id="search" size={14} />
+          <span>Search files, tables, procedures…</span>
+          <kbd>Ctrl+P</kbd>
+        </button>
+      </div>
+
       <ActivityBar
         plugins={explorerPlugins}
         active={container.active}
@@ -616,29 +693,43 @@ export function App() {
                 className={`tab ${t.id === activeTabId ? "active" : ""}`}
                 onClick={() => setActiveTabId(t.id)}
                 onAuxClick={(e) => {
-                  if (e.button === 1 && t.id !== "welcome") void requestCloseTab(t.id);
+                  if (e.button === 1) void requestCloseTab(t.id);
                 }}
               >
                 {t.kind === "tier2-view" && t.resource && <TabIcon resource={t.resource} />}
                 {t.kind === "tier2-view" && !t.resource && t.icon && <AssetIcon pluginId={t.pluginId} icon={t.icon} size={14} />}
                 {t.title}
-                {t.id !== "welcome" && (
-                  <span
-                    className={`tab-close ${dirty ? "dirty" : ""}`}
-                    title={dirty ? "Unsaved changes — close" : "Close"}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void requestCloseTab(t.id);
-                    }}
-                  />
-                )}
+                <span
+                  className={`tab-close ${dirty ? "dirty" : ""}`}
+                  title={dirty ? "Unsaved changes — close" : "Close"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void requestCloseTab(t.id);
+                  }}
+                />
               </div>
             );
           })}
         </div>
 
         <div className={`tab-content ${activeTab?.kind === "tier2-view" ? "tab-content-bleed" : ""}`}>
-          {activeTab?.kind === "welcome" && <WelcomeTab />}
+          {activeTab?.kind === "welcome" && (
+            <WelcomePage
+              plugins={plugins}
+              onNewConnection={() => setNewConnectionFor({ pluginId: null })}
+              onCommandPalette={() => setPaletteOpen(true)}
+              onPlugins={() => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" })}
+              onColorTheme={() => void openThemePicker("color")}
+              onIconTheme={() => void openThemePicker("icon")}
+              onImportConnections={importConnections}
+            />
+          )}
+          {!activeTab && (
+            <div className="welcome-empty">
+              <p>No editors are open.</p>
+              <button className="welcome-action" onClick={openWelcome}>Open the Feature Guide</button>
+            </div>
+          )}
           {activeTab?.kind === "plugin-manager" && <PluginManagerPanel plugins={plugins} />}
           {activeTab?.kind === "command-result" && (
             <pre className="result">{JSON.stringify(activeTab.result, null, 2)}</pre>
@@ -682,6 +773,7 @@ export function App() {
         )}
       </div>
 
+      {searchOpen && <QuickSearch connectionCount={connections.length} onOpen={(hit) => void openSearchHit(hit)} onClose={() => setSearchOpen(false)} />}
       {paletteOpen && <CommandPalette commands={paletteCommands} onClose={() => setPaletteOpen(false)} />}
       {quickPick && <CommandPalette {...quickPick} />}
       {newConnectionFor && (
@@ -724,31 +816,3 @@ function TabIcon({ resource }: { resource: { name: string; kind: "file" | "folde
   return icon ? <AssetIcon pluginId="" icon={icon} size={14} /> : null;
 }
 
-function WelcomeTab() {
-  return (
-    <div className="welcome">
-      <div className="welcome-hero">
-        <Logo size={96} />
-        <div>
-          <h1>oneClient</h1>
-          <p className="welcome-tagline">One client for everything.</p>
-        </div>
-      </div>
-      <p>
-        The core has no infrastructure-specific code — everything you see beyond this shell comes from installed
-        plugins.
-      </p>
-      <ul className="welcome-keys">
-        <li>
-          <kbd>Ctrl+Shift+P</kbd> Command Palette
-        </li>
-        <li>
-          <kbd>Ctrl+`</kbd> Toggle Terminal
-        </li>
-        <li>
-          <kbd>+</kbd> in a sidebar's Connections section adds a connection
-        </li>
-      </ul>
-    </div>
-  );
-}

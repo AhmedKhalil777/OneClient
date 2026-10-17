@@ -11,7 +11,7 @@ let registry: ContributionRegistrySnapshot;
 const logs: string[] = [];
 
 function emptyRegistry(): ContributionRegistrySnapshot {
-  return { connectionTypes: [], explorerNodes: [], views: [], commands: [], themes: [], iconThemes: [], icons: [], extensions: [] };
+  return { connectionTypes: [], explorerNodes: [], views: [], commands: [], themes: [], iconThemes: [], searchProviders: [], icons: [], extensions: [] };
 }
 
 function service() {
@@ -159,7 +159,12 @@ describe("ThemeService", () => {
     });
 
     it("has no file icons for themes that only restyle ids", () => {
-      expect(service().getState().fileIcons).toBeUndefined();
+      mkdirSync(join(dir, "plugin", "pk"), { recursive: true });
+      writeFileSync(join(dir, "plugin", "pk", "theme.json"), JSON.stringify({ icons: {} }));
+      registry.iconThemes.push({ id: "pk", label: "Restyle only", path: "pk/theme.json", pluginId: "theme-pack" });
+      const svc = service();
+      svc.setIconTheme("pk");
+      expect(svc.getState().fileIcons).toBeUndefined();
     });
 
     it("defaults to the preferred file icon theme when installed and nothing was chosen", () => {
@@ -167,11 +172,16 @@ describe("ThemeService", () => {
       expect(service().getState().iconTheme.id).toBe("oneclient-material-icons");
     });
 
-    it("keeps an explicit choice of the plain default over the preferred theme", () => {
+    it("falls back to the default when the saved choice is gone (e.g. the old built-in theme)", () => {
       registry.iconThemes.push({ id: "oneclient-material-icons", label: "Material", path: "fi/theme.json", pluginId: "theme-pack" });
       writeFileSync(join(dir, "settings.json"), JSON.stringify({ iconTheme: "oneclient-default" }));
+      expect(service().getState().iconTheme.id).toBe("oneclient-material-icons");
+    });
+
+    it("has no icon theme (and no file icons) when none is installed", () => {
+      registry.iconThemes.length = 0;
       const s = service().getState();
-      expect(s.iconTheme.id).toBe("oneclient-default");
+      expect(s.iconTheme.id).toBe("");
       expect(s.fileIcons).toBeUndefined();
     });
   });

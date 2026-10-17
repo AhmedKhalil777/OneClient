@@ -12,6 +12,7 @@ import { ConfigStore, ConfigVersionError } from "./config/config-store.js";
 import { PluginMetadataStore } from "./db/plugin-metadata-store.js";
 import { ConnectionManager } from "./connections/connection-manager.js";
 import { registerIpcHandlers } from "./ipc/handlers.js";
+import { SearchService } from "./search/search-service.js";
 import { OutputService } from "./output/output-service.js";
 import { ExtensionHostSupervisor } from "./plugins/extension-host-supervisor.js";
 import { PluginManager, type PluginRecord } from "./plugins/plugin-manager.js";
@@ -157,11 +158,16 @@ async function main(): Promise<void> {
     (pluginId) => pluginManager.getRecord(pluginId)?.manifest?.version,
   );
 
+  const search = new SearchService(registry, connections, (pluginId, kind, target, method, args, connectionId) =>
+    supervisor.invoke(pluginId, kind, target, method, args, connectionId),
+  );
+
   registerIpcHandlers({
     themes,
     registry,
     pluginManager,
     connections,
+    search,
     config,
     supervisor,
     views,

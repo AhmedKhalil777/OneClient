@@ -41,6 +41,11 @@ export interface FeatureEditorProps {
   /** Ctrl/Cmd+S pressed. */
   onSave?: () => void;
   completionProviders?: readonly CompletionProvider[];
+  /**
+   * Select and scroll to a place in the document (1-based line and column; `length` characters are selected).
+   * Applied each time `nonce` changes — and only once `value` is non-empty, so it is safe to set before the file has loaded.
+   */
+  reveal?: { line: number; col: number; length: number; nonce: number };
 }
 
 /**
@@ -65,6 +70,7 @@ export function FeatureEditor({
   statusEnd,
   onSave,
   completionProviders = DEFAULT_PROVIDERS,
+  reveal,
 }: FeatureEditorProps) {
   const [cursor, setCursor] = useState({ line: 1, col: 1, offset: 0 });
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -136,6 +142,23 @@ export function FeatureEditor({
     },
     [updateCursor],
   );
+
+  // "Reveal": select a match and scroll it into view (e.g. clicking a result in Search).
+  const lastReveal = useRef(-1);
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!reveal || !el || el.value === "" || lastReveal.current === reveal.nonce) return;
+    lastReveal.current = reveal.nonce;
+    const lines = el.value.split("\n");
+    const lineIndex = Math.min(Math.max(reveal.line - 1, 0), lines.length - 1);
+    let offset = 0;
+    for (let i = 0; i < lineIndex; i++) offset += lines[i]!.length + 1;
+    const start = Math.min(offset + Math.max(reveal.col - 1, 0), offset + lines[lineIndex]!.length);
+    el.focus();
+    el.setSelectionRange(start, Math.min(start + Math.max(reveal.length, 0), el.value.length));
+    el.scrollTop = Math.max(0, lineIndex * LINE_HEIGHT - el.clientHeight / 3);
+    updateCursor();
+  }, [reveal, text, updateCursor]);
 
   /** Replace the whole document as one undoable edit, keeping the caret and scroll position roughly in place. */
   function replaceDocument(el: HTMLTextAreaElement, next: string) {

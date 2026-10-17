@@ -1,35 +1,88 @@
 {
   "name": "oneclient-files",
   "displayName": "Files",
-  "description": "Built-in: open a folder, browse its files, and edit and save them.",
+  "description": "Built-in: open a folder, browse its files, search them (names and text, with replace), and edit and save them.",
   "version": "0.1.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",
-  "engines": { "oneclient": "^0.1.0" },
+  "engines": {
+    "oneclient": "^0.1.0"
+  },
   "main": "dist/main.js",
   "ui": "dist/ui",
   "contributes": {
     "connectionTypes": [
-      { "id": "folder", "label": "Folder", "description": "A folder on this machine.", "category": "Files", "icon": "icons/folder-root.svg" }
+      {
+        "id": "folder",
+        "label": "Folder",
+        "description": "A folder on this machine.",
+        "category": "Files",
+        "icon": "icons/folder-root.svg"
+      }
     ],
     "explorerNodes": [
-      { "id": "files.directory", "connectionType": "folder" },
-      { "id": "files.file", "parentNodeType": "files.directory" }
+      {
+        "id": "files.directory",
+        "connectionType": "folder"
+      },
+      {
+        "id": "files.file",
+        "parentNodeType": "files.directory"
+      }
     ],
-    "views": [{ "id": "files.editor", "title": "Editor", "tier": 2, "location": "editor", "entry": "index.html" }],
+    "views": [
+      {
+        "id": "files.editor",
+        "title": "Editor",
+        "tier": 2,
+        "location": "editor",
+        "entry": "index.html"
+      },
+      {
+        "id": "files.search",
+        "title": "Search",
+        "tier": 2,
+        "location": "editor",
+        "entry": "search.html",
+        "connectionType": "folder",
+        "icon": "$(search)"
+      }
+    ],
     "commands": [
       {
         "id": "files.newFile",
         "title": "Files: New File…",
         "when": "contextValue == 'files.directory' || contextValue == 'connection' && connectionType == 'folder'",
-        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "File name" } } }
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "File name"
+            }
+          }
+        }
       },
       {
         "id": "files.newFolder",
         "title": "Files: New Folder…",
         "when": "contextValue == 'files.directory' || contextValue == 'connection' && connectionType == 'folder'",
-        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "Folder name" } } }
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Folder name"
+            }
+          }
+        }
       },
       {
         "id": "files.rename",
@@ -37,8 +90,16 @@
         "when": "contextValue == 'files.file' || contextValue == 'files.directory'",
         "inputSchema": {
           "type": "object",
-          "required": ["newName"],
-          "properties": { "newName": { "type": "string", "title": "New name", "default": "{label}" } }
+          "required": [
+            "newName"
+          ],
+          "properties": {
+            "newName": {
+              "type": "string",
+              "title": "New name",
+              "default": "{label}"
+            }
+          }
         }
       },
       {
@@ -47,9 +108,49 @@
         "when": "contextValue == 'files.file' || contextValue == 'files.directory'",
         "confirm": "Permanently delete \"{label}\"? This can't be undone."
       },
-      { "id": "files.readFile", "title": "Files: Read File", "when": "view == 'files.editor'" },
-      { "id": "files.writeFile", "title": "Files: Write File", "when": "view == 'files.editor'" }
+      {
+        "id": "files.readFile",
+        "title": "Files: Read File",
+        "when": "view == 'files.editor'"
+      },
+      {
+        "id": "files.writeFile",
+        "title": "Files: Write File",
+        "when": "view == 'files.editor'"
+      },
+      {
+        "id": "files.search",
+        "title": "Files: Search by Name",
+        "hidden": true
+      },
+      {
+        "id": "files.find",
+        "title": "Files: Find in Files",
+        "hidden": true
+      },
+      {
+        "id": "files.replace",
+        "title": "Files: Replace in Files",
+        "hidden": true
+      },
+      {
+        "id": "files.reveal",
+        "title": "Files: Reveal in Editor",
+        "hidden": true
+      }
+    ],
+    "searchProviders": [
+      {
+        "id": "files",
+        "label": "Files",
+        "command": "files.search",
+        "connectionType": "folder",
+        "order": 10,
+        "icon": "$(file)"
+      }
     ]
   },
-  "activationEvents": ["*"]
+  "activationEvents": [
+    "*"
+  ]
 }

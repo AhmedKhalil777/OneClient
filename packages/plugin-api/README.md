@@ -125,10 +125,9 @@ icons, like VS Code's Seti and Material Icon themes. The theme file
 ```
 
 Mappings that point at an id the theme doesn't define are ignored. The
-**Material Icon Theme** plugin (`packages/plugins/oneclient-material-icons`,
-1,300+ extensions, 2,000+ file names) is a declarative plugin — it has no `main`,
-so no extension-host process runs for it — and is the default icon theme when
-the user hasn't chosen one.
+**Material Icon Theme** plugin (`packages/plugins/oneclient-misc`,
+1,300+ extensions, 2,000+ file names) is contributed declaratively (`contributes.iconThemes`, no code) by the built-in
+Miscellaneous plugin, and is the default icon theme when the user hasn't chosen one.
 
 **Using it from a plugin.** A tree node that is a file or folder says so, and core
 picks the icon from the active theme (by name, then extension), falling back to
@@ -182,7 +181,7 @@ wins each single-valued feature, and `actions` are combined — so one plugin ca
 adds "Sort Lines" to every file.
 
 ```jsonc
-// oneclient-json/oneclient.json (abridged)
+// oneclient-misc/oneclient.json (abridged)
 "commands": [{ "id": "json.format", "title": "JSON: Format Document", "hidden": true }, …],
 "extensions": {
   "oneclient-files.editors": [{
@@ -194,13 +193,14 @@ adds "Sort Lines" to every file.
 }
 ```
 ```ts
-// oneclient-json/src/main.ts (abridged)
+// oneclient-misc/src/main.ts (abridged)
 context.registerCommand({ commandId: "json.format", execute: ([req]) => formatJson(req.text, req.tabSize, req.insertSpaces) });
 ```
 
-Built-in examples: `oneclient-json` (format, minify, breadcrumbs, highlighting), `oneclient-xml`
-(format, element breadcrumbs, highlighting), `oneclient-markdown` (heading outline, highlighting, preview with
-code highlighting and task lists) and `oneclient-text-tools` (wildcard actions).
+Built-in example: `oneclient-misc` contributes five editors to the point from one plugin — JSON (format, minify, breadcrumbs,
+highlighting), XML (format, element breadcrumbs, highlighting), SQL (format, statement outline, highlighting,
+keyword case), Markdown (heading outline, highlighting, preview with code
+highlighting and task lists) and text utilities (wildcard actions).
 
 ## Output channels (the Output panel)
 
@@ -218,3 +218,36 @@ export function activate(context: PluginContext) {
 - Channels are listed as "Plugin name — channel name". Every plugin also gets a **Log** channel fed by `context.logger`.
 - Entries live in memory only (most recent ~2000 per channel); users can filter by text and level, follow, and clear.
 - Don't log secrets. (The Keycloak plugin's **Requests** channel masks passwords, tokens and client secrets.)
+
+## Global search providers (the top search bar)
+
+The shell's search bar (Ctrl+P) asks every plugin that declares a search provider, in parallel, as the user types:
+
+```jsonc
+// oneclient.json
+"contributes": {
+  "commands": [{ "id": "files.search", "title": "Files: Search by Name", "hidden": true }],
+  "searchProviders": [{ "id": "files", "label": "Files", "command": "files.search", "connectionType": "folder", "order": 10 }]
+}
+```
+
+```ts
+// the command: SearchRequest → SearchResult[]
+context.registerCommand({
+  commandId: "files.search",
+  async execute([req]: [SearchRequest]): Promise<SearchResult[]> {
+    return findThings(req.connectionId, req.query, req.limit).map((t) => ({
+      id: t.path, // same id as the explorer node → opens the same tab
+      label: t.name,
+      description: t.dir,
+      resource: { name: t.name, kind: "file" }, // icon comes from the icon theme
+      openView: { viewId: "files.editor", params: { path: t.path } }, // …or: command: { id: "sql.selectTop", args: { … } }
+    }));
+  },
+});
+```
+
+Core calls the command once per saved connection of the plugin (connecting it first, with a timeout), validates and caps
+what comes back, and shows it in a group labelled with `label`. A result either opens one of the plugin's views
+(`openView`) or runs a command (`command`; the argument is `{ connectionId, ...args }` and an `openNode` in its result is opened,
+exactly like an explorer context-menu command). Failures show up as a hint under the results and never block other providers.

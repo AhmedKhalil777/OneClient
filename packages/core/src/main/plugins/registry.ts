@@ -34,6 +34,7 @@ export class ContributionRegistry {
       commands: [],
       themes: [],
       iconThemes: [],
+      searchProviders: [],
       icons: [],
       extensions: [],
     };
@@ -52,6 +53,7 @@ export class ContributionRegistry {
       }
       for (const c of contributes.themes ?? []) result.themes.push({ ...c, pluginId });
       for (const c of contributes.iconThemes ?? []) result.iconThemes.push({ ...c, pluginId });
+      for (const c of contributes.searchProviders ?? []) result.searchProviders.push({ ...c, pluginId });
       for (const c of contributes.icons ?? []) result.icons.push({ ...c, pluginId });
       for (const [point, items] of Object.entries(contributes.extensions ?? {})) {
         result.extensions.push({ point, pluginId, items: items.map((item) => ({ ...item })) });

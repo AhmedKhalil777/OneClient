@@ -10,7 +10,7 @@ import {
   normalizeFolderName,
 } from "@oneclient/plugin-api";
 import type { ContributionRegistrySnapshot } from "../../shared/types.js";
-import { BUILTIN_COLOR_THEMES, DEFAULT_COLOR_THEME, DEFAULT_ICON_THEME, PREFERRED_FILE_ICON_THEME, baseColorsFor } from "./builtin-themes.js";
+import { BUILTIN_COLOR_THEMES, DEFAULT_COLOR_THEME, DEFAULT_ICON_THEME, baseColorsFor } from "./builtin-themes.js";
 
 export interface ThemeListItem {
   id: string;
@@ -83,10 +83,7 @@ export class ThemeService {
   }
 
   listIconThemes(): ThemeListItem[] {
-    return [
-      { id: DEFAULT_ICON_THEME, label: "oneClient Default" },
-      ...this.opts.getRegistry().iconThemes.map((t) => ({ id: t.id, label: t.label, pluginId: t.pluginId })),
-    ];
+    return this.opts.getRegistry().iconThemes.map((t) => ({ id: t.id, label: t.label, pluginId: t.pluginId }));
   }
 
   /** `persist: false` is a preview (theme picker hovering) — applied but not saved. */
@@ -117,14 +114,13 @@ export class ThemeService {
   // ---- internals ----
 
   /**
-   * The icon theme in effect: the user's choice if it still exists, otherwise
-   * (no choice, or its plugin was uninstalled) the preferred file-icon theme if
-   * one is installed, otherwise oneClient's plain default.
+   * The icon theme in effect: the user's choice if it still exists, otherwise the default (Material), otherwise
+   * whichever theme is installed, otherwise none ("").
    */
   private effectiveIconThemeId(): string {
-    const ids = new Set(this.listIconThemes().map((t) => t.id));
-    if (this.iconThemeId && ids.has(this.iconThemeId)) return this.iconThemeId;
-    return ids.has(PREFERRED_FILE_ICON_THEME) ? PREFERRED_FILE_ICON_THEME : DEFAULT_ICON_THEME;
+    const ids = this.listIconThemes().map((t) => t.id);
+    if (this.iconThemeId && ids.includes(this.iconThemeId)) return this.iconThemeId;
+    return ids.includes(DEFAULT_ICON_THEME) ? DEFAULT_ICON_THEME : (ids[0] ?? "");
   }
 
   private recompute(iconsChanged = true): void {
@@ -155,7 +151,7 @@ export class ThemeService {
       this.icons = this.loadIcons(registry, iconThemeId);
       this.iconVersion++;
     }
-    const iconTheme = this.listIconThemes().find((t) => t.id === iconThemeId)!;
+    const iconTheme = this.listIconThemes().find((t) => t.id === iconThemeId) ?? { id: "", label: "None" };
     const fileIcons = this.buildFileIcons(kind);
 
     this.state = {

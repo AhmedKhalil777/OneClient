@@ -72,3 +72,5 @@ export type {
 } from "./context.js";
 
 export type { OutputChannel, OutputLevel } from "./output.js";
+
+export type { SearchProviderContribution, SearchRequest, SearchResult } from "./search.js";

@@ -155,6 +155,7 @@ export class PluginManager extends EventEmitter {
     const summaries: PluginSummary[] = this.getRecords().map((r) => ({
       id: r.id,
       displayName: r.manifest?.displayName,
+      description: r.manifest?.description,
       version: r.manifest?.version ?? "0.0.0",
       state: r.state,
       error: r.error,

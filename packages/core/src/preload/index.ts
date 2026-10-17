@@ -24,6 +24,9 @@ const api: OneClientApi = {
   createConnection: (typeId, name, config) => ipcRenderer.invoke(IpcChannel.ConnectionCreate, typeId, name, config),
   deleteConnection: (id) => ipcRenderer.invoke(IpcChannel.ConnectionDelete, id),
 
+  searchProviders: () => ipcRenderer.invoke(IpcChannel.SearchProviders),
+  runSearch: (providerId, query) => ipcRenderer.invoke(IpcChannel.SearchRun, providerId, query),
+
   exportConnections: (includeSecrets) => ipcRenderer.invoke(IpcChannel.ConnectionExport, includeSecrets),
   importConnections: () => ipcRenderer.invoke(IpcChannel.ConnectionImport),
   revealConfigFile: () => ipcRenderer.invoke(IpcChannel.ConfigReveal),

@@ -1,0 +1,281 @@
+{
+  "name": "oneclient-misc",
+  "displayName": "Miscellaneous",
+  "description": "Built-in: JSON, XML, SQL and Markdown editor support, text utilities (sort, de-duplicate, trim) and the Material Icon Theme.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "$(extensions)",
+  "engines": {
+    "oneclient": "^0.1.0"
+  },
+  "main": "dist/main.js",
+  "contributes": {
+    "commands": [
+      {
+        "id": "json.format",
+        "title": "JSON: Format Document",
+        "hidden": true
+      },
+      {
+        "id": "json.minify",
+        "title": "JSON: Minify",
+        "hidden": true
+      },
+      {
+        "id": "json.symbols",
+        "title": "JSON: Document Symbols",
+        "hidden": true
+      },
+      {
+        "id": "json.tokens",
+        "title": "JSON: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "xml.format",
+        "title": "XML: Format Document",
+        "hidden": true
+      },
+      {
+        "id": "xml.symbols",
+        "title": "XML: Document Symbols",
+        "hidden": true
+      },
+      {
+        "id": "xml.tokens",
+        "title": "XML: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "sql.format",
+        "title": "SQL: Format Document",
+        "hidden": true
+      },
+      {
+        "id": "sql.symbols",
+        "title": "SQL: Document Outline",
+        "hidden": true
+      },
+      {
+        "id": "sql.tokens",
+        "title": "SQL: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "sql.uppercaseKeywords",
+        "title": "SQL: Uppercase Keywords",
+        "hidden": true
+      },
+      {
+        "id": "sql.lowercaseKeywords",
+        "title": "SQL: Lowercase Keywords",
+        "hidden": true
+      },
+      {
+        "id": "markdown.symbols",
+        "title": "Markdown: Document Outline",
+        "hidden": true
+      },
+      {
+        "id": "markdown.tokens",
+        "title": "Markdown: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "markdown.preview",
+        "title": "Markdown: Render Preview",
+        "hidden": true
+      },
+      {
+        "id": "texttools.sortAscending",
+        "title": "Text Tools: Sort Lines Ascending",
+        "hidden": true
+      },
+      {
+        "id": "texttools.sortDescending",
+        "title": "Text Tools: Sort Lines Descending",
+        "hidden": true
+      },
+      {
+        "id": "texttools.removeDuplicates",
+        "title": "Text Tools: Remove Duplicate Lines",
+        "hidden": true
+      },
+      {
+        "id": "texttools.trimTrailingWhitespace",
+        "title": "Text Tools: Trim Trailing Whitespace",
+        "hidden": true
+      },
+      {
+        "id": "texttools.ensureFinalNewline",
+        "title": "Text Tools: Ensure Final Newline",
+        "hidden": true
+      }
+    ],
+    "extensions": {
+      "oneclient-files.editors": [
+        {
+          "id": "json",
+          "label": "JSON",
+          "extensions": [
+            "json",
+            "jsonc",
+            "geojson",
+            "topojson",
+            "webmanifest",
+            "har",
+            "code-workspace"
+          ],
+          "fileNames": [
+            ".babelrc",
+            ".eslintrc",
+            ".prettierrc",
+            ".stylelintrc",
+            ".swcrc"
+          ],
+          "format": "json.format",
+          "symbols": "json.symbols",
+          "tokens": "json.tokens",
+          "actions": [
+            {
+              "id": "minify",
+              "label": "Minify JSON",
+              "command": "json.minify"
+            }
+          ]
+        },
+        {
+          "id": "xml",
+          "label": "XML",
+          "extensions": [
+            "xml",
+            "xsd",
+            "xsl",
+            "xslt",
+            "xaml",
+            "axaml",
+            "svg",
+            "rss",
+            "atom",
+            "plist",
+            "wsdl",
+            "kml",
+            "gpx",
+            "xliff",
+            "xlf",
+            "resx",
+            "csproj",
+            "vbproj",
+            "fsproj",
+            "vcxproj",
+            "props",
+            "targets",
+            "nuspec",
+            "config",
+            "ruleset",
+            "runsettings",
+            "testsettings",
+            "manifest",
+            "appxmanifest",
+            "wxs",
+            "storyboard",
+            "xib",
+            "csdl",
+            "edmx",
+            "vsixmanifest",
+            "proj",
+            "msbuild"
+          ],
+          "format": "xml.format",
+          "symbols": "xml.symbols",
+          "tokens": "xml.tokens"
+        },
+        {
+          "id": "sql",
+          "label": "SQL",
+          "extensions": [
+            "sql",
+            "tsql",
+            "ddl",
+            "dml",
+            "prc",
+            "udf",
+            "vw"
+          ],
+          "format": "sql.format",
+          "symbols": "sql.symbols",
+          "tokens": "sql.tokens",
+          "actions": [
+            {
+              "id": "upper",
+              "label": "Uppercase SQL Keywords",
+              "command": "sql.uppercaseKeywords"
+            },
+            {
+              "id": "lower",
+              "label": "Lowercase SQL Keywords",
+              "command": "sql.lowercaseKeywords"
+            }
+          ]
+        },
+        {
+          "id": "markdown",
+          "label": "Markdown",
+          "extensions": [
+            "md",
+            "markdown",
+            "mdown",
+            "mkd",
+            "mkdn"
+          ],
+          "symbols": "markdown.symbols",
+          "tokens": "markdown.tokens",
+          "preview": "markdown.preview",
+          "previewByDefault": true
+        },
+        {
+          "id": "text-tools",
+          "label": "Text",
+          "extensions": [
+            "*"
+          ],
+          "actions": [
+            {
+              "id": "sort-asc",
+              "label": "Sort Lines Ascending",
+              "command": "texttools.sortAscending"
+            },
+            {
+              "id": "sort-desc",
+              "label": "Sort Lines Descending",
+              "command": "texttools.sortDescending"
+            },
+            {
+              "id": "dedupe",
+              "label": "Remove Duplicate Lines",
+              "command": "texttools.removeDuplicates"
+            },
+            {
+              "id": "trim",
+              "label": "Trim Trailing Whitespace",
+              "command": "texttools.trimTrailingWhitespace"
+            },
+            {
+              "id": "final-newline",
+              "label": "Ensure Final Newline",
+              "command": "texttools.ensureFinalNewline"
+            }
+          ]
+        }
+      ]
+    },
+    "iconThemes": [
+      {
+        "id": "oneclient-material-icons",
+        "label": "Material Icon Theme",
+        "path": "dist/material-icons/icon-theme.json"
+      }
+    ]
+  }
+}

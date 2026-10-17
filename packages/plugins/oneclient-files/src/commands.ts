@@ -1,7 +1,9 @@
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import type { CommandHandler, TreeNode } from "@oneclient/plugin-api";
 import { fileNode } from "./explorer-provider.js";
+import { reveal } from "./editor-hub.js";
 import { joinRel, requireRoot, resolveInRoot } from "./roots.js";
+import { type FindOptions, type ReplaceOptions, findInFiles, quickOpen, replaceInFiles } from "./search.js";
 
 /** Bigger than this and a plain-text editor stops being useful (and the IPC payload gets silly). */
 const MAX_EDITABLE_BYTES = 5 * 1024 * 1024;
@@ -61,8 +63,48 @@ function arg<T>(args: unknown[]): T {
 }
 
 /** Backs the editor view (via `ViewHostApi.invokeCommand`); each call carries the view's own connectionId. */
+/** Runs a search command, turning any failure (bad regex, folder not open…) into `{ ok: false, error }` for the view. */
+async function searchAction<T extends object>(fn: () => Promise<T>): Promise<({ ok: true } & T) | { ok: false; error: string }> {
+  try {
+    return { ok: true, ...(await fn()) };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export function createCommandHandlers(): CommandHandler[] {
   return [
+    // Global search provider (top bar): file names in this folder, best match first.
+    {
+      commandId: "files.search",
+      execute: async (args) => {
+        const { connectionId, query, limit } = arg<{ connectionId: string; query: string; limit?: number }>(args);
+        return quickOpen(connectionId, requireRoot(connectionId), String(query ?? ""), Math.min(50, Math.max(1, limit ?? 20)));
+      },
+    },
+    // Search view: find / replace text in the folder's files.
+    {
+      commandId: "files.find",
+      execute: (args) => {
+        const { connectionId, ...options } = arg<{ connectionId: string } & FindOptions>(args);
+        return searchAction(() => findInFiles(requireRoot(connectionId), options));
+      },
+    },
+    {
+      commandId: "files.replace",
+      execute: (args) => {
+        const { connectionId, ...options } = arg<{ connectionId: string } & ReplaceOptions>(args);
+        return searchAction(() => replaceInFiles(requireRoot(connectionId), options));
+      },
+    },
+    {
+      commandId: "files.reveal",
+      execute: (args) => {
+        const { connectionId, path, line, col, length } = arg<{ connectionId: string; path: string; line: number; col: number; length: number }>(args);
+        reveal(connectionId, { path, line: Number(line) || 1, col: Number(col) || 1, length: Number(length) || 0 });
+        return { ok: true };
+      },
+    },
     {
       commandId: "files.newFile",
       execute: (args) =>
