@@ -58,6 +58,12 @@ const PLUGIN_FEATURES: Record<string, string[]> = {
     "Blob view: preview and edit text / JSON / XML in the shared editor (saving keeps content type and metadata and refuses to overwrite someone else's change), image preview, properties, headers, metadata, access tier, rename / copy, download, and SAS links.",
     "Browser (⊞): one folder at a time with breadcrumbs — upload by picker or drag & drop, multi-select download / delete, new folder, container SAS. Containers and blob paths show up in the top search.",
   ],
+  "oneclient-kafka": [
+    "Connect to any Kafka cluster (Apache Kafka, Redpanda, Confluent Cloud, Event Hubs) with bootstrap servers, SASL PLAIN / SCRAM and TLS.",
+    "Explorer: brokers, topics and consumer groups. Create topics, increase partitions, empty or delete a topic, delete a group.",
+    "Topic view: browse messages from the newest, the beginning, an offset or a date/time (per partition, filterable, without committing offsets), with pretty JSON, keys and headers; produce messages with key, headers and partition; partitions with leaders, ISR and offsets; edit configuration overrides.",
+    "Consumer group view: members and their assignments, committed offsets and lag per partition with auto-refresh, and offset resets (earliest, latest, date/time). Cluster dashboard (⊞); topics and groups show up in the top search.",
+  ],
   "oneclient-redis": [
     "Connect to Redis (password, ACL user, TLS, any database); the explorer lists databases with key counts, then keys grouped by namespace (user:1:profile → user › 1 › profile).",
     "Key editor for every type: strings (pretty JSON with the file-editor smarts), hashes, lists, sets, sorted sets and streams — add, edit and delete items; TTL, rename, delete.",

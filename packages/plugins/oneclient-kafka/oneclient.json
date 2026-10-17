@@ -1,0 +1,59 @@
+{
+  "name": "oneclient-kafka",
+  "displayName": "Apache Kafka",
+  "description": "Work with Apache Kafka: brokers, topics and partitions, browse messages from any offset or time, produce messages, topic configs, consumer groups with lag and offset resets. Supports SASL and TLS.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "connectionTypes": [{ "id": "kafka", "label": "Apache Kafka", "description": "A Kafka cluster (or Redpanda, Confluent Cloud, Event Hubs for Kafka).", "category": "Messaging", "icon": "icon.svg" }],
+    "explorerNodes": [
+      { "id": "kafka.brokers", "connectionType": "kafka" },
+      { "id": "kafka.broker", "parentNodeType": "kafka.brokers" },
+      { "id": "kafka.topics", "connectionType": "kafka" },
+      { "id": "kafka.topic", "parentNodeType": "kafka.topics" },
+      { "id": "kafka.groups", "connectionType": "kafka" },
+      { "id": "kafka.group", "parentNodeType": "kafka.groups" }
+    ],
+    "views": [
+      { "id": "kafka.cluster", "title": "Kafka cluster", "tier": 2, "location": "editor", "entry": "cluster.html", "connectionType": "kafka", "icon": "$(server)" },
+      { "id": "kafka.topic", "title": "Topic", "tier": 2, "location": "editor", "entry": "topic.html" },
+      { "id": "kafka.group", "title": "Consumer group", "tier": 2, "location": "editor", "entry": "group.html" }
+    ],
+    "searchProviders": [{ "id": "kafka", "label": "Kafka topics & groups", "command": "kafka.search", "connectionType": "kafka", "order": 40, "icon": "$(list-unordered)" }],
+    "commands": [
+      { "id": "kafka.api", "title": "Kafka: API", "hidden": true },
+      { "id": "kafka.search", "title": "Kafka: Search", "hidden": true },
+      { "id": "kafka.openCluster", "title": "Kafka: Open Cluster Overview", "when": "(contextValue == 'connection' && connectionType == 'kafka') || contextValue == 'kafka.brokers'" },
+      {
+        "id": "kafka.createTopic",
+        "title": "Kafka: New Topic…",
+        "when": "(contextValue == 'connection' && connectionType == 'kafka') || contextValue == 'kafka.topics'",
+        "inputSchema": {
+          "type": "object",
+          "required": ["topicName"],
+          "properties": {
+            "topicName": { "type": "string", "title": "Name (letters, digits, '.', '_', '-')" },
+            "partitions": { "type": "number", "title": "Partitions", "default": 1 },
+            "replicationFactor": { "type": "number", "title": "Replication factor", "default": 1 }
+          }
+        }
+      },
+      { "id": "kafka.browse", "title": "Kafka: Browse Messages", "when": "contextValue == 'kafka.topic'" },
+      { "id": "kafka.produce", "title": "Kafka: Produce Message…", "when": "contextValue == 'kafka.topic'" },
+      {
+        "id": "kafka.addPartitions",
+        "title": "Kafka: Increase Partitions…",
+        "when": "contextValue == 'kafka.topic'",
+        "inputSchema": { "type": "object", "required": ["count"], "properties": { "count": { "type": "number", "title": "New total number of partitions" } } }
+      },
+      { "id": "kafka.emptyTopic", "title": "Kafka: Empty Topic (delete all messages)", "when": "contextValue == 'kafka.topic'", "confirm": "Delete every message in topic \"{label}\"? This can't be undone." },
+      { "id": "kafka.deleteTopic", "title": "Kafka: Delete Topic", "when": "contextValue == 'kafka.topic'", "confirm": "Delete topic \"{label}\" and all its messages? This can't be undone." },
+      { "id": "kafka.deleteGroup", "title": "Kafka: Delete Consumer Group", "when": "contextValue == 'kafka.group'", "confirm": "Delete consumer group \"{label}\" and its committed offsets?" }
+    ]
+  }
+}
