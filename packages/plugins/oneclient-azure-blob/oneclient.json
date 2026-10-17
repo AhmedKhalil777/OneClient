@@ -1,0 +1,71 @@
+{
+  "name": "oneclient-azure-blob",
+  "displayName": "Azure Blob Storage",
+  "description": "Browse Azure Blob Storage: containers and folders, upload and download, view and edit text, properties, metadata, access tiers and SAS links. Works with Azurite.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "engines": { "oneclient": "^0.1.0" },
+  "main": "dist/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "connectionTypes": [
+      { "id": "azure-blob", "label": "Azure Blob Storage", "description": "An Azure Storage account (or Azurite).", "category": "Cloud storage", "icon": "icon.svg" }
+    ],
+    "explorerNodes": [
+      { "id": "azblob.container", "connectionType": "azure-blob" },
+      { "id": "azblob.folder", "parentNodeType": "azblob.container" },
+      { "id": "azblob.blob", "parentNodeType": "azblob.folder" },
+      { "id": "azblob.more", "parentNodeType": "azblob.folder" }
+    ],
+    "views": [
+      { "id": "azblob.blob", "title": "Blob", "tier": 2, "location": "editor", "entry": "blob.html" },
+      { "id": "azblob.browser", "title": "Blobs", "tier": 2, "location": "editor", "entry": "browser.html", "connectionType": "azure-blob", "icon": "$(database)" }
+    ],
+    "searchProviders": [{ "id": "blobs", "label": "Azure blobs", "command": "azblob.search", "connectionType": "azure-blob", "order": 40, "icon": "$(database)" }],
+    "commands": [
+      { "id": "azblob.api", "title": "Azure Blob: API", "hidden": true },
+      { "id": "azblob.search", "title": "Azure Blob: Search", "hidden": true },
+      {
+        "id": "azblob.createContainer",
+        "title": "Azure Blob: New Container…",
+        "when": "contextValue == 'connection' && connectionType == 'azure-blob'",
+        "inputSchema": {
+          "type": "object",
+          "required": ["containerName"],
+          "properties": {
+            "containerName": { "type": "string", "title": "Name (3–63 lower-case letters, numbers, dashes)" },
+            "access": { "type": "string", "title": "Public access", "enum": ["private", "blob", "container"], "default": "private" }
+          }
+        }
+      },
+      { "id": "azblob.openBrowser", "title": "Azure Blob: Open in Browser (upload, download…)", "when": "contextValue == 'azblob.container' || contextValue == 'azblob.folder'" },
+      {
+        "id": "azblob.newFolder",
+        "title": "Azure Blob: New Folder…",
+        "when": "contextValue == 'azblob.container' || contextValue == 'azblob.folder'",
+        "inputSchema": { "type": "object", "required": ["folderName"], "properties": { "folderName": { "type": "string", "title": "Folder name" } } }
+      },
+      {
+        "id": "azblob.setAccess",
+        "title": "Azure Blob: Set Public Access…",
+        "when": "contextValue == 'azblob.container'",
+        "inputSchema": {
+          "type": "object",
+          "required": ["access"],
+          "properties": { "access": { "type": "string", "title": "Public access", "enum": ["private", "blob", "container"], "default": "private" } }
+        }
+      },
+      { "id": "azblob.downloadBlob", "title": "Azure Blob: Download to Downloads Folder", "when": "contextValue == 'azblob.blob'" },
+      { "id": "azblob.deleteBlob", "title": "Azure Blob: Delete Blob", "when": "contextValue == 'azblob.blob'", "confirm": "Delete blob \"{label}\"?" },
+      { "id": "azblob.deleteFolder", "title": "Azure Blob: Delete Folder", "when": "contextValue == 'azblob.folder'", "confirm": "Delete folder \"{label}\" and every blob in it?" },
+      {
+        "id": "azblob.deleteContainer",
+        "title": "Azure Blob: Delete Container",
+        "when": "contextValue == 'azblob.container'",
+        "confirm": "Delete container \"{label}\" and ALL its blobs? This can't be undone."
+      }
+    ]
+  }
+}

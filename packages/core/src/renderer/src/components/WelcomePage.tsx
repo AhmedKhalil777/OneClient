@@ -52,6 +52,12 @@ const PLUGIN_FEATURES: Record<string, string[]> = {
     "Developer tools: get tokens (password, client-credentials, refresh), decode JWTs, introspect, UserInfo, evaluate what a client would receive.",
     "Every request is logged to the Output panel (secrets masked).",
   ],
+  "oneclient-azure-blob": [
+    "Connect with a connection string, account name + key, a SAS URL (account or container) or the local Azurite emulator.",
+    "Explorer: containers → folders → blobs (with file-type icons). Create / delete containers and folders, set public access.",
+    "Blob view: preview and edit text / JSON / XML in the shared editor (saving keeps content type and metadata and refuses to overwrite someone else's change), image preview, properties, headers, metadata, access tier, rename / copy, download, and SAS links.",
+    "Browser (⊞): one folder at a time with breadcrumbs — upload by picker or drag & drop, multi-select download / delete, new folder, container SAS. Containers and blob paths show up in the top search.",
+  ],
   "oneclient-redis": [
     "Connect to Redis (password, ACL user, TLS, any database); the explorer lists databases with key counts, then keys grouped by namespace (user:1:profile → user › 1 › profile).",
     "Key editor for every type: strings (pretty JSON with the file-editor smarts), hashes, lists, sets, sorted sets and streams — add, edit and delete items; TTL, rename, delete.",
