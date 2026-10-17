@@ -6,6 +6,9 @@
  * (see main/assets/plugin-asset-protocol.ts), which is sandboxed to that
  * one plugin's own root directory.
  */
+import { ThemeIcon, parseIconRef } from "../theme.js";
+
+/** `icon` may also be `$(id)` — an id from the icon registry (built-in or plugin-registered), drawn via the active icon theme. */
 export function AssetIcon({
   pluginId,
   icon,
@@ -17,6 +20,8 @@ export function AssetIcon({
   size?: number;
   fallback?: string;
 }) {
+  const iconId = parseIconRef(icon);
+  if (iconId) return <ThemeIcon id={iconId} size={size} />;
   if (!icon) {
     return (
       <span style={{ fontSize: size, lineHeight: 1, display: "inline-block", width: size, textAlign: "center" }}>

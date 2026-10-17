@@ -12,6 +12,7 @@
     "typecheck": "tsc -b --noEmit && tsc -p tsconfig.ui.json --noEmit"
   },
   "dependencies": {
+    "@oneclient/editor-kit": "workspace:*",
     "@oneclient/plugin-api": "workspace:*",
     "dockerode": "^4.0.2",
     "react": "^18.3.1",

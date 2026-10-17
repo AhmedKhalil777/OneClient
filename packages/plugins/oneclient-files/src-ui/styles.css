@@ -1,11 +1,12 @@
 :root {
-  --bg: #1e1e1e;
-  --bg-bar: #252526;
-  --border: #3c3c3c;
-  --text: #cccccc;
-  --text-dim: #858585;
-  --accent: #0e70c0;
-  --danger: #f48771;
+  /* Theme tokens injected by core (fallbacks = oneClient Dark). */
+  --bg: var(--oc-editor-background, #1e1e1e);
+  --bg-bar: var(--oc-editorGroupHeader-tabsBackground, #252526);
+  --border: var(--oc-widget-border, #3c3c3c);
+  --text: var(--oc-editor-foreground, #cccccc);
+  --text-dim: var(--oc-descriptionForeground, #858585);
+  --accent: var(--oc-button-background, #0e70c0);
+  --danger: var(--oc-errorForeground, #f48771);
   --mono: Consolas, "Cascadia Code", "Courier New", monospace;
 }
 
@@ -72,7 +73,7 @@ body,
   cursor: pointer;
 }
 .btn:hover:not(:disabled) {
-  background: #3c3c3c;
+  background: var(--oc-button-secondaryHoverBackground, #3c3c3c);
 }
 .btn:disabled {
   opacity: 0.5;
@@ -84,7 +85,7 @@ body,
   color: white;
 }
 .btn-primary:hover:not(:disabled) {
-  background: #1177cc;
+  background: var(--oc-button-hoverBackground, #1177cc);
 }
 
 .body {
@@ -102,7 +103,7 @@ body,
   /* Extra bottom padding matches the textarea's horizontal scrollbar so the last line numbers stay aligned. */
   padding: 8px 12px 28px 8px;
   text-align: right;
-  color: #6e7681;
+  color: var(--oc-editorLineNumber-foreground, #6e7681);
   overflow: hidden;
   user-select: none;
 }
@@ -124,7 +125,7 @@ textarea {
   white-space: pre;
   overflow: auto;
   tab-size: 4;
-  caret-color: #aeafad;
+  caret-color: var(--oc-editorCursor-foreground, #aeafad);
 }
 
 .statusbar {

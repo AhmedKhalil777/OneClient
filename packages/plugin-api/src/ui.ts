@@ -1,3 +1,5 @@
+import type { ThemeState } from "./theme.js";
+
 /**
  * Tier 1: declarative result grids.
  *
@@ -52,6 +54,19 @@ export interface ViewHostApi {
    * a ● on its tab and asks before closing a dirty tab.
    */
   setDirty(dirty: boolean): void;
+  /**
+   * Show another view of the same plugin — e.g. a query editor revealing
+   * its "Query Results" view in the bottom panel after running.
+   */
+  revealView(viewId: string): void;
+  /**
+   * The active color/icon theme. Its colors are also applied to the view's
+   * document as `--oc-*` CSS variables automatically — this is for code that
+   * needs values in JS (e.g. a canvas or xterm.js). Null until loaded.
+   */
+  getTheme(): ThemeState | null;
+  /** Called with the new state whenever the user switches theme (and once when it first loads). */
+  onThemeChange(listener: (theme: ThemeState) => void): () => void;
 }
 
 /**

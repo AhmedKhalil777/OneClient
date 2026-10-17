@@ -1,4 +1,5 @@
 import type { JsonSchemaObject } from "./json-schema.js";
+import type { ColorThemeContribution, IconContribution, IconThemeContribution } from "./theme.js";
 
 /**
  * Shape of `oneclient.json`. This TS type and
@@ -39,6 +40,12 @@ export interface PluginManifest {
     readonly explorerNodes?: ExplorerNodeContribution[];
     readonly views?: ViewContribution[];
     readonly commands?: CommandContribution[];
+    /** Color themes (see theme.ts). */
+    readonly themes?: ColorThemeContribution[];
+    /** Icon themes that restyle icon ids. */
+    readonly iconThemes?: IconThemeContribution[];
+    /** New icon ids, usable by any plugin as `$(id)`. */
+    readonly icons?: IconContribution[];
   };
 
   /**

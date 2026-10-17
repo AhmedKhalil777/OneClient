@@ -1,7 +1,7 @@
 {
   "name": "oneclient-mssql",
   "version": "0.1.0",
-  "description": "oneClient plugin: connect to Microsoft SQL Server â€” object explorer and query editor.",
+  "description": "oneClient plugin: connect to Microsoft SQL Server — object explorer and query editor.",
   "license": "MIT",
   "private": true,
   "main": "dist/main.js",

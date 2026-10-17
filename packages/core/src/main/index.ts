@@ -17,6 +17,7 @@ import { PluginManager, type PluginRecord } from "./plugins/plugin-manager.js";
 import { ProviderDirectory } from "./plugins/provider-directory.js";
 import { ContributionRegistry } from "./plugins/registry.js";
 import { SqliteSecretStore } from "./secrets/secret-store.js";
+import { ThemeService } from "./themes/theme-service.js";
 import { ViewHostManager } from "./views/view-host-manager.js";
 import { createMainWindow } from "./windows.js";
 
@@ -53,7 +54,15 @@ async function main(): Promise<void> {
   const providers = new ProviderDirectory();
   const secrets = new SqliteSecretStore(db);
   const pluginManager = new PluginManager(pluginDirs(), registry, metadata);
-  registerPluginAssetProtocolHandler(pluginManager);
+  const themes = new ThemeService({
+    getRegistry: () => registry.snapshot(),
+    getPluginRoot: (pluginId) => pluginManager.getRecord(pluginId)?.rootDir,
+    // out/main → packages/core/resources/icons (built-in product icons)
+    builtinIconDir: join(__dirname, "../../resources/icons"),
+    settingsPath: join(app.getPath("userData"), "settings.json"),
+    log: (message) => console.warn("[themes]", message),
+  });
+  registerPluginAssetProtocolHandler(pluginManager, (id) => themes.resolveIconFile(id));
 
   const mainWindow = createMainWindow();
 
@@ -126,6 +135,7 @@ async function main(): Promise<void> {
   );
 
   registerIpcHandlers({
+    themes,
     registry,
     pluginManager,
     connections,

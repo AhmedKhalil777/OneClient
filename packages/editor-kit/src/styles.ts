@@ -5,13 +5,14 @@
  */
 const CSS = `
 :root {
-  --oc-ac-bg: #252526;
-  --oc-ac-border: #454545;
-  --oc-ac-fg: #cccccc;
-  --oc-ac-dim: #8b8b8b;
-  --oc-ac-selected-bg: #04395e;
-  --oc-ac-selected-fg: #ffffff;
-  --oc-ac-match: #2aaaff;
+  /* Follow the active oneClient theme (core injects --oc-* into every view). */
+  --oc-ac-bg: var(--oc-widget-background, #252526);
+  --oc-ac-border: var(--oc-menu-border, #454545);
+  --oc-ac-fg: var(--oc-foreground, #cccccc);
+  --oc-ac-dim: var(--oc-descriptionForeground, #8b8b8b);
+  --oc-ac-selected-bg: var(--oc-list-activeSelectionBackground, #04395e);
+  --oc-ac-selected-fg: var(--oc-list-activeSelectionForeground, #ffffff);
+  --oc-ac-match: var(--oc-list-highlightForeground, #2aaaff);
   --oc-ac-font: -apple-system, "Segoe UI", system-ui, sans-serif;
   --oc-ac-font-size: 13px;
 }

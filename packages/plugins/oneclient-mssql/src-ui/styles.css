@@ -1,12 +1,13 @@
 :root {
-  --bg: #1e1e1e;
-  --bg-bar: #252526;
-  --bg-elevated: #2d2d30;
-  --border: #3c3c3c;
-  --text: #d4d4d4;
-  --text-dim: #858585;
-  --accent: #0e70c0;
-  --danger: #f48771;
+  /* Theme tokens injected by core (fallbacks = oneClient Dark). */
+  --bg: var(--oc-editor-background, #1e1e1e);
+  --bg-bar: var(--oc-editorGroupHeader-tabsBackground, #252526);
+  --bg-elevated: var(--oc-widget-background, #2d2d30);
+  --border: var(--oc-widget-border, #3c3c3c);
+  --text: var(--oc-editor-foreground, #d4d4d4);
+  --text-dim: var(--oc-descriptionForeground, #858585);
+  --accent: var(--oc-button-background, #0e70c0);
+  --danger: var(--oc-errorForeground, #f48771);
   --mono: Consolas, "Cascadia Mono", "Courier New", monospace;
 }
 
@@ -54,7 +55,7 @@ body.dragging {
 }
 .db-select {
   min-width: 160px;
-  background: #3c3c3c;
+  background: var(--oc-input-background, #3c3c3c);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 3px;
@@ -71,7 +72,7 @@ body.dragging {
   cursor: pointer;
 }
 .btn:hover:not(:disabled) {
-  background: #3c3c3c;
+  background: var(--oc-input-background, #3c3c3c);
   border-color: var(--border);
 }
 .btn:disabled {
@@ -79,7 +80,7 @@ body.dragging {
   cursor: default;
 }
 .btn-run:not(:disabled) {
-  color: #89d185;
+  color: var(--oc-successForeground, #89d185);
 }
 
 /* ---- layout ---- */
@@ -89,46 +90,78 @@ body.dragging {
   flex-direction: column;
   min-height: 0;
 }
+/* Query window: toolbar + editor, nothing else (results live in the app's bottom panel). */
 .editor-pane {
-  flex-grow: 0;
-  flex-shrink: 0;
-  min-height: 0;
-  display: flex;
-}
-.splitter {
-  height: 5px;
-  flex-shrink: 0;
-  cursor: row-resize;
-  background: var(--bg-bar);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-.splitter:hover {
-  background: var(--accent);
-}
-.results-pane {
   flex: 1;
   min-height: 0;
   display: flex;
+}
+.spacer {
+  flex: 1;
+}
+.run-badge {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 1px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.run-badge:hover {
+  border-color: var(--border);
+}
+.run-badge.running {
+  color: var(--oc-textLink-foreground, #9cdcfe);
+}
+.run-badge.ok {
+  color: var(--oc-successForeground, #89d185);
+}
+.run-badge.error {
+  color: var(--danger);
+}
+.run-badge.warn {
+  color: var(--oc-warningForeground, #e5c07b);
+}
+.toolbar-info {
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+/* Query Results (bottom panel view): flush with the panel — no extra chrome. */
+.results-panel {
+  display: flex;
   flex-direction: column;
+  height: 100%;
 }
 .results-tabs {
   display: flex;
-  background: var(--bg-bar);
-  border-bottom: 1px solid var(--border);
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--oc-panel-border, #2b2b2b);
 }
 .results-tabs button {
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 1px solid transparent;
   color: var(--text-dim);
-  padding: 5px 14px;
+  padding: 4px 8px;
   font: inherit;
+  font-size: 12px;
   cursor: pointer;
 }
 .results-tabs button.active {
   color: var(--text);
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--text);
+}
+.results-source {
+  color: var(--text-dim);
+  font-size: 12px;
 }
 .results-body {
   flex: 1;
@@ -155,13 +188,13 @@ body.dragging {
   /* Bottom padding matches the textarea's horizontal scrollbar so numbers stay aligned. */
   padding: 6px 10px 26px 6px;
   text-align: right;
-  color: #6e7681;
+  color: var(--oc-editorLineNumber-foreground, #6e7681);
   overflow: hidden;
   user-select: none;
-  border-right: 1px solid #2a2a2a;
+  border-right: 1px solid var(--oc-widget-border, #2a2a2a);
 }
 .sql-gutter .current {
-  color: var(--text);
+  color: var(--oc-editorLineNumber-activeForeground, #cccccc);
 }
 .sql-surface {
   position: relative;
@@ -191,35 +224,35 @@ body.dragging {
   outline: none;
   background: transparent;
   color: transparent;
-  caret-color: #aeafad;
+  caret-color: var(--oc-editorCursor-foreground, #aeafad);
 }
 .sql-input::selection {
-  background: rgba(38, 79, 120, 0.85);
+  background: var(--oc-editor-selectionBackground, rgba(38, 79, 120, 0.85));
   color: transparent;
 }
 .t-keyword {
-  color: #569cd6;
+  color: var(--oc-syntax-keyword, #569cd6);
 }
 .t-op {
-  color: #9a9a9a;
+  color: var(--oc-syntax-operator, #9a9a9a);
 }
 .t-type {
-  color: #4ec9b0;
+  color: var(--oc-syntax-type, #4ec9b0);
 }
 .t-func {
-  color: #dcdcaa;
+  color: var(--oc-syntax-function, #dcdcaa);
 }
 .t-string {
-  color: #ce9178;
+  color: var(--oc-syntax-string, #ce9178);
 }
 .t-comment {
-  color: #6a9955;
+  color: var(--oc-syntax-comment, #6a9955);
 }
 .t-number {
-  color: #b5cea8;
+  color: var(--oc-syntax-number, #b5cea8);
 }
 .t-var {
-  color: #9cdcfe;
+  color: var(--oc-syntax-variable, #9cdcfe);
 }
 
 /* ---- results grid ---- */
@@ -256,7 +289,7 @@ body.dragging {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--bg-elevated);
+  background: var(--oc-grid-headerBackground, #2d2d30);
 }
 .grid-row {
   position: absolute;
@@ -270,8 +303,8 @@ body.dragging {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-right: 1px solid #2f2f2f;
-  border-bottom: 1px solid #2f2f2f;
+  border-right: 1px solid var(--oc-grid-border, #2f2f2f);
+  border-bottom: 1px solid var(--oc-grid-border, #2f2f2f);
   cursor: default;
 }
 .grid-cell.num {
@@ -279,7 +312,7 @@ body.dragging {
 }
 .grid-cell.null {
   font-style: italic;
-  color: #bfa94f;
+  color: var(--oc-grid-nullForeground, #bfa94f);
   background: rgba(255, 238, 150, 0.07);
 }
 .grid-head {
@@ -300,7 +333,7 @@ body.dragging {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: var(--bg-elevated);
+  background: var(--oc-grid-headerBackground, #2d2d30);
   color: var(--text-dim);
   text-align: right;
 }
@@ -310,8 +343,8 @@ body.dragging {
 }
 .grid-row.selected .grid-cell,
 .grid-cell.selected {
-  background: #264f78;
-  color: #fff;
+  background: var(--oc-list-activeSelectionBackground, #264f78);
+  color: var(--oc-list-activeSelectionForeground, #ffffff);
 }
 .grid-note {
   padding: 3px 8px;
@@ -348,18 +381,18 @@ body.dragging {
   flex: 1;
 }
 .statusbar.running {
-  background: #3a3d41;
+  background: var(--oc-button-secondaryBackground, #3a3d41);
   color: var(--text);
 }
 .statusbar.ok {
-  background: #1e3a24;
-  color: #b5e8bc;
+  background: color-mix(in srgb, var(--oc-successForeground, #3fb950) 22%, var(--bg));
+  color: var(--text);
 }
 .statusbar.error {
-  background: #4b1d1d;
-  color: #ffc6c6;
+  background: color-mix(in srgb, var(--oc-errorForeground, #f48771) 22%, var(--bg));
+  color: var(--text);
 }
 .statusbar.warn {
-  background: #4a3c12;
-  color: #ffe7a3;
+  background: color-mix(in srgb, var(--oc-warningForeground, #d7a32e) 22%, var(--bg));
+  color: var(--text);
 }

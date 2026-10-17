@@ -37,6 +37,7 @@ function queryWindow(opts: { database?: string | undefined; sql?: string; autoru
   if (opts.sql) params.sql = opts.sql;
   if (opts.autorun) params.autorun = "1";
   const title = opts.title ?? `SQLQuery${queryCounter}.sql`;
+  params.title = title; // the window labels its results in the Query Results panel with this
   return {
     id: params.windowId!,
     label: title,

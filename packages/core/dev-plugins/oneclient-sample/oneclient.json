@@ -11,6 +11,8 @@
     "connectionTypes": [{ "id": "sample", "label": "Sample (in-memory)", "category": "Dev", "icon": "icon.svg" }],
     "explorerNodes": [{ "id": "sample.item", "connectionType": "sample" }],
     "commands": [{ "id": "sample.sayHello", "title": "Sample: Say Hello" }],
+    "themes": [{ "id": "sample-solarized-dark", "label": "Solarized Dark (sample)", "uiTheme": "dark", "path": "themes/solarized-dark.json" }],
+    "iconThemes": [{ "id": "sample-colorful", "label": "Colorful (sample)", "path": "icon-theme/icon-theme.json" }],
     "views": [
       {
         "id": "sample.dashboard",

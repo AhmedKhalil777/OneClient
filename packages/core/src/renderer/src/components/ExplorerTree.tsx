@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { TreeNode } from "@oneclient/plugin-api";
+import { ThemeIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
 
 /** Called when a node with `openView` is clicked. */
@@ -71,7 +72,7 @@ export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenVi
         }}
         title={node.label}
       >
-        <span className="tree-caret">{canExpand ? (expanded ? "▾" : "▸") : ""}</span>
+        <span className="tree-caret">{canExpand && <ThemeIcon id={expanded ? "chevron-down" : "chevron-right"} />}</span>
         <AssetIcon pluginId={pluginId} icon={node.icon} size={14} fallback={canExpand ? "📁" : "•"} />
         <span className="tree-label">{node.label}</span>
       </div>

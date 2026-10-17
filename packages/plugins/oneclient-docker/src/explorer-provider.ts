@@ -3,12 +3,16 @@ import { requireSession } from "./sessions.js";
 
 const ROOT_NODE_TYPES = ["docker.containers", "docker.images", "docker.volumes", "docker.networks"];
 
+/**
+ * Registry icons. "folder" is core's; the docker-* ids are registered by this plugin
+ * (contributes.icons) so other plugins and icon themes can use/restyle them too.
+ */
 const ICON = {
-  folder: "icons/folder.svg",
-  container: "icons/container.svg",
-  image: "icons/image.svg",
-  volume: "icons/volume.svg",
-  network: "icons/network.svg",
+  folder: "$(folder)",
+  container: "$(docker-container)",
+  image: "$(docker-image)",
+  volume: "$(docker-volume)",
+  network: "$(docker-network)",
 };
 
 export function createExplorerProvider(): ExplorerProvider {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { CommandContribution, ConnectionTypeContribution, TreeNode, ViewContribution } from "@oneclient/plugin-api";
 import type { ConnectionSummary, PluginSummary } from "../../../shared/types.js";
 import type { ViewContainerId } from "./ActivityBar.js";
+import { ThemeIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
 import { ConnectionRootNodes, type NodeContextMenuFn, type OpenNodeViewFn } from "./ExplorerTree.js";
 
@@ -126,10 +127,10 @@ function PluginContainer({
           actions={
             <>
               <button className="icon-button" title="New Connection" disabled={!canConnect} onClick={onNewConnection}>
-                +
+                <ThemeIcon id="add" />
               </button>
               <button className="icon-button" title="Refresh" onClick={() => setRefreshKey((k) => k + 1)}>
-                ⟳
+                <ThemeIcon id="refresh" />
               </button>
             </>
           }
@@ -190,7 +191,7 @@ function PluginsContainer({ plugins, onOpenPluginManager }: { plugins: PluginSum
         count={plugins.length}
         actions={
           <button className="icon-button" title="Open Plugin Manager" onClick={onOpenPluginManager}>
-            ⚙
+            <ThemeIcon id="gear" />
           </button>
         }
       >
@@ -240,7 +241,7 @@ function SidebarSection({
   return (
     <div className="sidebar-section">
       <div className="sidebar-section-title" onClick={toggle}>
-        <span className="tree-caret">{expanded ? "▾" : "▸"}</span>
+        <span className="tree-caret"><ThemeIcon id={expanded ? "chevron-down" : "chevron-right"} /></span>
         <span>{title.toUpperCase()}</span>
         {count !== undefined && <span className="section-count">{count}</span>}
         {actions && (
@@ -295,7 +296,7 @@ function ConnectionRow({
           onContextMenu(e, undefined, refreshRoot);
         }}
       >
-        <span className="tree-caret">{expanded ? "▾" : "▸"}</span>
+        <span className="tree-caret"><ThemeIcon id={expanded ? "chevron-down" : "chevron-right"} /></span>
         <AssetIcon pluginId={connection.pluginId} icon={icon} />
         <span>{connection.name}</span>
         <span className="row-actions">
@@ -308,7 +309,7 @@ function ConnectionRow({
                 onOpenDashboard();
               }}
             >
-              ⊞
+              <ThemeIcon id="results" />
             </button>
           )}
           <button
@@ -319,7 +320,7 @@ function ConnectionRow({
               onContextMenu(e, undefined, refreshRoot);
             }}
           >
-            ⋯
+            <ThemeIcon id="ellipsis" />
           </button>
         </span>
       </div>

@@ -32,6 +32,9 @@ export class ContributionRegistry {
       explorerNodes: [],
       views: [],
       commands: [],
+      themes: [],
+      iconThemes: [],
+      icons: [],
     };
     for (const [pluginId, contributes] of this.byPlugin) {
       for (const c of contributes.connectionTypes ?? []) {
@@ -46,6 +49,9 @@ export class ContributionRegistry {
       for (const c of contributes.commands ?? []) {
         result.commands.push({ ...c, pluginId });
       }
+      for (const c of contributes.themes ?? []) result.themes.push({ ...c, pluginId });
+      for (const c of contributes.iconThemes ?? []) result.iconThemes.push({ ...c, pluginId });
+      for (const c of contributes.icons ?? []) result.icons.push({ ...c, pluginId });
     }
     return result;
   }

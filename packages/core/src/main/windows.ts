@@ -9,6 +9,10 @@ export function createMainWindow(): BrowserWindow {
     minHeight: 480,
     show: false,
     autoHideMenuBar: true,
+    title: "oneClient",
+    backgroundColor: "#1e1e1e",
+    // out/main → packages/core/resources (regenerate from logo.svg with `pnpm run icons`).
+    icon: join(__dirname, "../../resources/icon.png"),
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       contextIsolation: true,

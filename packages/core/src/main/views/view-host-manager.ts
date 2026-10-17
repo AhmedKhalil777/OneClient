@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type BrowserWindow, WebContentsView, ipcMain } from "electron";
+import type { WorkbenchShortcut } from "../../shared/ipc-contract.js";
 
 export interface ViewBounds {
   x: number;
@@ -50,6 +51,11 @@ export class ViewHostManager {
       const instance = [...this.instances.values()].find((i) => i.view.webContents === event.sender);
       if (instance) this.onMessageFromView(instance.pluginId, instance.viewId, instance.connectionId, message);
     });
+    ipcMain.on("oneclient-view:reveal", (event, viewId: unknown) => {
+      const instance = [...this.instances.values()].find((i) => i.view.webContents === event.sender);
+      // Only the requesting plugin's own views can be revealed (pluginId comes from main-side state).
+      if (instance && typeof viewId === "string") for (const listener of this.revealListeners) listener(instance.pluginId, viewId);
+    });
     ipcMain.on("oneclient-view:dirty", (event, dirty: unknown) => {
       const instance = [...this.instances.values()].find((i) => i.view.webContents === event.sender);
       if (instance) for (const listener of this.dirtyListeners) listener(instance.instanceId, dirty === true);
@@ -57,6 +63,24 @@ export class ViewHostManager {
   }
 
   private readonly dirtyListeners = new Set<(instanceId: string, dirty: boolean) => void>();
+  private readonly shortcutListeners = new Set<(shortcut: WorkbenchShortcut) => void>();
+  private readonly revealListeners = new Set<(pluginId: string, viewId: string) => void>();
+
+  /** A view asked to show another view of its plugin (`ViewHostApi.revealView`). */
+  onReveal(listener: (pluginId: string, viewId: string) => void): () => void {
+    this.revealListeners.add(listener);
+    return () => this.revealListeners.delete(listener);
+  }
+
+  onShortcut(listener: (shortcut: WorkbenchShortcut) => void): () => void {
+    this.shortcutListeners.add(listener);
+    return () => this.shortcutListeners.delete(listener);
+  }
+
+  focus(instanceId: string): void {
+    const wc = this.instances.get(instanceId)?.view.webContents;
+    if (wc && !wc.isDestroyed()) wc.focus();
+  }
 
   /** A view reported unsaved changes via `ViewHostApi.setDirty`. */
   onDirtyChanged(listener: (instanceId: string, dirty: boolean) => void): () => void {
@@ -95,6 +119,19 @@ export class ViewHostManager {
     if (opts.connectionId) url.searchParams.set("connectionId", opts.connectionId);
     else url.searchParams.delete("connectionId");
 
+    // A focused view gets every key press, so workbench shortcuts would be dead while it has focus.
+    // Catch them before the page sees them and hand them to the app shell instead.
+    view.webContents.on("before-input-event", (event, input) => {
+      if (input.type !== "keyDown") return;
+      const mod = input.control || input.meta;
+      let shortcut: WorkbenchShortcut | null = null;
+      if (mod && !input.shift && !input.alt && (input.key === "`" || input.code === "Backquote")) shortcut = "togglePanel";
+      else if (mod && input.shift && input.key.toLowerCase() === "p") shortcut = "commandPalette";
+      if (!shortcut) return;
+      event.preventDefault();
+      for (const listener of this.shortcutListeners) listener(shortcut);
+    });
+
     view.webContents.on("did-fail-load", (_e, code, desc) => {
       console.error(`[view:${opts.instanceId}] did-fail-load`, code, desc, url.href);
     });
@@ -117,14 +154,22 @@ export class ViewHostManager {
   }
 
   setBounds(instanceId: string, bounds: ViewBounds): void {
-    this.instances.get(instanceId)?.view.setBounds(bounds);
+    const instance = this.instances.get(instanceId);
+    if (instance && !instance.view.webContents.isDestroyed()) instance.view.setBounds(bounds);
+  }
+
+  /** Theme changed: every view's preload re-applies the colors (and icon cache version). */
+  broadcastTheme(state: unknown): void {
+    for (const instance of this.instances.values()) {
+      if (!instance.view.webContents.isDestroyed()) instance.view.webContents.send("oneclient-view:theme", state);
+    }
   }
 
   /** Push a message to every open instance of `viewId` scoped to `connectionId` (normally exactly one). */
   push(viewId: string, connectionId: string | undefined, message: unknown): void {
     for (const instance of this.instances.values()) {
       if (instance.viewId === viewId && instance.connectionId === connectionId) {
-        instance.view.webContents.send("oneclient-view:push", message);
+        if (!instance.view.webContents.isDestroyed()) instance.view.webContents.send("oneclient-view:push", message);
       }
     }
   }
@@ -132,9 +177,11 @@ export class ViewHostManager {
   close(instanceId: string): void {
     const instance = this.instances.get(instanceId);
     if (!instance) return;
-    this.window.contentView.removeChildView(instance.view);
-    instance.view.webContents.close();
     this.instances.delete(instanceId);
+    // On quit the window (and with it the views) is often already destroyed by the time
+    // before-quit cleanup runs — touching it then throws "Object has been destroyed".
+    if (!this.window.isDestroyed()) this.window.contentView.removeChildView(instance.view);
+    if (!instance.view.webContents.isDestroyed()) instance.view.webContents.close();
   }
 
   closeAll(): void {

@@ -31,9 +31,34 @@ export const IpcChannel = {
   ViewClose: "oneclient:view:close",
   ViewSetBounds: "oneclient:view:setBounds",
   ViewDirtyChanged: "oneclient:view:dirtyChanged",
+  ViewFocus: "oneclient:view:focus",
+
+  /** A workbench shortcut pressed while focus was inside a Tier 2 view (which swallows key events). */
+  Shortcut: "oneclient:shortcut",
+  /** A view asked to show another view of its plugin. */
+  RevealView: "oneclient:view:reveal",
 
   DialogPickDirectory: "oneclient:dialog:pickDirectory",
+
+  ThemeGetState: "oneclient:theme:getState",
+  ThemeChanged: "oneclient:theme:changed",
+  ThemeListColor: "oneclient:theme:listColor",
+  ThemeListIcon: "oneclient:theme:listIcon",
+  ThemeSetColor: "oneclient:theme:setColor",
+  ThemeSetIcon: "oneclient:theme:setIcon",
 } as const;
+
+import type { ThemeKind, ThemeState } from "@oneclient/plugin-api";
+
+export interface ThemeListItem {
+  id: string;
+  label: string;
+  kind?: ThemeKind;
+  pluginId?: string;
+}
+
+/** Workbench-level shortcuts that must work even while a Tier 2 view has focus. */
+export type WorkbenchShortcut = "togglePanel" | "commandPalette";
 
 export interface ViewBounds {
   x: number;
@@ -86,7 +111,19 @@ export interface OneClientApi {
   setViewBounds(instanceId: string, bounds: ViewBounds): Promise<void>;
   /** A Tier 2 view instance gained/lost unsaved changes (`ViewHostApi.setDirty`). */
   onViewDirtyChanged(listener: (event: { instanceId: string; dirty: boolean }) => void): () => void;
+  /** Give keyboard focus to a Tier 2 view instance (e.g. the terminal when its panel opens). */
+  focusView(instanceId: string): Promise<void>;
+  onShortcut(listener: (shortcut: WorkbenchShortcut) => void): () => void;
+  onRevealView(listener: (event: { pluginId: string; viewId: string }) => void): () => void;
 
   /** Native "select folder" dialog; resolves to the chosen absolute path, or null if cancelled. */
   pickDirectory(defaultPath?: string): Promise<string | null>;
+
+  getThemeState(): Promise<ThemeState>;
+  onThemeChanged(listener: (state: ThemeState) => void): () => void;
+  listColorThemes(): Promise<ThemeListItem[]>;
+  listIconThemes(): Promise<ThemeListItem[]>;
+  /** `persist: false` previews without saving (theme picker). */
+  setColorTheme(id: string, persist?: boolean): Promise<void>;
+  setIconTheme(id: string, persist?: boolean): Promise<void>;
 }

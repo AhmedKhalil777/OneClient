@@ -31,8 +31,18 @@ const api: OneClientApi = {
   closeView: (instanceId) => ipcRenderer.invoke(IpcChannel.ViewClose, instanceId),
   setViewBounds: (instanceId, bounds) => ipcRenderer.invoke(IpcChannel.ViewSetBounds, instanceId, bounds),
   onViewDirtyChanged: (listener) => onEvent(IpcChannel.ViewDirtyChanged, listener),
+  focusView: (instanceId) => ipcRenderer.invoke(IpcChannel.ViewFocus, instanceId),
+  onShortcut: (listener) => onEvent(IpcChannel.Shortcut, listener),
+  onRevealView: (listener) => onEvent(IpcChannel.RevealView, listener),
 
   pickDirectory: (defaultPath) => ipcRenderer.invoke(IpcChannel.DialogPickDirectory, defaultPath),
+
+  getThemeState: () => ipcRenderer.invoke(IpcChannel.ThemeGetState),
+  onThemeChanged: (listener) => onEvent(IpcChannel.ThemeChanged, listener),
+  listColorThemes: () => ipcRenderer.invoke(IpcChannel.ThemeListColor),
+  listIconThemes: () => ipcRenderer.invoke(IpcChannel.ThemeListIcon),
+  setColorTheme: (id, persist) => ipcRenderer.invoke(IpcChannel.ThemeSetColor, id, persist ?? true),
+  setIconTheme: (id, persist) => ipcRenderer.invoke(IpcChannel.ThemeSetIcon, id, persist ?? true),
 };
 
 contextBridge.exposeInMainWorld("oneclient", api);

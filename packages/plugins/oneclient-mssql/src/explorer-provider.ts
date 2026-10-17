@@ -2,16 +2,17 @@ import type { ExplorerProvider, TreeNode } from "@oneclient/plugin-api";
 import { formatType, listColumns, listDatabases, listIndexes, listObjects } from "./metadata.js";
 import { requireSession } from "./sessions.js";
 
+/** Registry icons (core's built-in set) — they follow the user's icon theme. */
 const ICON = {
-  folder: "icons/folder.svg",
-  database: "icons/database.svg",
-  table: "icons/table.svg",
-  view: "icons/view.svg",
-  procedure: "icons/procedure.svg",
-  function: "icons/function.svg",
-  column: "icons/column.svg",
-  key: "icons/key.svg",
-  index: "icons/index.svg",
+  folder: "$(folder)",
+  database: "$(database)",
+  table: "$(table)",
+  view: "$(view)",
+  procedure: "$(procedure)",
+  function: "$(function)",
+  column: "$(column)",
+  key: "$(key)",
+  index: "$(index)",
 };
 
 /** Database-scoped nodes carry the database; object-scoped ones also carry schema + name. */

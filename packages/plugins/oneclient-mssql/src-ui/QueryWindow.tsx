@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createSqlCompletionProvider } from "./completion.js";
 import {
-  type QueryRun,
   type ServerInfo,
   autorun,
   cancelQuery,
@@ -10,70 +8,97 @@ import {
   initialSql,
   listDatabases,
   serverInfo,
+  windowId,
 } from "./api.js";
-import { ResultGrid } from "./ResultGrid.js";
+import { createSqlCompletionProvider } from "./completion.js";
+import { formatElapsed } from "./format.js";
+import type { ToQueryWindow } from "./protocol.js";
 import { SqlEditor, type SqlEditorHandle } from "./SqlEditor.js";
 
 type Status =
   | { kind: "idle" }
   | { kind: "running"; started: number; queryId: string }
-  | { kind: "done"; run: QueryRun }
+  | { kind: "done"; hasErrors: boolean; cancelled: boolean; elapsedMs: number; rows: number }
   | { kind: "failed"; error: string };
 
-/** One SSMS query window: editor on top, Results/Messages below, status bar at the bottom. */
+const RESULTS_VIEW = "mssql.results";
+
+/**
+ * One SSMS-style query window: toolbar + editor. Results and messages show in
+ * the app's shared bottom panel ("Query Results"), not inside this tab — the
+ * backend streams them there and tells this window when the run is done.
+ */
 export function QueryWindow() {
   const [sql, setSql] = useState(initialSql);
   const [database, setDatabase] = useState<string | undefined>(initialDatabase);
   const [databases, setDatabases] = useState<string[]>([]);
   const [info, setInfo] = useState<ServerInfo | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [tab, setTab] = useState<"results" | "messages">("results");
-  const [showResults, setShowResults] = useState(true);
-  const [split, setSplit] = useState(0.45); // editor share of the height
   const [now, setNow] = useState(Date.now());
   const editorRef = useRef<SqlEditorHandle>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
+  const title = useMemo(() => document.title, []);
 
-  // IntelliSense reads the dropdown's database through a ref so the provider is created once.
   const databaseRef = useRef(database);
   databaseRef.current = database;
+  const infoRef = useRef(info);
+  infoRef.current = info;
   const completion = useMemo(() => createSqlCompletionProvider(() => databaseRef.current), []);
   const completionProviders = useMemo(() => [completion.provider], [completion]);
 
   const running = status.kind === "running";
 
   const execute = useCallback(
-    async (override?: { sql: string; lineOffset: number }) => {
+    (override?: { sql: string; lineOffset: number }) => {
       if (status.kind === "running") return;
       const runnable = override ?? editorRef.current?.getRunnable() ?? { sql, lineOffset: 1 };
       if (!runnable.sql.trim()) return;
       const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       setStatus({ kind: "running", started: Date.now(), queryId });
-      setShowResults(true);
-      try {
-        const run = await executeQuery({ queryId, sql: runnable.sql, database, lineOffset: runnable.lineOffset });
-        if (!run.ok) {
-          setStatus({ kind: "failed", error: run.error });
-          setTab("messages");
-          return;
-        }
-        setStatus({ kind: "done", run });
-        if (run.database) setDatabase(run.database);
-        // The script may have created/altered/dropped objects — refresh IntelliSense lazily.
-        if (/\b(CREATE|ALTER|DROP|SELECT\s+[\s\S]*\bINTO|sp_rename)\b/i.test(runnable.sql)) completion.invalidate();
-        // SSMS shows Messages when there's nothing else to look at.
-        setTab(run.resultSets.length === 0 || (run.hasErrors && run.resultSets.length === 0) ? "messages" : "results");
-      } catch (err) {
-        setStatus({ kind: "failed", error: err instanceof Error ? err.message : String(err) });
-        setTab("messages");
-      }
+      window.oneclientView.postMessage({
+        type: "execute",
+        windowId,
+        title: windowTitle(),
+        queryId,
+        sql: runnable.sql,
+        database: databaseRef.current,
+        lineOffset: runnable.lineOffset,
+        info: infoRef.current && { ...infoRef.current, database: databaseRef.current },
+      });
+      window.oneclientView.revealView(RESULTS_VIEW);
+      // The script may create/alter/drop objects — refresh IntelliSense lazily.
+      if (/\b(CREATE|ALTER|DROP|SELECT\s+[\s\S]*\bINTO|sp_rename)\b/i.test(runnable.sql)) completion.invalidate();
     },
-    [status.kind, sql, database, completion],
+    [status.kind, sql, completion],
   );
 
   const cancel = useCallback(() => {
     if (status.kind === "running") void cancelQuery(status.queryId);
   }, [status]);
+
+  // Backend → this window (filter: every window of the connection gets these).
+  useEffect(() => {
+    const off = window.oneclientView.onMessage((raw) => {
+      const msg = raw as ToQueryWindow;
+      if (msg.windowId !== windowId) return;
+      if (msg.type === "done") {
+        if (msg.database) setDatabase(msg.database);
+        setStatus({ kind: "done", hasErrors: msg.hasErrors, cancelled: msg.cancelled, elapsedMs: msg.elapsedMs, rows: msg.rows });
+      } else if (msg.type === "failed") {
+        setStatus({ kind: "failed", error: msg.error });
+      } else if (msg.type === "goToLine") {
+        editorRef.current?.goToLine(msg.line);
+      }
+    });
+    window.oneclientView.postMessage({ type: "hello", windowId });
+    return off;
+  }, []);
+
+  // Tell Query Results which window is active whenever this one gets focus (core focuses it on tab switch).
+  useEffect(() => {
+    const onFocus = () => window.oneclientView.postMessage({ type: "activate", windowId, title: windowTitle() });
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
 
   // Initial load: server info, database list, the session's current database, then autorun (Select Top 1000).
   useEffect(() => {
@@ -85,7 +110,11 @@ export function QueryWindow() {
         const r = await executeQuery({ queryId: "init", sql: "" }).catch(() => null);
         if (r?.ok && r.database) setDatabase(r.database);
       }
-      if (autorun && initialSql) void execute({ sql: initialSql, lineOffset: 1 });
+      if (autorun && initialSql) {
+        // Wait briefly for server info so the results status bar can show it.
+        await new Promise((r) => setTimeout(r, 150));
+        execute({ sql: initialSql, lineOffset: 1 });
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -96,45 +125,27 @@ export function QueryWindow() {
     return () => clearInterval(t);
   }, [running]);
 
-  // SSMS shortcuts: F5 / Ctrl+E execute, Alt+Break cancel, Ctrl+R toggle the results pane.
+  // SSMS shortcuts: F5 / Ctrl+E execute, Alt+Break (or Esc while running) cancel, Ctrl+R show results.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.ctrlKey || e.metaKey;
       if (e.key === "F5" || (mod && e.key.toLowerCase() === "e")) {
         e.preventDefault();
-        void execute();
+        execute();
       } else if ((e.altKey && (e.key === "Pause" || e.key === "Cancel")) || (e.key === "Escape" && running)) {
         e.preventDefault();
         cancel();
       } else if (mod && e.key.toLowerCase() === "r") {
         e.preventDefault();
-        setShowResults((v) => !v);
+        window.oneclientView.revealView(RESULTS_VIEW);
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [execute, cancel, running]);
 
-  function startSplitDrag(e: React.MouseEvent) {
-    e.preventDefault();
-    const body = bodyRef.current;
-    if (!body) return;
-    const rect = body.getBoundingClientRect();
-    const onMove = (ev: MouseEvent) => setSplit(Math.min(0.85, Math.max(0.15, (ev.clientY - rect.top) / rect.height)));
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-      document.body.classList.remove("dragging");
-    };
-    document.body.classList.add("dragging");
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }
-
-  const run = status.kind === "done" ? status.run : null;
-  const elapsed = status.kind === "running" ? now - status.started : (run?.elapsedMs ?? 0);
-  const totalRows = run ? run.resultSets.reduce((n, rs) => n + rs.totalRows, 0) : 0;
   const dbOptions = database && !databases.includes(database) ? [database, ...databases] : databases;
+  const badge = statusBadge(status, now);
 
   return (
     <div className="window">
@@ -153,115 +164,49 @@ export function QueryWindow() {
             </option>
           ))}
         </select>
-        <button className="btn btn-run" onClick={() => void execute()} disabled={running} title="Execute (F5) — runs the selection if there is one">
+        <button className="btn btn-run" onClick={() => execute()} disabled={running} title="Execute (F5) — runs the selection if there is one">
           ▶ Execute
         </button>
         <button className="btn" onClick={cancel} disabled={!running} title="Cancel executing query (Alt+Break)">
           ■ Cancel
         </button>
         <span className="toolbar-sep" />
-        <button className="btn" onClick={() => setShowResults((v) => !v)} title="Show/hide results pane (Ctrl+R)">
-          {showResults ? "Hide Results" : "Show Results"}
+        <button className="btn" onClick={() => window.oneclientView.revealView(RESULTS_VIEW)} title="Show results (Ctrl+R)">
+          ▦ Results
         </button>
-      </div>
-
-      <div className="body" ref={bodyRef}>
-        <div className="editor-pane" style={{ flexBasis: showResults ? `${split * 100}%` : "100%" }}>
-          <SqlEditor ref={editorRef} value={sql} onChange={setSql} completionProviders={completionProviders} />
-        </div>
-
-        {showResults && (
-          <>
-            <div className="splitter" onMouseDown={startSplitDrag} />
-            <div className="results-pane">
-              <div className="results-tabs">
-                <button className={tab === "results" ? "active" : ""} onClick={() => setTab("results")}>
-                  ▦ Results
-                </button>
-                <button className={tab === "messages" ? "active" : ""} onClick={() => setTab("messages")}>
-                  ✉ Messages
-                </button>
-              </div>
-              <div className="results-body">
-                {tab === "results" && <ResultsView run={run} running={running} />}
-                {tab === "messages" && (
-                  <MessagesView status={status} onGoToLine={(line) => editorRef.current?.goToLine(line)} />
-                )}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className={`statusbar ${statusClass(status)}`}>
-        <span className="status-text">{statusText(status)}</span>
         <span className="spacer" />
-        <span>{info ? `${info.server} (${info.version})` : ""}</span>
-        <span>{info?.login}</span>
-        <span>{database ?? ""}</span>
-        <span>{formatElapsed(elapsed)}</span>
-        <span>{totalRows.toLocaleString()} rows</span>
+        {badge && (
+          <button className={`run-badge ${badge.tone}`} onClick={() => window.oneclientView.revealView(RESULTS_VIEW)} title="Show results">
+            {badge.text}
+          </button>
+        )}
+        <span className="toolbar-info" title={info ? `${info.server} (${info.version}) — ${info.login}` : ""}>
+          {info ? `${info.server} · ${info.login}` : ""}
+        </span>
+      </div>
+      <div className="editor-pane">
+        <SqlEditor ref={editorRef} value={sql} onChange={setSql} completionProviders={completionProviders} />
       </div>
     </div>
   );
 }
 
-function ResultsView({ run, running }: { run: QueryRun | null; running: boolean }) {
-  if (!run) return <div className="empty">{running ? "Executing query…" : "Press F5 to execute the query."}</div>;
-  if (run.resultSets.length === 0) return <div className="empty">The query returned no result sets — see Messages.</div>;
-  const single = run.resultSets.length === 1;
-  return (
-    <div className={`result-sets ${single ? "single" : ""}`}>
-      {run.resultSets.map((rs, i) => (
-        <ResultGrid key={i} result={rs} fill={single} />
-      ))}
-    </div>
-  );
+function windowTitle(): string {
+  return new URLSearchParams(location.search).get("title") ?? document.title ?? "Query";
 }
 
-function MessagesView({ status, onGoToLine }: { status: Status; onGoToLine: (line: number) => void }) {
-  if (status.kind === "failed") return <pre className="messages"><span className="msg-error">{status.error}</span></pre>;
-  if (status.kind !== "done") return <div className="empty">{status.kind === "running" ? "Executing query…" : "No messages."}</div>;
-  if (status.run.messages.length === 0) return <pre className="messages">Commands completed successfully.</pre>;
-  return (
-    <pre className="messages">
-      {status.run.messages.map((m, i) => (
-        <div
-          key={i}
-          className={m.kind === "error" ? "msg-error" : undefined}
-          onDoubleClick={() => m.line && onGoToLine(m.line)}
-          title={m.line ? "Double-click to go to the line" : undefined}
-        >
-          {m.text}
-        </div>
-      ))}
-    </pre>
-  );
-}
-
-function statusClass(status: Status): string {
-  if (status.kind === "running") return "running";
-  if (status.kind === "failed") return "error";
-  if (status.kind === "done") return status.run.cancelled ? "warn" : status.run.hasErrors ? "error" : "ok";
-  return "";
-}
-
-function statusText(status: Status): string {
+function statusBadge(status: Status, now: number): { text: string; tone: string } | null {
   switch (status.kind) {
     case "idle":
-      return "Ready";
+      return null;
     case "running":
-      return "Executing query…";
+      return { text: `● Executing… ${formatElapsed(now - status.started)}`, tone: "running" };
     case "failed":
-      return "Query failed.";
+      return { text: "✗ Query failed", tone: "error" };
     case "done":
-      if (status.run.cancelled) return "Query was cancelled.";
-      return status.run.hasErrors ? "Query completed with errors." : "Query executed successfully.";
+      if (status.cancelled) return { text: "■ Cancelled", tone: "warn" };
+      return status.hasErrors
+        ? { text: `✗ Completed with errors · ${formatElapsed(status.elapsedMs)}`, tone: "error" }
+        : { text: `✓ ${status.rows.toLocaleString()} rows · ${formatElapsed(status.elapsedMs)}`, tone: "ok" };
   }
-}
-
-function formatElapsed(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 }

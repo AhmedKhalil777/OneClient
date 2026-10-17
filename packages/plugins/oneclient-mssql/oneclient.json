@@ -11,7 +11,7 @@
   "ui": "dist/ui",
   "contributes": {
     "connectionTypes": [
-      { "id": "mssql", "label": "SQL Server", "description": "Microsoft SQL Server / Azure SQL", "category": "Databases", "icon": "icons/server.svg" }
+      { "id": "mssql", "label": "SQL Server", "description": "Microsoft SQL Server / Azure SQL", "category": "Databases", "icon": "$(server)" }
     ],
     "explorerNodes": [
       { "id": "mssql.databases", "connectionType": "mssql" },
@@ -31,7 +31,10 @@
       { "id": "mssql.functions", "parentNodeType": "mssql.programmability" },
       { "id": "mssql.function", "parentNodeType": "mssql.functions" }
     ],
-    "views": [{ "id": "mssql.query", "title": "Query", "tier": 2, "location": "editor", "entry": "index.html" }],
+    "views": [
+      { "id": "mssql.query", "title": "Query", "tier": 2, "location": "editor", "entry": "index.html" },
+      { "id": "mssql.results", "title": "Query Results", "tier": 2, "location": "panel", "entry": "results.html", "icon": "$(results)" }
+    ],
     "commands": [
       {
         "id": "mssql.newQuery",

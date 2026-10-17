@@ -5,14 +5,17 @@ import { joinRel, requireRoot, resolveInRoot } from "./roots.js";
 /** Same idea as VS Code's default `files.exclude`. */
 const HIDDEN = new Set([".git", ".svn", ".hg", ".DS_Store", "Thumbs.db"]);
 
+/** Registry icons (core's built-in set) — they follow the user's icon theme. */
 const ICON = {
-  folder: "icons/folder.svg",
-  file: "icons/file.svg",
+  folder: "$(folder)",
+  file: "$(file)",
 };
 
 interface EntryData {
   /** Root-relative, "/"-separated; "" is the root itself. */
   path: string;
+  /** Absolute path on disk — lets other plugins act on it (e.g. Terminal's "Open in Terminal"). */
+  fsPath: string;
 }
 
 /**
@@ -37,7 +40,7 @@ export function createExplorerProvider(): ExplorerProvider {
       const dirs = visible.filter((e) => e.isDirectory()).sort(byName);
       const files = visible.filter((e) => !e.isDirectory()).sort(byName);
 
-      return [...dirs.map((d) => directoryNode(joinRel(dirRel, d.name))), ...files.map((f) => fileNode(joinRel(dirRel, f.name)))];
+      return [...dirs.map((d) => directoryNode(root, joinRel(dirRel, d.name))), ...files.map((f) => fileNode(root, joinRel(dirRel, f.name)))];
     },
   };
 }
@@ -46,7 +49,7 @@ function baseName(relPath: string): string {
   return relPath.slice(relPath.lastIndexOf("/") + 1);
 }
 
-export function directoryNode(path: string): TreeNode {
+export function directoryNode(root: string, path: string): TreeNode {
   return {
     id: path,
     label: baseName(path),
@@ -54,12 +57,12 @@ export function directoryNode(path: string): TreeNode {
     collapsible: "collapsed",
     icon: ICON.folder,
     contextValue: "files.directory",
-    data: { path } satisfies EntryData,
+    data: { path, fsPath: resolveInRoot(root, path) } satisfies EntryData,
   };
 }
 
 /** Clicking a file opens it in the editor view — one tab per file. */
-export function fileNode(path: string): TreeNode {
+export function fileNode(root: string, path: string): TreeNode {
   const name = baseName(path);
   return {
     id: path,
@@ -68,7 +71,7 @@ export function fileNode(path: string): TreeNode {
     collapsible: "none",
     icon: ICON.file,
     contextValue: "files.file",
-    data: { path } satisfies EntryData,
+    data: { path, fsPath: resolveInRoot(root, path) } satisfies EntryData,
     openView: { viewId: "files.editor", title: name, params: { path } },
   };
 }

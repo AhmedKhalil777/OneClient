@@ -13,6 +13,15 @@ export type {
 
 export type { ExplorerContext, ExplorerProvider, TreeNode, TreeNodeOpenView } from "./explorer.js";
 export type { CompletionContext, CompletionItem, CompletionItemKind, CompletionProvider } from "./completion.js";
+export type {
+  ColorThemeContribution,
+  IconContribution,
+  IconThemeContribution,
+  ThemeColorKey,
+  ThemeKind,
+  ThemeState,
+} from "./theme.js";
+export { THEME_COLOR_KEYS, colorVarName, iconUrl, parseIconRef } from "./theme.js";
 
 export type { CommandContext, CommandHandler } from "./commands.js";
 

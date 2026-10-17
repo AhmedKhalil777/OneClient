@@ -10,7 +10,8 @@
     "start": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "test": "node scripts/test.mjs",
-    "rebuild-native": "electron-rebuild -f -w better-sqlite3"
+    "rebuild-native": "electron-rebuild -f -w better-sqlite3",
+    "icons": "electron scripts/render-icons.cjs"
   },
   "dependencies": {
     "@oneclient/plugin-api": "workspace:*",

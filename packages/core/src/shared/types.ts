@@ -1,4 +1,7 @@
 import type {
+  ColorThemeContribution,
+  IconContribution,
+  IconThemeContribution,
   CommandContribution,
   ConnectionTestResult,
   ConnectionTypeContribution,
@@ -21,6 +24,9 @@ export interface ContributionRegistrySnapshot {
   explorerNodes: Array<ExplorerNodeContribution & { pluginId: string }>;
   views: Array<ViewContribution & { pluginId: string }>;
   commands: Array<CommandContribution & { pluginId: string }>;
+  themes: Array<ColorThemeContribution & { pluginId: string }>;
+  iconThemes: Array<IconThemeContribution & { pluginId: string }>;
+  icons: Array<IconContribution & { pluginId: string }>;
 }
 
 export type PluginState =

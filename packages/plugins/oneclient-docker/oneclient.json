@@ -20,6 +20,12 @@
         "connectionType": "docker"
       }
     ],
+    "icons": [
+      { "id": "docker-container", "description": "A Docker container", "path": "icons/container.svg", "colored": true },
+      { "id": "docker-image", "description": "A Docker image", "path": "icons/image.svg", "colored": true },
+      { "id": "docker-volume", "description": "A Docker volume", "path": "icons/volume.svg", "colored": true },
+      { "id": "docker-network", "description": "A Docker network", "path": "icons/network.svg", "colored": true }
+    ],
     "connectionTypes": [{ "id": "docker", "label": "Docker", "category": "Infrastructure", "icon": "icon.svg" }],
     "explorerNodes": [
       { "id": "docker.containers", "connectionType": "docker" },

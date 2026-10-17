@@ -7,9 +7,11 @@ import type { ConnectionManager } from "../connections/connection-manager.js";
 import type { ExtensionHostSupervisor } from "../plugins/extension-host-supervisor.js";
 import type { PluginManager } from "../plugins/plugin-manager.js";
 import type { ContributionRegistry } from "../plugins/registry.js";
+import type { ThemeService } from "../themes/theme-service.js";
 import type { ViewHostManager } from "../views/view-host-manager.js";
 
 export interface IpcDeps {
+  themes: ThemeService;
   registry: ContributionRegistry;
   pluginManager: PluginManager;
   connections: ConnectionManager;
@@ -21,7 +23,20 @@ export interface IpcDeps {
 
 /** Registers every main-process IPC handler and wires registry/plugin change events to all open windows. */
 export function registerIpcHandlers(deps: IpcDeps): void {
-  const { registry, pluginManager, connections, supervisor, views, ensureActivated, getWindows } = deps;
+  const { registry, pluginManager, connections, supervisor, views, ensureActivated, getWindows, themes } = deps;
+
+  // Themes: shell gets the full state; every Tier 2 view gets it too (its preload applies the CSS variables).
+  themes.onChanged((state) => {
+    broadcast(IpcChannel.ThemeChanged, state);
+    views.broadcastTheme(state);
+  });
+  registry.onChanged(() => themes.onRegistryChanged());
+  ipcMain.handle(IpcChannel.ThemeGetState, () => themes.getState());
+  ipcMain.handle("oneclient-view:get-theme", () => themes.getState());
+  ipcMain.handle(IpcChannel.ThemeListColor, () => themes.listColorThemes());
+  ipcMain.handle(IpcChannel.ThemeListIcon, () => themes.listIconThemes());
+  ipcMain.handle(IpcChannel.ThemeSetColor, (_e, id: string, persist: boolean) => themes.setColorTheme(id, persist));
+  ipcMain.handle(IpcChannel.ThemeSetIcon, (_e, id: string, persist: boolean) => themes.setIconTheme(id, persist));
 
   const broadcast = (channel: string, payload: unknown) => {
     for (const win of getWindows()) {
@@ -32,6 +47,9 @@ export function registerIpcHandlers(deps: IpcDeps): void {
   registry.onChanged((snapshot: ContributionRegistrySnapshot) => broadcast(IpcChannel.RegistryChanged, snapshot));
   pluginManager.on("changed", (summaries: PluginSummary[]) => broadcast(IpcChannel.PluginsChanged, summaries));
   views.onDirtyChanged((instanceId, dirty) => broadcast(IpcChannel.ViewDirtyChanged, { instanceId, dirty }));
+  views.onShortcut((shortcut) => broadcast(IpcChannel.Shortcut, shortcut));
+  views.onReveal((pluginId, viewId) => broadcast(IpcChannel.RevealView, { pluginId, viewId }));
+  ipcMain.handle(IpcChannel.ViewFocus, (_event, instanceId: string) => views.focus(instanceId));
 
   ipcMain.handle(IpcChannel.RegistryGet, () => registry.snapshot());
 

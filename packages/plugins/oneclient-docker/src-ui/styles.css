@@ -1,17 +1,18 @@
 :root {
-  --bg: #16181d;
-  --bg-elevated: #1e2128;
-  --bg-card: #22262e;
-  --border: #30343c;
-  --text: #e4e6eb;
-  --text-dim: #8a8f98;
-  --accent: #1d63ed;
-  --accent-hover: #2e74ff;
-  --ok: #2ecc71;
-  --ok-bg: rgba(46, 204, 113, 0.12);
-  --danger: #ef4444;
-  --danger-bg: rgba(239, 68, 68, 0.12);
-  --warn: #f5a623;
+  /* Theme tokens injected by core; fallbacks keep the dashboard's own dark look. */
+  --bg: var(--oc-editor-background, #16181d);
+  --bg-elevated: var(--oc-sideBar-background, #1e2128);
+  --bg-card: var(--oc-widget-background, #22262e);
+  --border: var(--oc-widget-border, #30343c);
+  --text: var(--oc-foreground, #e4e6eb);
+  --text-dim: var(--oc-descriptionForeground, #8a8f98);
+  --accent: var(--oc-button-background, #1d63ed);
+  --accent-hover: var(--oc-button-hoverBackground, #2e74ff);
+  --ok: var(--oc-successForeground, #2ecc71);
+  --ok-bg: color-mix(in srgb, var(--ok) 12%, transparent);
+  --danger: var(--oc-errorForeground, #ef4444);
+  --danger-bg: color-mix(in srgb, var(--danger) 12%, transparent);
+  --warn: var(--oc-warningForeground, #f5a623);
 }
 
 * {
@@ -258,7 +259,7 @@ input {
   font-family: "SF Mono", Consolas, monospace;
   font-size: 11.5px;
   white-space: pre-wrap;
-  color: #c7ccd6;
+  color: var(--oc-editor-foreground, #c7ccd6);
 }
 
 .logs-body .log-error {

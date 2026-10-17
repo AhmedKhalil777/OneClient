@@ -1,4 +1,5 @@
 import type { PluginSummary } from "../../../shared/types.js";
+import { ThemeIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
 
 /** Which view container the sidebar shows: one plugin's explorer, or the built-in Plugins list. */
@@ -15,11 +16,14 @@ export function ActivityBar({
   active,
   sidebarVisible,
   onSelect,
+  onManage,
 }: {
   plugins: PluginSummary[];
   active: ViewContainerId;
   sidebarVisible: boolean;
   onSelect: (id: ViewContainerId) => void;
+  /** The gear at the bottom: opens the Manage menu (themes, plugins, command palette). */
+  onManage: (e: React.MouseEvent) => void;
 }) {
   return (
     <div className="activity-bar">
@@ -41,7 +45,10 @@ export function ActivityBar({
       </div>
       <div className="activity-bar-group">
         <ActivityItem title="Plugins" selected={sidebarVisible && active === "plugins"} onClick={() => onSelect("plugins")}>
-          <PluginsGlyph />
+          <ThemeIcon id="extensions" size={24} />
+        </ActivityItem>
+        <ActivityItem title="Manage" selected={false} onClick={onManage}>
+          <ThemeIcon id="gear" size={24} />
         </ActivityItem>
       </div>
     </div>
@@ -58,7 +65,7 @@ function ActivityItem({
   title: string;
   selected: boolean;
   dimmed?: boolean;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
   children: React.ReactNode;
 }) {
   return (
@@ -72,13 +79,3 @@ function ActivityItem({
   );
 }
 
-function PluginsGlyph() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-      <rect x="13.5" y="2.5" width="7" height="7" rx="1" transform="rotate(15 17 6)" />
-    </svg>
-  );
-}

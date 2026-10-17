@@ -1,6 +1,35 @@
-import { type RefObject, useEffect, useRef } from "react";
-import type { CompletionProvider } from "@oneclient/plugin-api";
+import { type RefObject, createElement, useEffect, useRef, useState } from "react";
+import type { CompletionProvider, ThemeState } from "@oneclient/plugin-api";
 import { type AutocompleteHandle, type AutocompleteOptions, attachAutocomplete } from "./autocomplete.js";
+import { getTheme, iconUrl, onThemeChange } from "./theme.js";
+
+/** The active theme; re-renders on theme switches. */
+export function useTheme(): ThemeState | null {
+  const [theme, setTheme] = useState<ThemeState | null>(() => getTheme());
+  useEffect(() => onThemeChange(setTheme), []);
+  return theme;
+}
+
+/**
+ * An icon from oneClient's icon registry — the same ids plugins use as
+ * `$(id)` (built-in: folder, file, database, table, terminal, play, refresh, …,
+ * plus any `contributes.icons`). Monochrome icons take the current text
+ * color (CSS mask), so they follow the theme; `colored` icons draw as-is.
+ */
+export function Icon({ id, size = 16, title, className }: { id: string; size?: number; title?: string; className?: string }) {
+  const theme = useTheme();
+  const url = iconUrl(id, theme);
+  if (theme?.icons[id]?.colored) {
+    return createElement("img", { src: url, width: size, height: size, alt: "", title, className });
+  }
+  return createElement("span", {
+    role: "img",
+    "aria-label": title ?? id,
+    title,
+    className: `oc-icon ${className ?? ""}`,
+    style: { width: size, height: size, WebkitMaskImage: `url("${url}")`, maskImage: `url("${url}")` },
+  });
+}
 
 /**
  * React binding for `attachAutocomplete`. Follows whatever element `ref`

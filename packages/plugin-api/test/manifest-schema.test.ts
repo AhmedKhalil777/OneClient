@@ -37,6 +37,27 @@ describe("oneclient-manifest.schema.json", () => {
     expect(valid).toBe(true);
   });
 
+  it("accepts theme, icon theme and icon contributions", () => {
+    const manifest = {
+      name: "oneclient-theme-pack",
+      version: "1.0.0",
+      engines: { oneclient: "^0.1.0" },
+      main: "dist/main.js",
+      contributes: {
+        themes: [{ id: "solarized", label: "Solarized Dark", uiTheme: "dark", path: "themes/solarized.json" }],
+        iconThemes: [{ id: "filled", label: "Filled Icons", path: "icons/theme.json" }],
+        icons: [{ id: "docker-container", description: "A container", path: "icons/container.svg", colored: true }],
+      },
+    };
+    expect(validate(manifest)).toBe(true);
+  });
+
+  it("rejects an unknown theme kind and a malformed icon id", () => {
+    const base = { name: "oneclient-x", version: "1.0.0", engines: { oneclient: "^0.1.0" }, main: "m.js" };
+    expect(validate({ ...base, contributes: { themes: [{ id: "t", label: "T", uiTheme: "sepia", path: "t.json" }] } })).toBe(false);
+    expect(validate({ ...base, contributes: { icons: [{ id: "Bad Id", path: "a.svg" }] } })).toBe(false);
+  });
+
   it("rejects a manifest missing `engines`", () => {
     const { valid, errors } = validManifest("invalid-missing-engines.oneclient.json");
     expect(valid).toBe(false);

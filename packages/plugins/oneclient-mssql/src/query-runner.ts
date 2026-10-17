@@ -64,10 +64,10 @@ export async function executeQuery(opts: {
   connectionId: string;
   windowId: string;
   queryId: string;
-  database?: string;
+  database?: string | undefined;
   sql: string;
   /** Line in the editor where `sql` starts (for executing a selection). */
-  lineOffset?: number;
+  lineOffset?: number | undefined;
 }): Promise<QueryRun> {
   const started = Date.now();
   const state = { request: null as sql.Request | null, cancelled: false };

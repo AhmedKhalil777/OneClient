@@ -1,0 +1,10 @@
+{
+  "$comment": "Example icon theme contributed by a plugin: restyles a few icon ids with multi-colour artwork. Paths are relative to this file; ids it doesn't list keep their default icon.",
+  "icons": {
+    "folder": { "path": "folder.svg", "colored": true },
+    "file": { "path": "file.svg", "colored": true },
+    "database": { "path": "database.svg", "colored": true },
+    "table": { "path": "table.svg", "colored": true },
+    "terminal": { "path": "terminal.svg", "colored": true }
+  }
+}

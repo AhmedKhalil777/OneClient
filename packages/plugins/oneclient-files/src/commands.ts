@@ -69,9 +69,10 @@ export function createCommandHandlers(): CommandHandler[] {
         action(async () => {
           const { connectionId, path = "", name } = arg<EntryArg & { name: unknown }>(args);
           const rel = joinRel(path, validName(name));
+          const root = requireRoot(connectionId);
           // "wx" fails instead of truncating if the file already exists.
-          await writeFile(resolveInRoot(requireRoot(connectionId), rel), "", { flag: "wx" });
-          return { ok: true, openNode: fileNode(rel) };
+          await writeFile(resolveInRoot(root, rel), "", { flag: "wx" });
+          return { ok: true, openNode: fileNode(root, rel) };
         }),
     },
     {

@@ -1,0 +1,53 @@
+/*
+ * oneClient look for plugin Tier 2 views — import once in a view's entry:
+ *   import "@oneclient/editor-kit/theme.css";
+ *
+ * Core injects the active theme into every view as --oc-* CSS variables
+ * (color keys from plugin-api's THEME_COLOR_KEYS, dots → dashes), so these
+ * rules — and any plugin CSS written against the same variables — follow
+ * the user's theme. Fallbacks are oneClient Dark.
+ */
+
+body {
+  background: var(--oc-editor-background, #1e1e1e);
+  color: var(--oc-foreground, #cccccc);
+}
+
+/* VS Code-style scrollbars: thin, no track, translucent thumb that brightens on hover. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--oc-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--oc-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
+}
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--oc-scrollbarSlider-activeBackground, rgba(191, 191, 191, 0.4));
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* <Icon id="…"> from @oneclient/editor-kit/react: the SVG is a mask painted with the text color. */
+.oc-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}

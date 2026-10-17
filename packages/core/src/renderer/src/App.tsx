@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { TreeNode } from "@oneclient/plugin-api";
 import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "../../shared/types.js";
 import { ActivityBar, type ViewContainerId } from "./components/ActivityBar.js";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
 import { ContextMenu, type ContextMenuItem } from "./components/ContextMenu.js";
+import { Logo } from "./components/Logo.js";
+import { useThemeState } from "./theme.js";
+import { Panel, usePanel } from "./components/Panel.js";
 import { usePrompts } from "./components/PromptDialogs.js";
 import { evaluateWhen, type WhenContext } from "./when.js";
 import { NewConnectionDialog } from "./components/NewConnectionDialog.js";
@@ -26,7 +29,15 @@ type Tab =
       params?: Record<string, string>;
     };
 
-const emptyRegistry: ContributionRegistrySnapshot = { connectionTypes: [], explorerNodes: [], views: [], commands: [] };
+const emptyRegistry: ContributionRegistrySnapshot = {
+  connectionTypes: [],
+  explorerNodes: [],
+  views: [],
+  commands: [],
+  themes: [],
+  iconThemes: [],
+  icons: [],
+};
 
 const SIDEBAR_MIN = 180;
 const SIDEBAR_MAX = 560;
@@ -70,7 +81,7 @@ function useResizableSidebar() {
 const CONTAINER_STORAGE_KEY = "oneclient.activeViewContainer";
 
 /** Built-in plugins pinned to the top of the activity bar, in this order; everything else keeps load order. */
-const BUILT_IN_PLUGINS = ["oneclient-files"];
+const BUILT_IN_PLUGINS = ["oneclient-files", "oneclient-terminal"];
 function builtInRank(pluginId: string): number {
   const i = BUILT_IN_PLUGINS.indexOf(pluginId);
   return i === -1 ? BUILT_IN_PLUGINS.length : i;
@@ -113,6 +124,9 @@ export function App() {
   const [activeTabId, setActiveTabId] = useState("welcome");
   const sidebar = useResizableSidebar();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  /** A quick pick other than the command palette (theme pickers). */
+  const [quickPick, setQuickPick] = useState<React.ComponentProps<typeof CommandPalette> | null>(null);
+  const theme = useThemeState();
   // `null` pluginId = every connection type (command palette); otherwise just that plugin's.
   const [newConnectionFor, setNewConnectionFor] = useState<{ pluginId: string | null } | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
@@ -122,7 +136,7 @@ export function App() {
   const prompts = usePrompts();
   // Tier 2 views are native layers drawn *over* this DOM, so hide them while
   // anything floating (menu, dialog, palette) is open or it'd be covered.
-  const overlayOpen = paletteOpen || newConnectionFor !== null || menu !== null || prompts.element !== null;
+  const overlayOpen = paletteOpen || quickPick !== null || newConnectionFor !== null || menu !== null || prompts.element !== null;
 
   // Plugins that get an activity-bar explorer: anything not disabled/broken that contributes connection types.
   const explorerPlugins = useMemo(
@@ -139,6 +153,20 @@ export function App() {
     [plugins, registry.connectionTypes],
   );
   const container = useViewContainer(explorerPlugins);
+
+  // Bottom panel: every Tier 2 view contributed with location "panel" (e.g. the Terminal).
+  const panelViews = useMemo(
+    () =>
+      registry.views
+        .filter((v) => v.tier === 2 && v.location === "panel")
+        .sort((a, b) => builtInRank(a.pluginId) - builtInRank(b.pluginId)),
+    [registry.views],
+  );
+  const panel = usePanel(panelViews);
+  const panelToggleRef = useRef(panel.toggle);
+  panelToggleRef.current = panel.toggle;
+  const panelRef = useRef(panel);
+  panelRef.current = panel;
 
   useEffect(() => {
     void window.oneclient.getRegistry().then(setRegistry);
@@ -157,11 +185,23 @@ export function App() {
         return next;
       }),
     );
+    // Same shortcuts, pressed while a Tier 2 view (editor, terminal) had keyboard focus.
+    const offShortcut = window.oneclient.onShortcut((shortcut) => {
+      if (shortcut === "togglePanel") panelToggleRef.current();
+      else if (shortcut === "commandPalette") setPaletteOpen((v) => !v);
+    });
+    // A view revealing another view of its plugin — today that means a panel view (e.g. Query Results).
+    const offReveal = window.oneclient.onRevealView(({ pluginId, viewId }) => {
+      const key = `${pluginId}:${viewId}`;
+      if (panelRef.current.views.some((v) => `${v.pluginId}:${v.id}` === key)) panelRef.current.show(key, { focus: false });
+    });
     return () => {
       offRegistry();
       offPlugins();
       offConnections();
       offDirty();
+      offShortcut();
+      offReveal();
     };
   }, []);
 
@@ -171,11 +211,24 @@ export function App() {
       if (mod && e.shiftKey && e.key.toLowerCase() === "p") {
         e.preventDefault();
         setPaletteOpen((v) => !v);
+      } else if (mod && !e.shiftKey && (e.key === "`" || e.code === "Backquote")) {
+        e.preventDefault();
+        panelToggleRef.current();
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  // Switching to a plugin tab gives its view keyboard focus — so typing goes to it, and it learns
+  // it's the active one (e.g. the query editor tells Query Results which window's results to show).
+  useEffect(() => {
+    const tab = tabs.find((t) => t.id === activeTabId);
+    if (tab?.kind !== "tier2-view") return;
+    const timer = setTimeout(() => void window.oneclient.focusView(tab.instanceId), 80);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTabId]);
 
   function openTab(tab: Tab) {
     setTabs((prev) => (prev.some((t) => t.id === tab.id) ? prev : [...prev, tab]));
@@ -222,8 +275,10 @@ export function App() {
       ? { contextValue: node.contextValue, nodeType: node.nodeType, connectionType: connection.typeId }
       : { contextValue: "connection", connectionType: connection.typeId };
 
+    // Any plugin may contribute to any tree's menu (e.g. the Terminal's "Open in Terminal" on Files
+    // folders) — `when` clauses match namespaced contextValues, so they only show where intended.
     const items: ContextMenuItem[] = registry.commands
-      .filter((c) => c.pluginId === connection.pluginId && c.when && evaluateWhen(c.when, ctx))
+      .filter((c) => c.when && evaluateWhen(c.when, ctx))
       .map((c) => ({
         id: c.id,
         label: stripCategory(c.title),
@@ -283,13 +338,16 @@ export function App() {
       const result = await window.oneclient.executeCommand(command.id, [arg]);
       if (result === undefined || result === null) return;
       if (typeof result === "object" && "ok" in result) {
-        const r = result as { ok: boolean; error?: string; openNode?: TreeNode };
+        const r = result as { ok: boolean; error?: string; openNode?: TreeNode; revealView?: string };
         if (!r.ok) {
           pushToast("error", `${title}: ${r.error ?? "failed"}`);
           return;
         }
-        refresh();
+        if (command.pluginId === connection.pluginId) refresh();
         if (r.openNode) openNodeView(connection, r.openNode);
+        // e.g. { revealView: "terminal.panel" } — show that panel view.
+        const panelKey = r.revealView ? panel.keyForViewId(r.revealView) : null;
+        if (panelKey) panel.show(panelKey);
         return;
       }
       openTab({ id: `cmd:${command.id}:${Date.now()}`, title: `${title}: ${label}`, kind: "command-result", result });
@@ -361,11 +419,59 @@ export function App() {
     });
   }
 
+  /**
+   * VS Code-style theme picker: arrowing through the list previews each theme
+   * (applied, not saved); Enter keeps it, Esc reverts to the one you had.
+   */
+  async function openThemePicker(kind: "color" | "icon") {
+    const items = kind === "color" ? await window.oneclient.listColorThemes() : await window.oneclient.listIconThemes();
+    const set = kind === "color" ? window.oneclient.setColorTheme : window.oneclient.setIconTheme;
+    const original = kind === "color" ? theme?.colorTheme.id : theme?.iconTheme.id;
+    const kindLabel = { dark: "dark", light: "light", hc: "high contrast" } as const;
+    setQuickPick({
+      placeholder: kind === "color" ? "Select Color Theme (Up/Down Keys to Preview)" : "Select Icon Theme (Up/Down Keys to Preview)",
+      initialId: original,
+      commands: items.map((t) => ({
+        id: t.id,
+        title: t.label,
+        description: [t.kind ? kindLabel[t.kind] : undefined, t.pluginId ?? "built-in"].filter(Boolean).join(" · "),
+        run: () => void set(t.id, true),
+      })),
+      onActiveChange: (item) => void set(item.id, false),
+      onClose: (accepted) => {
+        if (!accepted && original) void set(original, false);
+        setQuickPick(null);
+      },
+    });
+  }
+
+  function openManageMenu(e: React.MouseEvent) {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setMenu({
+      x: r.right + 4,
+      y: r.bottom,
+      items: [
+        { id: "palette", label: "Command Palette…", run: () => setPaletteOpen(true) },
+        { id: "color", label: "Color Theme…", separator: true, run: () => void openThemePicker("color") },
+        { id: "icon", label: "Icon Theme…", run: () => void openThemePicker("icon") },
+        { id: "plugins", label: "Plugins", separator: true, run: () => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" }) },
+      ],
+    });
+  }
+
   const paletteCommands = useMemo<PaletteCommand[]>(() => {
     const builtins: PaletteCommand[] = [
       { id: "workbench.reloadWindow", title: "Reload Window", run: () => location.reload() },
       { id: "workbench.openPluginManager", title: "Open Plugin Manager", run: () => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" }) },
+      { id: "workbench.colorTheme", title: "Preferences: Color Theme…", run: () => void openThemePicker("color") },
+      { id: "workbench.iconTheme", title: "Preferences: Icon Theme…", run: () => void openThemePicker("icon") },
       { id: "workbench.newConnection", title: "New Connection…", run: () => setNewConnectionFor({ pluginId: null }) },
+      ...(panelViews.length ? [{ id: "workbench.togglePanel", title: "View: Toggle Panel", run: () => panel.toggle() }] : []),
+      ...panelViews.map((v) => ({
+        id: `workbench.showPanel.${v.pluginId}.${v.id}`,
+        title: `View: Show ${v.title}`,
+        run: () => panel.show(`${v.pluginId}:${v.id}`),
+      })),
     ];
     // Commands with a `when` guard need context (a tree node, a view) the palette can't supply.
     const contributed: PaletteCommand[] = registry.commands.filter((c) => !c.when).map((c) => ({
@@ -374,7 +480,8 @@ export function App() {
       run: () => void runContributedCommand(c.id, c.title),
     }));
     return [...builtins, ...contributed];
-  }, [registry.commands]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registry.commands, panelViews, panel.toggle, panel.show]);
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
 
@@ -392,6 +499,7 @@ export function App() {
         active={container.active}
         sidebarVisible={container.visible}
         onSelect={container.select}
+        onManage={openManageMenu}
       />
 
       <div className="sidebar-wrapper" style={{ width: sidebar.width }} hidden={!container.visible}>
@@ -470,15 +578,30 @@ export function App() {
               ),
           )}
         </div>
+
+        <Panel state={panel} overlayOpen={overlayOpen} />
       </div>
 
       <div className="status-bar">
-        <span>oneClient — Phase 2</span>
+        <span className="status-brand">
+          <Logo size={14} /> oneClient
+        </span>
         <span>{plugins.filter((p) => p.state === "active").length} plugin(s) active</span>
         <span style={{ marginLeft: "auto" }}>Ctrl/Cmd+Shift+P — Command Palette</span>
+        {/* One toggle for the whole panel; switching between its views is the panel's icon navigator. */}
+        {panelViews.length > 0 && (
+          <button
+            className={`status-button ${panel.open ? "active" : ""}`}
+            title={`${panel.open ? "Hide" : "Show"} Panel (Ctrl+\`)`}
+            onClick={() => panel.toggle()}
+          >
+            ▤ Panel
+          </button>
+        )}
       </div>
 
       {paletteOpen && <CommandPalette commands={paletteCommands} onClose={() => setPaletteOpen(false)} />}
+      {quickPick && <CommandPalette {...quickPick} />}
       {newConnectionFor && (
         <NewConnectionDialog
           connectionTypes={registry.connectionTypes.filter(
@@ -515,13 +638,29 @@ interface Toast {
 
 function WelcomeTab() {
   return (
-    <div>
-      <h1>oneClient</h1>
-      <p>One client for everything. The core has no infrastructure-specific code — everything you see beyond this shell comes from installed plugins.</p>
-      <p style={{ color: "var(--text-dim)" }}>
-        Press <kbd>Ctrl/Cmd+Shift+P</kbd> for the command palette, or use the + button in the sidebar to add a
-        connection.
+    <div className="welcome">
+      <div className="welcome-hero">
+        <Logo size={96} />
+        <div>
+          <h1>oneClient</h1>
+          <p className="welcome-tagline">One client for everything.</p>
+        </div>
+      </div>
+      <p>
+        The core has no infrastructure-specific code — everything you see beyond this shell comes from installed
+        plugins.
       </p>
+      <ul className="welcome-keys">
+        <li>
+          <kbd>Ctrl+Shift+P</kbd> Command Palette
+        </li>
+        <li>
+          <kbd>Ctrl+`</kbd> Toggle Terminal
+        </li>
+        <li>
+          <kbd>+</kbd> in a sidebar's Connections section adds a connection
+        </li>
+      </ul>
     </div>
   );
 }

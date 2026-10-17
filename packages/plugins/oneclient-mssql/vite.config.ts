@@ -4,6 +4,7 @@ import { defineConfig } from "vite";
 
 // Tier 2 views are loaded via file://, so every asset path must be relative
 // (base: "./"). Output sits next to dist/main.js, matching oneclient.json.
+// Two pages: the query window (editor tab) and Query Results (bottom panel).
 export default defineConfig({
   root: resolve(__dirname, "src-ui"),
   base: "./",
@@ -13,5 +14,11 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, "dist/ui"),
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        index: resolve(__dirname, "src-ui/index.html"),
+        results: resolve(__dirname, "src-ui/results.html"),
+      },
+    },
   },
 });
