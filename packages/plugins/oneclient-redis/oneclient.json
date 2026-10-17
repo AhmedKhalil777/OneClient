@@ -11,7 +11,7 @@
   "ui": "dist/ui",
   "contributes": {
     "connectionTypes": [
-      { "id": "redis", "label": "Redis", "description": "A Redis (or Valkey / compatible) server.", "category": "Databases", "icon": "icon.svg" }
+      { "id": "redis", "connectionLabel": "Server", "label": "Redis", "description": "A Redis (or Valkey / compatible) server.", "category": "Databases", "icon": "icon.svg" }
     ],
     "explorerNodes": [
       { "id": "redis.database", "connectionType": "redis" },

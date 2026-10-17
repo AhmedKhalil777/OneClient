@@ -10,7 +10,7 @@
   "main": "dist/main.js",
   "ui": "dist/ui",
   "contributes": {
-    "connectionTypes": [{ "id": "kafka", "label": "Apache Kafka", "description": "A Kafka cluster (or Redpanda, Confluent Cloud, Event Hubs for Kafka).", "category": "Messaging", "icon": "icon.svg" }],
+    "connectionTypes": [{ "id": "kafka", "connectionLabel": "Cluster", "label": "Apache Kafka", "description": "A Kafka cluster (or Redpanda, Confluent Cloud, Event Hubs for Kafka).", "category": "Messaging", "icon": "icon.svg" }],
     "explorerNodes": [
       { "id": "kafka.brokers", "connectionType": "kafka" },
       { "id": "kafka.broker", "parentNodeType": "kafka.brokers" },

@@ -15,6 +15,7 @@
     "connectionTypes": [
       {
         "id": "folder",
+        "connectionLabel": "Folder",
         "label": "Folder",
         "description": "A folder on this machine.",
         "category": "Files",

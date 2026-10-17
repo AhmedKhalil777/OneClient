@@ -1,0 +1,217 @@
+{
+  "name": "oneclient-postgres",
+  "displayName": "PostgreSQL",
+  "description": "Connect to PostgreSQL: databases, schemas, tables, views, functions and procedures; query windows with IntelliSense, result grids, NOTICE messages, cancel, CREATE / ALTER scripts and object search.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "engines": {
+    "oneclient": "^0.1.0"
+  },
+  "main": "dist/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "connectionTypes": [
+      {
+        "id": "postgres",
+        "label": "PostgreSQL",
+        "description": "PostgreSQL (also Azure, RDS, Supabase, Neon, TimescaleDB…)",
+        "category": "Databases",
+        "icon": "icon.svg",
+        "connectionLabel": "Server"
+      }
+    ],
+    "explorerNodes": [
+      {
+        "id": "postgres.databases",
+        "connectionType": "postgres"
+      },
+      {
+        "id": "postgres.database",
+        "parentNodeType": "postgres.databases"
+      },
+      {
+        "id": "postgres.schemas",
+        "parentNodeType": "postgres.database"
+      },
+      {
+        "id": "postgres.systemSchemas",
+        "parentNodeType": "postgres.schemas"
+      },
+      {
+        "id": "postgres.schema",
+        "parentNodeType": "postgres.schemas"
+      },
+      {
+        "id": "postgres.tables",
+        "parentNodeType": "postgres.schema"
+      },
+      {
+        "id": "postgres.table",
+        "parentNodeType": "postgres.tables"
+      },
+      {
+        "id": "postgres.views",
+        "parentNodeType": "postgres.schema"
+      },
+      {
+        "id": "postgres.view",
+        "parentNodeType": "postgres.views"
+      },
+      {
+        "id": "postgres.matviews",
+        "parentNodeType": "postgres.schema"
+      },
+      {
+        "id": "postgres.matview",
+        "parentNodeType": "postgres.matviews"
+      },
+      {
+        "id": "postgres.functions",
+        "parentNodeType": "postgres.schema"
+      },
+      {
+        "id": "postgres.function",
+        "parentNodeType": "postgres.functions"
+      },
+      {
+        "id": "postgres.procedures",
+        "parentNodeType": "postgres.schema"
+      },
+      {
+        "id": "postgres.procedure",
+        "parentNodeType": "postgres.procedures"
+      },
+      {
+        "id": "postgres.sequences",
+        "parentNodeType": "postgres.schema"
+      },
+      {
+        "id": "postgres.sequence",
+        "parentNodeType": "postgres.sequences"
+      },
+      {
+        "id": "postgres.columns",
+        "parentNodeType": "postgres.table"
+      },
+      {
+        "id": "postgres.column",
+        "parentNodeType": "postgres.columns"
+      },
+      {
+        "id": "postgres.indexes",
+        "parentNodeType": "postgres.table"
+      },
+      {
+        "id": "postgres.index",
+        "parentNodeType": "postgres.indexes"
+      },
+      {
+        "id": "postgres.constraints",
+        "parentNodeType": "postgres.table"
+      },
+      {
+        "id": "postgres.constraint",
+        "parentNodeType": "postgres.constraints"
+      }
+    ],
+    "views": [
+      {
+        "id": "postgres.query",
+        "title": "Query",
+        "tier": 2,
+        "location": "editor",
+        "entry": "index.html"
+      },
+      {
+        "id": "postgres.results",
+        "title": "PostgreSQL Results",
+        "tier": 2,
+        "location": "panel",
+        "entry": "results.html",
+        "icon": "$(results)"
+      }
+    ],
+    "commands": [
+      {
+        "id": "postgres.newQuery",
+        "title": "PostgreSQL: New Query",
+        "when": "contextValue == 'connection' && connectionType == 'postgres' || contextValue == 'postgres.database' || contextValue == 'postgres.schema'"
+      },
+      {
+        "id": "postgres.selectTop",
+        "title": "PostgreSQL: Select Top 1000 Rows",
+        "when": "contextValue == 'postgres.table' || contextValue == 'postgres.view' || contextValue == 'postgres.matview'"
+      },
+      {
+        "id": "postgres.countRows",
+        "title": "PostgreSQL: Count Rows",
+        "when": "contextValue == 'postgres.table' || contextValue == 'postgres.view' || contextValue == 'postgres.matview'"
+      },
+      {
+        "id": "postgres.scriptCreate",
+        "title": "PostgreSQL: Script Table as CREATE",
+        "when": "contextValue == 'postgres.table'"
+      },
+      {
+        "id": "postgres.scriptInsert",
+        "title": "PostgreSQL: Script as INSERT",
+        "when": "contextValue == 'postgres.table'"
+      },
+      {
+        "id": "postgres.scriptModify",
+        "title": "PostgreSQL: Script as CREATE OR REPLACE",
+        "when": "contextValue == 'postgres.view' || contextValue == 'postgres.matview' || contextValue == 'postgres.function' || contextValue == 'postgres.procedure' || contextValue == 'postgres.sequence'"
+      },
+      {
+        "id": "postgres.scriptExecute",
+        "title": "PostgreSQL: Script as SELECT / CALL",
+        "when": "contextValue == 'postgres.function' || contextValue == 'postgres.procedure'"
+      },
+      {
+        "id": "postgres.executeQuery",
+        "title": "PostgreSQL: Execute Query",
+        "when": "view == 'postgres.query'"
+      },
+      {
+        "id": "postgres.cancelQuery",
+        "title": "PostgreSQL: Cancel Query",
+        "when": "view == 'postgres.query'"
+      },
+      {
+        "id": "postgres.listDatabases",
+        "title": "PostgreSQL: List Databases",
+        "when": "view == 'postgres.query'"
+      },
+      {
+        "id": "postgres.serverInfo",
+        "title": "PostgreSQL: Server Info",
+        "when": "view == 'postgres.query'"
+      },
+      {
+        "id": "postgres.completionCatalog",
+        "title": "PostgreSQL: IntelliSense Catalog",
+        "when": "view == 'postgres.query'"
+      },
+      {
+        "id": "postgres.search",
+        "title": "PostgreSQL: Search Objects",
+        "hidden": true
+      }
+    ],
+    "searchProviders": [
+      {
+        "id": "objects",
+        "label": "PostgreSQL objects",
+        "command": "postgres.search",
+        "connectionType": "postgres",
+        "order": 21,
+        "icon": "$(database)"
+      }
+    ]
+  },
+  "activationEvents": [
+    "onConnectionType:postgres"
+  ]
+}

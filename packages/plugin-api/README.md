@@ -43,6 +43,17 @@ of every interface above (the registries, the IPC marshalling, the generic
 form/grid renderers, the view host). Reference plugins (Phase 3/4) are the
 first real consumers.
 
+## Naming your connections
+
+Core calls a saved connection a "Connection" unless the connection type says otherwise. Name it after what it
+is, so the sidebar reads *Servers*, *Folders* or *Clusters*, and the menus say *Add Server* and *Remove Server*:
+
+```json
+"connectionTypes": [{ "id": "postgres", "label": "PostgreSQL", "connectionLabel": "Server" }]
+```
+
+`connectionLabelPlural` overrides the plural when appending "s" is wrong (e.g. `"connectionLabel": "Repository", "connectionLabelPlural": "Repositories"`).
+
 ## Themes & icons
 
 oneClient follows VS Code's model: core owns a set of **color keys** and a set

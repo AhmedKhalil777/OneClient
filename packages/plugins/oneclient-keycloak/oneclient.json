@@ -11,7 +11,7 @@
   "ui": "dist/ui",
   "contributes": {
     "connectionTypes": [
-      { "id": "keycloak", "label": "Keycloak", "description": "A Keycloak identity server (admin REST API).", "category": "Identity", "icon": "icon.svg" }
+      { "id": "keycloak", "connectionLabel": "Server", "label": "Keycloak", "description": "A Keycloak identity server (admin REST API).", "category": "Identity", "icon": "icon.svg" }
     ],
     "explorerNodes": [
       { "id": "keycloak.realm", "connectionType": "keycloak" },

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ConnectionTypeContribution } from "@oneclient/plugin-api";
 import type { ConnectionTypeFormInfo } from "../../../shared/types.js";
+import { connectionLabel } from "../connection-label.js";
 import { JsonSchemaForm } from "./JsonSchemaForm.js";
 
 export function NewConnectionDialog({
@@ -17,6 +18,8 @@ export function NewConnectionDialog({
   const [name, setName] = useState("");
   const [nameTouched, setNameTouched] = useState(false);
   const [config, setConfig] = useState<Record<string, unknown>>({});
+  const picked = connectionTypes.filter((t) => !typeId || t.id === typeId);
+  const noun = connectionLabel(picked.length ? picked : connectionTypes);
   const [status, setStatus] = useState<{ kind: "idle" | "busy" | "error" | "ok"; message?: string }>({ kind: "idle" });
 
   // Opened from a single plugin's explorer — skip straight to its only type.
@@ -35,6 +38,8 @@ export function NewConnectionDialog({
     try {
       const info = await window.oneclient.getConnectionForm(id);
       setForm(info);
+      // The form shows each field's schema default; start from them so what's shown is what gets saved.
+      setConfig(Object.fromEntries(Object.entries(info.configSchema.properties ?? {}).flatMap(([key, p]) => (p.default !== undefined ? [[key, p.default]] : []))));
       setStatus({ kind: "idle" });
     } catch (err) {
       setStatus({ kind: "error", message: err instanceof Error ? err.message : String(err) });
@@ -67,7 +72,7 @@ export function NewConnectionDialog({
   return (
     <div className="dialog-overlay" onMouseDown={onClose}>
       <div className="dialog" onMouseDown={(e) => e.stopPropagation()}>
-        <h2>New Connection</h2>
+        <h2>{noun.one === "Connection" ? "New Connection" : `Add ${noun.one}`}</h2>
 
         <div className="form-field">
           <label htmlFor="conn-type">Type</label>
@@ -91,7 +96,7 @@ export function NewConnectionDialog({
                   setName(e.target.value);
                   setNameTouched(true);
                 }}
-                placeholder="My connection"
+                placeholder={`My ${noun.one.toLowerCase()}`}
               />
             </div>
             <JsonSchemaForm
@@ -111,7 +116,7 @@ export function NewConnectionDialog({
         )}
 
         {status.kind === "error" && <div style={{ color: "var(--danger)" }}>{status.message}</div>}
-        {status.kind === "ok" && <div style={{ color: "var(--ok)" }}>{status.message ?? "Connection OK"}</div>}
+        {status.kind === "ok" && <div style={{ color: "var(--ok)" }}>{status.message ?? `${noun.one} OK`}</div>}
 
         <div className="dialog-actions">
           <button className="btn" onClick={onClose}>

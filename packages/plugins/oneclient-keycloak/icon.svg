@@ -1,11 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <defs>
-    <linearGradient id="kc-g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#4fb3f6"/>
-      <stop offset="1" stop-color="#2a6fdb"/>
-    </linearGradient>
-  </defs>
-  <path d="M16 2.5 4.5 6.6v8.2c0 6.6 4.5 11.5 11.5 14.7 7-3.2 11.5-8.1 11.5-14.7V6.6z" fill="url(#kc-g)"/>
-  <circle cx="16" cy="12.6" r="3.7" fill="none" stroke="#ffffff" stroke-width="2.2"/>
-  <path d="M16 16.3v7.4M16 20.2h2.8M16 23.4h2" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><title>keycloak</title><rect width="24" height="24" rx="5" fill="#4D4D4D"/><path fill="#33C6E9" transform="translate(4 4) scale(0.6667)" d="m18.742 1.182-12.493.002C4.155 4.784 2.079 8.393 0 12.002c2.071 3.612 4.162 7.214 6.252 10.816l12.49-.004 3.089-5.404h2.158v-.002H24L23.996 6.59h-2.168zM8.327 4.792h2.081l1.04 1.8-3.12 5.413 3.117 5.403-1.035 1.81H8.327a2047.566 2047.566 0 0 0-4.168-7.204C5.547 9.606 6.937 7.2 8.327 4.792Zm6.241 0 2.086.003c1.393 2.405 2.78 4.813 4.166 7.222l-4.167 7.2h-2.08c-.382-.562-1.038-1.808-1.038-1.808l3.123-5.405-3.124-5.413z"/></svg>

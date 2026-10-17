@@ -11,7 +11,7 @@
   "ui": "dist/ui",
   "contributes": {
     "connectionTypes": [
-      { "id": "http", "label": "HTTP Workspace", "description": "Collections, environments and history for HTTP / REST requests (Postman-compatible).", "category": "API", "icon": "icon.svg" }
+      { "id": "http", "connectionLabel": "Workspace", "label": "HTTP Workspace", "description": "Collections, environments and history for HTTP / REST requests (Postman-compatible).", "category": "API", "icon": "icon.svg" }
     ],
     "explorerNodes": [
       { "id": "http.collection", "connectionType": "http" },

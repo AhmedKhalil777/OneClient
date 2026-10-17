@@ -5,6 +5,7 @@ import type { ViewContainerId } from "./ActivityBar.js";
 import { ThemeIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
 import { ConnectionRootNodes, ExplorerTreeNode, type NodeContextMenuFn, type OpenNodeViewFn } from "./ExplorerTree.js";
+import { connectionLabel } from "../connection-label.js";
 
 /** Right-click on a connection row (`node` undefined) or a tree node under it. */
 export type ExplorerContextMenuFn = (
@@ -120,6 +121,7 @@ function PluginContainer({
   const [refreshKey, setRefreshKey] = useState(0);
   const containerId = `plugin:${plugin.id}`;
   const canConnect = connectionTypes.length > 0 && plugin.state === "active";
+  const noun = connectionLabel(connectionTypes);
 
   return (
     <div className="sidebar">
@@ -134,11 +136,11 @@ function PluginContainer({
         <SidebarSection
           containerId={containerId}
           sectionId="connections"
-          title="Connections"
+          title={noun.many}
           count={connections.length}
           actions={
             <>
-              <button className="icon-button" title="New Connection" disabled={!canConnect} onClick={onNewConnection}>
+              <button className="icon-button" title={`Add ${noun.one}`} disabled={!canConnect} onClick={onNewConnection}>
                 <ThemeIcon id="add" />
               </button>
               <button className="icon-button" title="Refresh" onClick={() => setRefreshKey((k) => k + 1)}>
@@ -149,7 +151,7 @@ function PluginContainer({
         >
           {connections.length === 0 ? (
             <div className="empty-hint">
-              No connections yet.{" "}
+              No {noun.many.toLowerCase()} yet.{" "}
               {canConnect && (
                 <button className="link-button" onClick={onNewConnection}>
                   Add one
@@ -192,7 +194,9 @@ function PluginContainer({
             }
           >
             {scoped.length === 0 ? (
-              <div className="empty-hint">Add a connection to use {section.title}.</div>
+              <div className="empty-hint">
+                Add a {noun.one.toLowerCase()} to use {section.title}.
+              </div>
             ) : (
               scoped.map((c) => {
                 const connectionType = connectionTypes.find((t) => t.id === c.typeId);

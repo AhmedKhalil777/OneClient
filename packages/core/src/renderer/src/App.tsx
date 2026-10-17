@@ -15,6 +15,7 @@ import { OUTPUT_SELECT_EVENT, OUTPUT_SELECT_KEY } from "./components/OutputView.
 import { usePrompts } from "./components/PromptDialogs.js";
 import { evaluateWhen, type WhenContext } from "./when.js";
 import { NewConnectionDialog } from "./components/NewConnectionDialog.js";
+import { connectionLabel } from "./connection-label.js";
 import { PluginManagerPanel } from "./components/PluginManagerPanel.js";
 import { Sidebar, stripCategory } from "./components/Sidebar.js";
 import { Tier2ViewHost } from "./components/Tier2ViewHost.js";
@@ -374,7 +375,7 @@ export function App() {
         (v) => v.tier === 2 && v.connectionType === connection.typeId && v.pluginId === connection.pluginId,
       );
       if (dashboard) builtIns.push({ id: "core.openDashboard", label: `Open ${dashboard.title}`, run: () => openDashboard(connection, dashboard) });
-      builtIns.push({ id: "core.removeConnection", label: "Remove Connection", danger: true, run: () => void removeConnection(connection) });
+      builtIns.push({ id: "core.removeConnection", label: `Remove ${nounFor(connection).one}`, danger: true, run: () => void removeConnection(connection) });
     }
     if (items.length > 0) builtIns[0] = { ...builtIns[0]!, separator: true };
 
@@ -438,13 +439,17 @@ export function App() {
     }
   }
 
+  /** "Server", "Folder"… — what this connection's plugin calls it. */
+  const nounFor = (connection: ConnectionSummary) => connectionLabel(registry.connectionTypes.filter((t) => t.pluginId === connection.pluginId && t.id === connection.typeId));
+
   async function removeConnection(connection: ConnectionSummary) {
     const openTabs = tabs.filter((t) => t.kind === "tier2-view" && t.connectionId === connection.id);
     const unsaved = openTabs.filter((t) => dirtyViews.has(t.id)).length;
+    const noun = nounFor(connection);
     const ok = await prompts.confirm({
-      title: "Remove Connection",
+      title: `Remove ${noun.one}`,
       message:
-        `Remove "${connection.name}"? This only forgets the connection in oneClient — nothing on the target is deleted.` +
+        `Remove "${connection.name}"? This only forgets the ${noun.one.toLowerCase()} in oneClient — nothing on the target is deleted.` +
         (unsaved > 0 ? `\n\n${unsaved} open tab(s) have unsaved changes that will be lost.` : ""),
       confirmLabel: "Remove",
       danger: true,
@@ -454,7 +459,7 @@ export function App() {
     try {
       await window.oneclient.deleteConnection(connection.id);
     } catch (err) {
-      pushToast("error", `Remove Connection: ${err instanceof Error ? err.message : String(err)}`);
+      pushToast("error", `Remove ${nounFor(connection).one}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

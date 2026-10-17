@@ -11,7 +11,7 @@
   "ui": "dist/ui",
   "contributes": {
     "connectionTypes": [
-      { "id": "azure-blob", "label": "Azure Blob Storage", "description": "An Azure Storage account (or Azurite).", "category": "Cloud storage", "icon": "icon.svg" }
+      { "id": "azure-blob", "connectionLabel": "Storage Account", "label": "Azure Blob Storage", "description": "An Azure Storage account (or Azurite).", "category": "Cloud storage", "icon": "icon.svg" }
     ],
     "explorerNodes": [
       { "id": "azblob.container", "connectionType": "azure-blob" },

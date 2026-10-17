@@ -211,7 +211,9 @@
         "label": { "type": "string" },
         "description": { "type": "string" },
         "icon": { "type": "string" },
-        "category": { "type": "string" }
+        "category": { "type": "string" },
+        "connectionLabel": { "type": "string", "maxLength": 30, "description": "What one saved connection is called in the UI (\"Folder\", \"Server\", \"Cluster\"). Default \"Connection\"." },
+        "connectionLabelPlural": { "type": "string", "maxLength": 30, "description": "Plural of connectionLabel, used as the sidebar section heading. Default: connectionLabel + \"s\"." }
       }
     },
 

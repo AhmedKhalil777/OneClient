@@ -136,6 +136,14 @@ export function createCommandHandlers(): CommandHandler[] {
         }),
     },
     {
+      // Global search provider (contributes.searchProviders): tables, views, procedures and functions.
+      commandId: "mssql.search",
+      execute: (args) => {
+        const { connectionId, query, limit } = arg<{ connectionId: string; query: string; limit?: number }>(args);
+        return searchObjects(connectionId, String(query ?? ""), Math.min(50, Math.max(1, limit ?? 20)));
+      },
+    },
+    {
       commandId: "mssql.newQuery",
       execute: (args) =>
         action(async () => {

@@ -58,6 +58,12 @@ const PLUGIN_FEATURES: Record<string, string[]> = {
     "Blob view: preview and edit text / JSON / XML in the shared editor (saving keeps content type and metadata and refuses to overwrite someone else's change), image preview, properties, headers, metadata, access tier, rename / copy, download, and SAS links.",
     "Browser (⊞): one folder at a time with breadcrumbs — upload by picker or drag & drop, multi-select download / delete, new folder, container SAS. Containers and blob paths show up in the top search.",
   ],
+  "oneclient-postgres": [
+    "Connect with host / port / user or a postgres:// connection string, with SSL (require or verify) — works with Azure, RDS, Supabase and Neon.",
+    "Explorer: databases → schemas → tables, views, materialized views, functions (with overloads), procedures and sequences; columns, indexes and constraints.",
+    "Query windows, each its own session: run the selection or the whole script (F5 / Ctrl+Enter), many result sets, RAISE NOTICE output, psql-style errors with the line, cancel (Esc), IntelliSense that follows search_path and quotes \"MixedCase\" names.",
+    "Scripts: Select Top 1000, Count Rows, CREATE TABLE (constraints, FKs, indexes), INSERT, CREATE OR REPLACE for views / functions / procedures, SELECT / CALL with named parameters. Objects of every database show up in the top search.",
+  ],
   "oneclient-kafka": [
     "Connect to any Kafka cluster (Apache Kafka, Redpanda, Confluent Cloud, Event Hubs) with bootstrap servers, SASL PLAIN / SCRAM and TLS.",
     "Explorer: brokers, topics and consumer groups. Create topics, increase partitions, empty or delete a topic, delete a group.",

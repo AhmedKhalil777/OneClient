@@ -84,6 +84,13 @@ export interface ConnectionTypeContribution {
   readonly description?: string;
   readonly icon?: string;
   readonly category?: string;
+  /**
+   * What one saved connection of this type is called in the UI, e.g. "Folder", "Server", "Cluster" — used for
+   * "Add Server", "Remove Server", "No servers yet". Default "Connection".
+   */
+  readonly connectionLabel?: string;
+  /** Plural of `connectionLabel`, the sidebar section heading (e.g. "Servers"). Default: `connectionLabel` + "s". */
+  readonly connectionLabelPlural?: string;
 }
 
 export interface ExplorerSectionContribution {

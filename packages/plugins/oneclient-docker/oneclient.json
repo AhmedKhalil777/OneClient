@@ -26,7 +26,7 @@
       { "id": "docker-volume", "description": "A Docker volume", "path": "icons/volume.svg", "colored": true },
       { "id": "docker-network", "description": "A Docker network", "path": "icons/network.svg", "colored": true }
     ],
-    "connectionTypes": [{ "id": "docker", "label": "Docker", "category": "Infrastructure", "icon": "icon.svg" }],
+    "connectionTypes": [{ "id": "docker", "connectionLabel": "Docker Host", "label": "Docker", "category": "Infrastructure", "icon": "icon.svg" }],
     "explorerNodes": [
       { "id": "docker.containers", "connectionType": "docker" },
       { "id": "docker.container", "parentNodeType": "docker.containers" },

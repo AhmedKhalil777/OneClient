@@ -1,0 +1,84 @@
+/**
+ * Tiny PostgreSQL highlighter for the editor overlay: one regex pass, HTML out. Knows dollar-quoted bodies
+ * ($$ … $$, $fn$ … $fn$), E'…' strings, "quoted identifiers", :: casts and $1 parameters.
+ */
+
+export const KEYWORDS = new Set(
+  `ABORT ADD ALL ALTER ANALYZE AS ASC BEGIN BY CALL CASCADE CASE CHECK CHECKPOINT CLOSE CLUSTER COLLATE COLUMN COMMENT COMMIT
+  CONCURRENTLY CONFLICT CONSTRAINT COPY CREATE CROSS CURRENT CURSOR DATABASE DEALLOCATE DECLARE DEFAULT DEFERRABLE DELETE DESC
+  DISTINCT DO DOMAIN DROP EACH ELSE END ENUM EXCEPT EXCEPTION EXECUTE EXISTS EXPLAIN EXTENSION FALSE FETCH FILTER FIRST FOR
+  FOREIGN FROM FULL FUNCTION GENERATED GRANT GROUP HAVING IDENTITY IF IMMUTABLE INDEX INHERITS INSERT INTERSECT INTO KEY LANGUAGE
+  LAST LATERAL LIMIT LISTEN LOCK LOOP MATERIALIZED MERGE NOTHING NOTIFY NULLS OF OFFSET ON ONLY OR ORDER OVER OWNED OWNER
+  PARTITION PERFORM POLICY PRIMARY PROCEDURE PUBLICATION RAISE RECURSIVE REFERENCES REFRESH REINDEX RELEASE RENAME REPLACE
+  RESET RESTRICT RETURN RETURNING RETURNS REVOKE ROLE ROLLBACK ROW ROWS RULE SAVEPOINT SCHEMA SECURITY SELECT SEQUENCE SET SHOW
+  STABLE STRICT SUBSCRIPTION TABLE TABLESPACE TEMP TEMPORARY THEN TO TRANSACTION TRIGGER TRUE TRUNCATE TYPE UNION UNIQUE UNLOGGED
+  UPDATE USING VACUUM VALUES VARIADIC VIEW VOLATILE WHEN WHERE WINDOW WITH WITHIN INOUT OUT IN DEFINER INVOKER ALWAYS STORED
+  CONSTRAINTS DEFERRED IMMEDIATE GET DIAGNOSTICS FOUND NOTICE WARNING INFO DEBUG LOG ELSIF WHILE CONTINUE EXIT NEXT QUERY
+  ANALYSE VERBOSE BUFFERS COSTS FORMAT SEARCH_PATH`.split(/\s+/),
+);
+
+export const OPERATORS = new Set("AND OR NOT IN IS NULL LIKE ILIKE SIMILAR BETWEEN EXISTS SOME ANY ALL JOIN INNER LEFT RIGHT OUTER NATURAL ISNULL NOTNULL".split(" "));
+
+export const TYPES = new Set(
+  `BIGINT BIGSERIAL BIT BOOL BOOLEAN BOX BYTEA CHAR CHARACTER CIDR CIRCLE DATE DECIMAL DOUBLE PRECISION FLOAT4 FLOAT8 INET INT INT2
+  INT4 INT8 INTEGER INTERVAL JSON JSONB LINE LSEG MACADDR MONEY NUMERIC PATH POINT POLYGON REAL REGCLASS SERIAL SERIAL2 SERIAL4
+  SERIAL8 SMALLINT SMALLSERIAL TEXT TIME TIMESTAMP TIMESTAMPTZ TIMETZ TSQUERY TSVECTOR UUID VARCHAR VARYING XML ZONE OID
+  RECORD VOID TRIGGER SETOF ANYELEMENT`.split(/\s+/),
+);
+
+export const FUNCTIONS = new Set(
+  `COUNT SUM AVG MIN MAX STRING_AGG ARRAY_AGG JSON_AGG JSONB_AGG JSON_OBJECT_AGG JSONB_OBJECT_AGG BOOL_AND BOOL_OR EVERY
+  ROW_NUMBER RANK DENSE_RANK PERCENT_RANK CUME_DIST NTILE LAG LEAD FIRST_VALUE LAST_VALUE NTH_VALUE PERCENTILE_CONT
+  PERCENTILE_DISC MODE CAST COALESCE NULLIF GREATEST LEAST NOW CURRENT_DATE CURRENT_TIME CURRENT_TIMESTAMP LOCALTIMESTAMP
+  CLOCK_TIMESTAMP DATE_TRUNC DATE_PART EXTRACT AGE TO_CHAR TO_DATE TO_TIMESTAMP TO_NUMBER MAKE_DATE MAKE_INTERVAL
+  LENGTH CHAR_LENGTH LOWER UPPER INITCAP TRIM LTRIM RTRIM BTRIM SUBSTRING SUBSTR POSITION STRPOS REPLACE REGEXP_REPLACE
+  REGEXP_MATCH REGEXP_MATCHES REGEXP_SPLIT_TO_TABLE SPLIT_PART CONCAT CONCAT_WS FORMAT LEFT RIGHT LPAD RPAD REPEAT REVERSE
+  MD5 ENCODE DECODE ABS CEIL CEILING FLOOR ROUND TRUNC POWER SQRT MOD RANDOM SIGN GEN_RANDOM_UUID GENERATE_SERIES UNNEST
+  ARRAY_LENGTH ARRAY_POSITION ARRAY_REMOVE ARRAY_APPEND CARDINALITY JSONB_BUILD_OBJECT JSON_BUILD_OBJECT JSONB_SET
+  JSONB_EXTRACT_PATH JSONB_ARRAY_ELEMENTS JSONB_EACH JSONB_PRETTY TO_JSON TO_JSONB ROW_TO_JSON NEXTVAL CURRVAL SETVAL
+  PG_SLEEP PG_CANCEL_BACKEND PG_TERMINATE_BACKEND PG_SIZE_PRETTY PG_TOTAL_RELATION_SIZE PG_RELATION_SIZE CURRENT_DATABASE
+  CURRENT_SCHEMA CURRENT_USER VERSION TO_TSVECTOR TO_TSQUERY PLAINTO_TSQUERY TS_RANK`.split(/\s+/),
+);
+
+const TOKEN =
+  /(--[^\n]*)|(\/\*[\s\S]*?(?:\*\/|$))|(\$([A-Za-z_]\w*)?\$[\s\S]*?(?:\$\4\$|$))|([EeBbXxUu]&?'(?:[^'\\]|\\.|'')*'?|'(?:[^']|'')*'?)|("(?:[^"]|"")*"?)|(\$\d+|:[A-Za-z_]\w*)|(\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|(::)|([A-Za-z_][\w$]*)/g;
+
+function escape(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function highlightSql(text: string): string {
+  let out = "";
+  let last = 0;
+  let afterCast = false;
+  for (const m of text.matchAll(TOKEN)) {
+    const index = m.index ?? 0;
+    out += escape(text.slice(last, index));
+    last = index + m[0].length;
+    const tok = escape(m[0]);
+    const cast = afterCast;
+    afterCast = false;
+    if (m[1] || m[2]) out += `<span class="t-comment">${tok}</span>`;
+    else if (m[3]) out += `<span class="t-string">${tok}</span>`; // dollar-quoted function bodies
+    else if (m[5]) out += `<span class="t-string">${tok}</span>`;
+    else if (m[6]) out += tok; // "Quoted identifier"
+    else if (m[7]) out += `<span class="t-var">${tok}</span>`;
+    else if (m[8]) out += `<span class="t-number">${tok}</span>`;
+    else if (m[9]) {
+      out += `<span class="t-op">${tok}</span>`;
+      afterCast = true;
+    } else {
+      const upper = m[0].toUpperCase();
+      const isCall = text[last] === "(";
+      if (cast || TYPES.has(upper)) out += `<span class="t-type">${tok}</span>`;
+      else if (isCall && FUNCTIONS.has(upper)) out += `<span class="t-func">${tok}</span>`;
+      else if (OPERATORS.has(upper)) out += `<span class="t-op">${tok}</span>`;
+      else if (KEYWORDS.has(upper)) out += `<span class="t-keyword">${tok}</span>`;
+      else if (FUNCTIONS.has(upper)) out += `<span class="t-func">${tok}</span>`;
+      else out += tok;
+    }
+  }
+  out += escape(text.slice(last));
+  // A trailing newline needs content after it or the overlay is one line shorter than the textarea.
+  return `${out}\n `;
+}
