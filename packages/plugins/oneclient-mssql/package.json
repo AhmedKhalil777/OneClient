@@ -13,7 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@faker-js/faker": "9.3.0",
+    "@faker-js/faker": "10.5.0",
     "@oneclient/editor-kit": "workspace:*",
     "@oneclient/plugin-api": "workspace:*",
     "mssql": "^11.0.2",
