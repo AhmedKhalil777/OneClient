@@ -29,7 +29,17 @@ export function createMainWindow(): BrowserWindow {
     },
   });
 
-  win.on("ready-to-show", () => win.show());
+  // `ready-to-show` waits for the first paint, and Chromium can skip painting a window that was never shown,
+  // which left the installed app running with no window. Also show once the page has loaded, or after a timeout.
+  let shown = false;
+  const reveal = (): void => {
+    if (shown || win.isDestroyed()) return;
+    shown = true;
+    win.show();
+  };
+  win.once("ready-to-show", reveal);
+  win.webContents.once("did-finish-load", reveal);
+  setTimeout(reveal, 3000);
 
   // Open any target="_blank"/window.open() link in the OS browser instead of a new Electron window.
   win.webContents.setWindowOpenHandler(({ url }) => {

@@ -61,6 +61,22 @@ function log(pluginId: string, level: "debug" | "info" | "warn" | "error", messa
 }
 
 async function main(): Promise<void> {
+  // One installed instance: launching again focuses the running window instead of starting another app.
+  // Dev builds skip this so they can run alongside an installed copy (and the test driver).
+  if (app.isPackaged) {
+    if (!app.requestSingleInstanceLock()) {
+      app.quit();
+      return;
+    }
+    app.on("second-instance", () => {
+      const win = BrowserWindow.getAllWindows()[0];
+      if (!win) return;
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    });
+  }
+
   await app.whenReady();
 
   // All app metadata lives in ~/.oneclient/oneclient.json (see config-store.ts); secrets in ~/.oneclient/secrets.json.
