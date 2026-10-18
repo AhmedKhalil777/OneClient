@@ -95,6 +95,39 @@ const COMMANDS = {
     console.log("screenshot:", f);
   },
 
+  // Windows only: screenshots the window as the OS compositor shows it — Tier 2 views included, which `ss` and
+  // `ss-view` can't do. Brings the window to the front first. Used for the README screenshots (docs/images).
+  async "ss-screen"(name) {
+    if (!app) return console.log("ERROR: launch first");
+    const hwnd = await app.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      win.setAlwaysOnTop(true);
+      win.show();
+      win.focus();
+      const handle = win.getNativeWindowHandle();
+      return handle.length === 8 ? handle.readBigUInt64LE(0).toString() : String(handle.readUInt32LE(0));
+    });
+    await new Promise((r) => setTimeout(r, 700));
+    const f = path.resolve(SHOT_DIR, (name || `screen-${Date.now()}`) + ".png");
+    const { execFileSync } = await import("node:child_process");
+    const out = execFileSync("powershell", ["-NoProfile", "-File", path.join(__dirname, "capture-window.ps1"), hwnd, f], { encoding: "utf8" });
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setAlwaysOnTop(false));
+    console.log("screen capture:", f, out.trim());
+  },
+
+  // Resizes the main window (content size, DIPs) — gives screenshots a consistent size.
+  async size(args) {
+    if (!app) return console.log("ERROR: launch first");
+    const [w, h] = args.split(/[x ]/).map(Number);
+    await app.evaluate(({ BrowserWindow }, [w, h]) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win.isMaximized()) win.unmaximize();
+      win.setContentSize(w, h);
+      win.center();
+    }, [w, h]);
+    console.log("size ->", w, "x", h);
+  },
+
   // Screenshots a Tier 2 view's own WebContentsView by matching its URL
   // (every view's entry lives under a manifest-declared "ui" dir, so any
   // loaded webContents whose URL contains "/ui/" is one; core views live under "/views/"). Pass a substring
@@ -166,6 +199,30 @@ const COMMANDS = {
     const result = await evalInView(urlMatch, code);
     if (!result.found) return console.log("ERROR: no matching Tier 2 view found for", urlMatch);
     console.log("click-text-view", JSON.stringify(text), "->", result.value);
+  },
+
+  // Types into a Tier 2 view as real input (focuses it first): `type-view views/terminal git log --oneline\n`.
+  // A trailing `\n` presses Enter. Works for xterm, which ignores synthetic DOM events.
+  async "type-view"(args) {
+    if (!app) return console.log("ERROR: launch first");
+    const [urlMatch, ...textParts] = args.split(" ");
+    let text = textParts.join(" ");
+    const enter = text.endsWith("\\n");
+    if (enter) text = text.slice(0, -2);
+    const ok = await app.evaluate(async ({ webContents }, { urlMatch, text, enter }) => {
+      const wc = webContents.getAllWebContents().find((w) => (w.getURL().includes("/ui/") || w.getURL().includes("/views/")) && w.getURL().includes(urlMatch));
+      if (!wc) return false;
+      wc.focus();
+      await wc.executeJavaScript("document.querySelector('.term-host:not([hidden]) textarea, textarea, input')?.focus()");
+      if (text) await wc.insertText(text);
+      if (enter) {
+        wc.sendInputEvent({ type: "keyDown", keyCode: "Return" });
+        wc.sendInputEvent({ type: "char", keyCode: "\r" });
+        wc.sendInputEvent({ type: "keyUp", keyCode: "Return" });
+      }
+      return true;
+    }, { urlMatch, text, enter });
+    console.log("type-view", urlMatch, ok ? "OK" : "ERROR: no matching view");
   },
 
   async click(sel) {

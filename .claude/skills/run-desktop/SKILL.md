@@ -47,6 +47,9 @@ node .claude/skills/run-desktop/driver.mjs
 | `launch` | launch the app, find the real window |
 | `ss [name]` | screenshot of the main window -> `shots/<name>.png`. **Does not show Tier 2 views** — see Gotchas |
 | `ss-view [urlSubstring] [name]` | screenshot of an open Tier 2 view's own content -> `shots/<name>.png`. **Unreliable** — see Gotchas |
+| `ss-screen [name]` | **Windows:** captures the window as the OS shows it (Tier 2 views included) via `capture-window.ps1` — use this for real screenshots (README images) |
+| `size <w>x<h>` | resize the window's content area (e.g. `size 1440x900`) for consistent screenshots |
+| `type-view [urlSubstring] <text>` | real typing into a Tier 2 view (works for the xterm terminal); a trailing `\n` presses Enter |
 | `eval-view [urlSubstring] <js>` | evaluate JS inside a Tier 2 view's webContents (via `executeJavaScript`), print the result |
 | `click-text-view [urlSubstring] <text>` | `click-text`, but inside a Tier 2 view |
 | `click <css-sel>` | click element via DOM `.click()` (not coordinates) |

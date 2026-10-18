@@ -1,28 +1,80 @@
 # oneClient
 
-One client for everything — a plug-and-play desktop console for infrastructure
-tools (databases, REST APIs, message brokers, identity providers). The core
-ships with zero infrastructure-specific code; all database/broker/IdP support
-comes from installable plugins that extend the connection types, explorer
-tree, views, and commands at runtime, with no rebuild or restart.
-
-See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the process topology,
-contribution model, plugin lifecycle, and trust model, and
-[`packages/plugin-api`](./packages/plugin-api) for the interfaces plugins
-implement.
-
 [![CI](https://github.com/AhmedKhalil777/OneClient/actions/workflows/ci.yml/badge.svg)](https://github.com/AhmedKhalil777/OneClient/actions/workflows/ci.yml)
 [![Release](https://github.com/AhmedKhalil777/OneClient/actions/workflows/release.yml/badge.svg)](https://github.com/AhmedKhalil777/OneClient/releases)
 
-## What's in it
+**One client for everything.** oneClient is a desktop console for the infrastructure you work with every day:
+databases, message brokers, caches, REST APIs, containers and identity providers. It runs in one window and looks and
+works like VS Code.
+
+The core is a full workbench: Explorer, Search, editor, Git, Terminal and background tasks. Every integration is a
+plugin. Plugins add connection types, explorer trees, editors and commands at runtime, with no rebuild or restart.
+
+![The oneClient workbench: Explorer, editor and terminal](docs/images/workbench.png)
+
+**[Download the latest release â†’](https://github.com/AhmedKhalil777/OneClient/releases/latest)** (Windows, macOS, Linux)
+
+## Features
+
+### A real workbench
+
+You get the Explorer, multi-folder workspaces, a shared editor (find / replace, go to line, format, breadcrumbs), an
+integrated terminal (PowerShell, cmd, Git Bash, WSL, bash/zsh), title-bar menus and a command palette. Everything has
+a keyboard shortcut you already know.
+
+| Search across every open folder | Command palette |
+| --- | --- |
+| ![Search](docs/images/search.png) | ![Command palette](docs/images/command-palette.png) |
+| Match case, whole word, regex, include / exclude globs, and replace per file or everywhere. | Every core and plugin command, filtered as you type (`Ctrl+Shift+P`). |
+
+### Source Control
+
+The Source Control view works like VS Code's: staged and unstaged changes, a commit box with Commit / Amend / Push /
+Sync, side-by-side or inline diffs, branch checkout and creation, and a commit **graph** with branch lanes and refs. It
+uses your own `git`, so hooks, credentials and config just work.
+
+![Source Control with a side-by-side diff and the commit graph](docs/images/source-control.png)
+
+### Background tasks
+
+The task runner finds `package.json` scripts (npm / pnpm / yarn), `.vscode/tasks.json` / `.oneclient/tasks.json`
+tasks and .NET builds. Tasks run in the background with live output, progress in the status bar, Stop and Run Again.
+Git fetch / pull / push and long plugin jobs show up here too.
+
+![The Tasks panel with a running build and finished test and lint tasks](docs/images/tasks.png)
+
+### Plugins for your infrastructure
+
+| PostgreSQL & SQL Server | Apache Kafka |
+| --- | --- |
+| ![PostgreSQL query window](docs/images/postgres.png) | ![Kafka topic browser](docs/images/kafka.png) |
+| Browse databases, schemas, tables, views, functions and procedures. Query windows with IntelliSense, multiple result sets and messages. | Brokers, topics and consumer groups. Browse and filter messages, view partitions and configuration, produce messages. |
+
+| HTTP client | Redis |
+| --- | --- |
+| ![HTTP client request and response](docs/images/http-client.png) | ![Redis key browser](docs/images/redis.png) |
+| Collections, folders, environments and history. Import from Postman or cURL. | Key tree grouped by namespace; editors for strings, hashes, lists, sets, sorted sets, streams and JSON; TTL, rename and delete. |
+
+Docker, Azure Blob Storage and Keycloak are included too, and the Miscellaneous plugin adds JSON / XML / SQL /
+Markdown editor support and Material file icons. The Plugins view shows what is installed. You can enable or disable
+any plugin live.
+
+![The Plugins view](docs/images/plugins.png)
+
+## For developers
+
+See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the process topology, contribution model, plugin lifecycle, and trust
+model, and [`packages/plugin-api`](./packages/plugin-api) for the interfaces plugins implement.
+
+### What's in the repo
 
 - **Core workbench** (`packages/core`): title bar menus, Explorer, Search, file editor, Source Control (git),
   Terminal, background tasks / Task Runner, Output, themes, and the plugin host.
 - **Plugins** (`packages/plugins/*`): SQL Server, PostgreSQL, Redis, Kafka, Azure Blob Storage, Docker, Keycloak,
   HTTP client, and Miscellaneous (JSON / XML / SQL / Markdown editor features, Material icons).
-- `packages/plugin-api` — the only package plugins depend on; `packages/editor-kit` — the shared editor.
+- `packages/plugin-api` â€” the only package plugins depend on; `packages/editor-kit` â€” the shared editor.
 
-## Development
+### Development
 
 ```sh
 pnpm install
@@ -32,10 +84,10 @@ pnpm run test
 cd packages/core && pnpm run dev   # the app, with hot reload
 ```
 
-## Packaging & releases
+### Packaging & releases
 
 ```sh
-pnpm run package       # installers for this OS → release/ (Windows: NSIS .exe + .zip, macOS: .dmg + .zip, Linux: AppImage + .tar.gz)
+pnpm run package       # installers for this OS â†’ release/ (Windows: NSIS .exe + .zip, macOS: .dmg + .zip, Linux: AppImage + .tar.gz)
 pnpm run package:dir   # just the unpacked app (quick check)
 ```
 
@@ -44,10 +96,16 @@ pnpm run package:dir   # just the unpacked app (quick check)
 
 GitHub Actions:
 
-- **CI** (`.github/workflows/ci.yml`) — every push to `main` and every pull request: install, build, typecheck and
+- **CI** (`.github/workflows/ci.yml`) â€” every push to `main` and every pull request: install, build, typecheck and
   test on Windows, macOS and Linux, then check that the app still packages.
-- **Release** (`.github/workflows/release.yml`) — push a version tag (`git tag v0.2.0 && git push origin v0.2.0`) or run
+- **Release** (`.github/workflows/release.yml`) â€” push a version tag (`git tag v0.2.0 && git push origin v0.2.0`) or run
   it from the Actions tab with a version: tests, builds the installers on all three OSes, and publishes a GitHub
   Release with them, `SHA256SUMS.txt` and generated release notes. Tags with a `-` (`v0.2.0-beta.1`) become
   pre-releases; manual runs default to a draft. The installers aren't code-signed yet (Windows SmartScreen and macOS
   Gatekeeper will warn).
+
+### Screenshots
+
+The images in [`docs/images`](docs/images) are real captures of the running app (1440×900, against local Docker
+containers), taken with the `run-desktop` skill's driver: `size 1440x900` and then `ss-screen <name>`, which captures
+the window as the OS shows it, plugin views included.
