@@ -1,0 +1,37 @@
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--oc-editor-background, #1e1e1e);
+  color: var(--oc-editor-foreground, #cccccc);
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+}
+.diff-page { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.diff-bar { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-bottom: 1px solid var(--oc-widget-border, #3c3c3c); background: var(--oc-editorGroupHeader-tabsBackground, #252526); flex-wrap: wrap; }
+.diff-title { font-weight: 600; }
+.dim { color: var(--oc-descriptionForeground, #858585); font-weight: 400; }
+.spacer { flex: 1; }
+.diff-stats .add { color: var(--oc-gitDecoration-addedResourceForeground, #81b88b); }
+.diff-stats .del { color: var(--oc-gitDecoration-deletedResourceForeground, #c74e39); }
+.btn { background: transparent; color: inherit; border: 1px solid var(--oc-widget-border, #454545); border-radius: 3px; padding: 2px 8px; font: inherit; font-size: 12px; cursor: pointer; }
+.btn:hover:not(:disabled) { background: var(--oc-toolbar-hoverBackground, #ffffff1a); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn.on { border-color: var(--oc-focusBorder, #007fd4); }
+.diff-message { padding: 24px; color: var(--oc-descriptionForeground, #858585); }
+.diff-message.error { color: var(--oc-errorForeground, #f48771); }
+.diff-body { flex: 1; min-height: 0; overflow: auto; font-family: Consolas, "Cascadia Mono", "Courier New", monospace; font-size: 13px; line-height: 19px; }
+.row { display: grid; min-width: max-content; }
+.split .row { grid-template-columns: 48px minmax(0, 1fr) 48px minmax(0, 1fr); min-width: 0; }
+.inline .row { grid-template-columns: 48px 48px 1fr; }
+.ln { text-align: right; padding: 0 8px 0 4px; color: var(--oc-editorLineNumber-foreground, #6e7681); user-select: none; }
+.code { white-space: pre; overflow: hidden; text-overflow: ellipsis; padding-left: 6px; tab-size: 4; }
+.split .code { border-right: 1px solid var(--oc-widget-border, #2a2a2a); }
+.inline .code { overflow: visible; }
+.code.del, .ln.del { background: var(--oc-diffEditor-removedLineBackground, rgba(255, 0, 0, 0.18)); }
+.code.add, .ln.add { background: var(--oc-diffEditor-insertedLineBackground, rgba(155, 185, 85, 0.2)); }
+.code.empty, .ln.empty { background: repeating-linear-gradient(-45deg, transparent 0 4px, rgba(128, 128, 128, 0.08) 4px 8px); }
+.diff-fold { padding: 2px 12px; color: var(--oc-textLink-foreground, #3794ff); background: var(--oc-editorGroupHeader-tabsBackground, #252526); cursor: pointer; font-family: -apple-system, "Segoe UI", system-ui, sans-serif; font-size: 12px; }
+.diff-fold:hover { text-decoration: underline; }
+.diff-current { outline: 1px solid var(--oc-focusBorder, #007fd4); outline-offset: -1px; }

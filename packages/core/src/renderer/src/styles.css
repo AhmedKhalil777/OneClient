@@ -1165,3 +1165,94 @@ pre.result {
 .shortcuts-table tr:hover td { background: var(--oc-list-hoverBackground, #2a2d2e); }
 .shortcuts-group { color: var(--text-dim); white-space: nowrap; }
 .shortcuts-table kbd { font-family: inherit; font-size: 12px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-sidebar); white-space: nowrap; }
+
+/* ---- Tasks panel ---- */
+.tasks-view { display: grid; grid-template-columns: minmax(220px, 32%) 1fr; height: 100%; min-height: 0; background: var(--oc-panel-background, var(--oc-editor-background, #1e1e1e)); }
+.tasks-list { overflow: auto; border-right: 1px solid var(--oc-panel-border, var(--border)); min-height: 0; }
+.tasks-list-bar { display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 12px; font-size: 11px; letter-spacing: 0.05em; color: var(--text-dim); position: sticky; top: 0; background: inherit; }
+.task-row { display: grid; grid-template-columns: 18px 1fr; grid-template-rows: auto auto; column-gap: 6px; padding: 4px 10px; cursor: pointer; border-left: 2px solid transparent; }
+.task-row:hover { background: var(--oc-list-hoverBackground, #2a2d2e); }
+.task-row.selected { background: var(--oc-list-inactiveSelectionBackground, #37373d); border-left-color: var(--oc-focusBorder, #007fd4); }
+.task-state { grid-row: span 2; text-align: center; }
+.task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-meta { grid-column: 2; font-size: 11px; color: var(--text-dim); }
+.task-progress { grid-column: 2; height: 2px; background: var(--border); margin-top: 3px; }
+.task-progress span { display: block; height: 100%; background: var(--oc-progressBar-background, #0e70c0); }
+.state-succeeded .task-state, .task-badge.state-succeeded { color: var(--oc-testing-iconPassed, #73c991); }
+.state-failed .task-state, .task-badge.state-failed { color: var(--danger); }
+.state-cancelled .task-state, .task-badge.state-cancelled { color: var(--text-dim); }
+.state-running .task-state, .task-badge.state-running { color: var(--oc-progressBar-background, #3794ff); }
+.task-state.spin { display: inline-block; animation: task-spin 1.2s linear infinite; }
+@keyframes task-spin { to { transform: rotate(360deg); } }
+.task-badge { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.task-detail { color: var(--text-dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
+.tasks-output { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.tasks-body { flex: 1; min-height: 0; overflow: auto; margin: 0; padding: 6px 12px; font-family: Consolas, "Cascadia Mono", "Courier New", monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+
+/* ---- Source Control ---- */
+.activity-item { position: relative; }
+.activity-badge { position: absolute; right: 6px; bottom: 6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--oc-activityBarBadge-background, #0078d4); color: var(--oc-activityBarBadge-foreground, #fff); font-size: 10px; font-weight: 600; line-height: 16px; text-align: center; }
+.scm-view { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.scm-repos { flex: 1 1 auto; min-height: 80px; overflow: auto; }
+.scm-empty p { margin: 4px 0 10px; line-height: 1.5; }
+.scm-empty .btn { display: block; width: 100%; margin-bottom: 6px; }
+.scm-repo { padding-bottom: 6px; }
+.scm-repo-head { display: flex; align-items: center; gap: 6px; padding: 6px 12px 2px; font-weight: 600; font-size: 12px; }
+.scm-repo-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scm-branch-chip { background: none; border: 0; color: var(--text-dim); font: inherit; font-weight: 400; cursor: pointer; }
+.scm-branch-chip:hover { color: var(--text); }
+.scm-error { margin: 6px 12px; color: var(--danger); font-size: 12px; white-space: pre-wrap; }
+.scm-banner { margin: 6px 12px; padding: 6px 8px; border: 1px solid var(--oc-editorWarning-foreground, #cca700); border-radius: 4px; font-size: 12px; }
+.scm-commit { padding: 6px 12px 8px 20px; display: flex; flex-direction: column; gap: 6px; }
+.scm-message { resize: none; width: 100%; box-sizing: border-box; background: var(--oc-input-background, #3c3c3c); color: var(--oc-input-foreground, var(--text)); border: 1px solid var(--oc-input-border, transparent); border-radius: 3px; padding: 5px 7px; font: inherit; line-height: 18px; }
+.scm-message:focus { outline: 1px solid var(--oc-focusBorder, #007fd4); outline-offset: -1px; }
+.scm-commit-buttons { display: flex; }
+.scm-primary { flex: 1; border-radius: 3px 0 0 3px; }
+.scm-more { width: 26px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 0 3px 3px 0; border-left: 1px solid rgba(255, 255, 255, 0.25); }
+.scm-group-head, .scm-graph-head { display: flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px 0 4px; cursor: pointer; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; }
+.scm-group-head:hover, .scm-graph-head:hover { background: var(--oc-list-hoverBackground, #2a2d2e); }
+.scm-group-title { flex: 1; }
+.scm-group-actions { display: none; gap: 0; }
+.scm-group-head:hover .scm-group-actions, .scm-group-actions.always { display: flex; }
+.scm-group-actions .icon-button { min-width: 20px; font-size: 14px; line-height: 1; }
+.scm-change { display: flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px 0 22px; cursor: pointer; font-size: 13px; }
+.scm-change:hover { background: var(--oc-list-hoverBackground, #2a2d2e); }
+.scm-name { white-space: nowrap; }
+.scm-name.deleted { text-decoration: line-through; }
+.scm-dir { flex: 1; min-width: 0; color: var(--text-dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scm-row-actions { display: none; }
+.scm-change:hover .scm-row-actions { display: flex; }
+.scm-row-actions .icon-button { min-width: 20px; font-size: 14px; line-height: 1; }
+.scm-status { width: 14px; text-align: center; font-size: 12px; font-weight: 600; }
+.status-M .scm-name, .status-M .scm-status, .status-R .scm-name, .status-R .scm-status, .status-T .scm-status { color: var(--oc-gitDecoration-modifiedResourceForeground, #e2c08d); }
+.status-A .scm-name, .status-A .scm-status, .status-C .scm-status { color: var(--oc-gitDecoration-addedResourceForeground, #81b88b); }
+.status-D .scm-name, .status-D .scm-status { color: var(--oc-gitDecoration-deletedResourceForeground, #c74e39); }
+.status-U2 .scm-name, .status-U2 .scm-status { color: var(--oc-gitDecoration-untrackedResourceForeground, #73c991); }
+.status-U .scm-name, .status-U .scm-status { color: var(--oc-gitDecoration-conflictingResourceForeground, #e4676b); }
+.scm-graph { border-top: 1px solid var(--border); display: flex; flex-direction: column; min-height: 22px; }
+.scm-graph.open { flex: 1 1 45%; min-height: 120px; }
+.scm-graph-body { flex: 1; min-height: 0; overflow: auto; }
+.graph-all { font-size: 11px !important; width: auto !important; padding: 0 4px; }
+.graph-all.on { color: var(--oc-focusBorder, #3794ff); }
+.graph-row { display: flex; align-items: center; gap: 4px; height: 22px; padding-right: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; overflow: hidden; }
+.graph-row:hover { background: var(--oc-list-hoverBackground, #2a2d2e); }
+.graph-row.open { background: var(--oc-list-inactiveSelectionBackground, #37373d); }
+.graph-row.head .graph-subject { font-weight: 600; }
+.graph-lanes { flex: none; width: var(--graph-w); display: flex; }
+.graph-svg { display: block; }
+.graph-subject { overflow: hidden; text-overflow: ellipsis; min-width: 40px; }
+.graph-author { color: var(--text-dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.graph-ref { flex: none; font-size: 11px; padding: 0 6px; border-radius: 9px; border: 1px solid currentColor; line-height: 16px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.graph-ref.ref-head { color: #4fa3ff; background: rgba(79, 163, 255, 0.15); }
+.graph-ref.ref-local { color: #4fa3ff; }
+.graph-ref.ref-remote { color: #c77dff; }
+.graph-ref.ref-tag { color: #e5b847; }
+.graph-details { padding: 4px 0 6px calc(var(--graph-w) + 4px); border-bottom: 1px solid var(--border); }
+.graph-meta { font-size: 12px; color: var(--text-dim); padding: 2px 8px 4px 0; }
+.graph-body { margin: 0 8px 6px 0; padding: 6px 8px; background: var(--oc-textCodeBlock-background, rgba(255, 255, 255, 0.04)); border-radius: 3px; font-size: 12px; white-space: pre-wrap; font-family: inherit; }
+.graph-file { padding-left: 4px; }
+.status-task { display: inline-flex; align-items: center; gap: 4px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.scm-repo-wrap.active .scm-repo-head { color: var(--text); }
+.scm-repo-wrap:not(.active) .scm-repo-head { opacity: 0.85; }
+.graph-repo { margin-left: 6px; max-width: 120px; background: var(--oc-dropdown-background, #3c3c3c); color: var(--text); border: 1px solid var(--border); border-radius: 3px; font: inherit; font-size: 11px; font-weight: 400; }

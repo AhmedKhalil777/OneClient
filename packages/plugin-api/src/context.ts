@@ -5,6 +5,7 @@ import type { Logger } from "./logging.js";
 import type { OutputChannel } from "./output.js";
 import type { SecretStore } from "./secrets.js";
 import type { Workspace } from "./workspace.js";
+import type { Tasks } from "./tasks.js";
 import type { ViewMessageHandler } from "./ui.js";
 
 export interface Disposable {
@@ -41,6 +42,9 @@ export interface PluginContext {
 
   /** The folders open in core's Explorer, and opening files in core's editor — see workspace.ts. */
   readonly workspace: Workspace;
+
+  /** Background tasks shown in the status bar and the Tasks panel — see tasks.ts. */
+  readonly tasks: Tasks;
 
   /** Disposables registered here are disposed automatically on deactivate/disable. */
   readonly subscriptions: Disposable[];

@@ -10,7 +10,7 @@ import { AssetIcon } from "./components/AssetIcon.js";
 import { ThemeIcon, useResourceIcon, useThemeState } from "./theme.js";
 import { QuickSearch } from "./components/QuickSearch.js";
 import { WelcomePage } from "./components/WelcomePage.js";
-import { OUTPUT_PANEL_KEY, OUTPUT_VIEW, Panel, usePanel } from "./components/Panel.js";
+import { OUTPUT_PANEL_KEY, OUTPUT_VIEW, Panel, TASKS_PANEL_KEY, TASKS_VIEW, usePanel } from "./components/Panel.js";
 import { OUTPUT_SELECT_EVENT, OUTPUT_SELECT_KEY } from "./components/OutputView.js";
 import { usePrompts } from "./components/PromptDialogs.js";
 import { evaluateWhen, type WhenContext } from "./when.js";
@@ -23,6 +23,9 @@ import { Sidebar, stripCategory } from "./components/Sidebar.js";
 import { Tier2ViewHost } from "./components/Tier2ViewHost.js";
 import { SearchView, type SearchViewHandle } from "./components/SearchView.js";
 import { ExplorerView, FILE_NODE, FOLDER_NODE } from "./components/ExplorerView.js";
+import { ScmView, type ScmActions } from "./components/ScmView.js";
+import { TASKS_SELECT_EVENT, STATE_ICON } from "./components/TasksView.js";
+import type { RepoState, TaskInfo } from "../../shared/ipc-contract.js";
 import { CORE_PLUGIN_ID } from "../../shared/core.js";
 import { type MenuItem, TitleBar, type TopMenu } from "./components/TitleBar.js";
 
@@ -113,7 +116,7 @@ function useViewContainer(explorerPlugins: PluginSummary[]) {
   const [visible, setVisible] = useState(true);
 
   // Fall back to core's Explorer (on a fresh install) when nothing is remembered or the remembered one is gone.
-  const known = (id: ViewContainerId | null) => id === "explorer" || id === "plugins" || id === "search" || explorerPlugins.some((p) => `plugin:${p.id}` === id);
+  const known = (id: ViewContainerId | null) => id === "explorer" || id === "plugins" || id === "search" || id === "scm" || explorerPlugins.some((p) => `plugin:${p.id}` === id);
   const resolved: ViewContainerId = active !== null && known(active) ? active : "explorer";
 
   function select(id: ViewContainerId) {
@@ -186,7 +189,27 @@ export function App() {
     void window.oneclient.workspaceFolders().then(setFolders);
     return window.oneclient.onWorkspaceChanged(setFolders);
   }, []);
+  /** Source control: the repositories of the open folders. */
+  const [repos, setRepos] = useState<RepoState[]>([]);
+  useEffect(() => {
+    void window.oneclient.gitRepos().then(setRepos);
+    return window.oneclient.onGitChanged(setRepos);
+  }, []);
+  /** The repository the user is working in: picked in Source Control, else the first one. */
+  const [activeRepoRoot, setActiveRepoRoot] = useState<string | undefined>(() => localStorage.getItem("oneclient.scm.activeRepo") ?? undefined);
+  const activeRepo = repos.find((r) => r.root === activeRepoRoot) ?? repos[0];
+  const scmCount = repos.reduce((n, r) => n + r.staged.length + r.unstaged.length + r.untracked.length + r.conflicts.length, 0);
+  /** Background tasks (status bar indicator). */
+  const [tasks, setTasks] = useState<TaskInfo[]>([]);
+  useEffect(() => {
+    void window.oneclient.listTasks().then(setTasks);
+    return window.oneclient.onTasksChanged(setTasks);
+  }, []);
   const searchRef = useRef<SearchViewHandle>(null);
+  const pickTaskRef = useRef<(group?: "build" | "test") => Promise<void>>(async () => {});
+  const scmActionsRef = useRef<ScmActions>(null as unknown as ScmActions);
+  const reposRef = useRef<RepoState[]>([]);
+  const activeRepoRef = useRef<RepoState | undefined>(undefined);
   const [searchMounted, setSearchMounted] = useState(false);
   useEffect(() => {
     if (container.active === "search") setSearchMounted(true);
@@ -197,6 +220,7 @@ export function App() {
     () => [
       TERMINAL_VIEW, // core's terminal first
       ...registry.views.filter((v) => v.tier === 2 && v.location === "panel"),
+      TASKS_VIEW, // background tasks
       OUTPUT_VIEW, // the shell's own Output log, always last
     ],
     [registry.views],
@@ -294,6 +318,8 @@ export function App() {
       else if (mod && !e.shiftKey && (e.key === "`" || e.code === "Backquote")) action = () => panelToggleRef.current();
       else if (mod && e.shiftKey && e.code === "Backquote") action = () => menuActionsRef.current.newTerminal();
       else if (mod && e.shiftKey && !e.altKey && key === "e") action = () => shortcutRef.current("showExplorer");
+      else if (mod && e.shiftKey && !e.altKey && key === "g") action = () => shortcutRef.current("showScm");
+      else if (mod && e.shiftKey && !e.altKey && key === "b") action = () => shortcutRef.current("runBuildTask");
       else if (mod && e.shiftKey && !e.altKey && key === "x") action = () => menuActionsRef.current.showPlugins();
       else if (mod && e.shiftKey && !e.altKey && key === "u") action = () => menuActionsRef.current.showOutput();
       else if (mod && e.shiftKey && !e.altKey && key === "n") action = () => menuActionsRef.current.newConnection();
@@ -648,7 +674,18 @@ export function App() {
   const paletteCommands = useMemo<PaletteCommand[]>(() => {
     const builtins: PaletteCommand[] = [
       { id: "workbench.search", title: "Go to Anything… (Search Files, SQL Objects, …)", description: "Ctrl+P", run: () => setSearchOpen(true) },
-      { id: "workbench.findInFiles", title: "Search: Find in Files", description: "Ctrl+Shift+F", run: openFindInFiles },
+      { id: "workbench.findInFiles", title: "Search: Find in Files", description: "Ctrl+Shift+F", run: () => openFindInFiles() },
+      { id: "tasks.run", title: "Tasks: Run Task…", run: () => void pickTaskRef.current() },
+      { id: "tasks.build", title: "Tasks: Run Build Task…", description: "Ctrl+Shift+B", run: () => void pickTaskRef.current("build") },
+      { id: "tasks.show", title: "Tasks: Show Tasks", run: () => panel.show(TASKS_PANEL_KEY) },
+      ...(["fetch", "pull", "push", "sync"] as const).map((m) => ({
+        id: `git.${m}`,
+        title: `Git: ${m[0]!.toUpperCase()}${m.slice(1)}`,
+        run: () => void (activeRepoRef.current ? scmActionsRef.current.git(m, activeRepoRef.current.root).catch(() => undefined) : pushToast("error", "No git repository is open.")),
+      })),
+      { id: "git.checkout", title: "Git: Checkout to…", run: () => activeRepoRef.current && void scmActionsRef.current.pickBranch(activeRepoRef.current) },
+      { id: "git.branch", title: "Git: Create Branch…", run: () => activeRepoRef.current && scmActionsRef.current.createBranch(activeRepoRef.current) },
+      { id: "git.show", title: "View: Show Source Control", description: "Ctrl+Shift+G", run: () => container.show("scm") },
       { id: "workbench.welcome", title: "Help: Welcome / Feature Guide", run: openWelcome },
       { id: "workbench.reloadWindow", title: "Reload Window", run: () => location.reload() },
       { id: "workbench.openPluginManager", title: "Open Plugin Manager", run: () => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" }) },
@@ -911,7 +948,156 @@ export function App() {
     });
   }
 
+  // ---- source control ------------------------------------------------------------------------------------------
+
+  const scmActions: ScmActions = {
+    git: async (method, ...args) => {
+      try {
+        return await window.oneclient.git(method, ...args);
+      } catch (err) {
+        pushToast("error", `Git: ${(err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Git)?Error: /, "")}`);
+        throw err;
+      }
+    },
+    openDiff: (repo, path, left, right, title, origPath) => {
+      const instanceId = `core:git.diff:${repo.root}:${path}:${left}:${right}`;
+      const name = path.slice(path.lastIndexOf("/") + 1);
+      openTab({
+        id: instanceId,
+        title,
+        kind: "tier2-view",
+        instanceId,
+        pluginId: CORE_PLUGIN_ID,
+        viewId: "git.diff",
+        params: { root: repo.root, path, left, right, ...(origPath ? { origPath } : {}) },
+        resource: { name, kind: "file" },
+      });
+    },
+    openFile: (repo, path) => {
+      const sep = repo.root.includes("\\") ? "\\" : "/";
+      void window.oneclient
+        .openWorkspaceFile(`${repo.root.replace(/[\\/]+$/, "")}${sep}${path.split("/").join(sep)}`)
+        .catch(() => pushToast("error", `"${path}" isn't inside a folder open in the Explorer — open the repository's folder to edit it.`));
+    },
+    pickBranch: (repo) => void pickBranch(repo),
+    menu: (e, items) => setMenu({ x: e.clientX, y: e.clientY, items }),
+    confirm: (title, message, label) => prompts.confirm({ title, message, confirmLabel: label, danger: true }),
+    createBranch: (repo) => void createBranch(repo),
+    openFolder: () => void openFolder(),
+    activeRoot: activeRepo?.root,
+    setActive: (root) => {
+      if (root === activeRepoRoot) return;
+      localStorage.setItem("oneclient.scm.activeRepo", root);
+      setActiveRepoRoot(root);
+    },
+  };
+
+  async function createBranch(repo: RepoState, from?: string) {
+    const a = await prompts.input({ title: from ? `Create Branch from ${from}` : "Create Branch", schema: { type: "object", required: ["name"], properties: { name: { type: "string", title: "Branch name" } } }, initial: {} });
+    if (a) await scmActions.git("createBranch", repo.root, String(a.name).trim(), from).catch(() => undefined);
+  }
+
+  /** "Checkout to…": create a branch, or pick a local / remote branch or tag. */
+  async function pickBranch(repo: RepoState) {
+    let refs: Array<{ name: string; kind: string; current: boolean; sha: string }> = [];
+    try {
+      refs = (await window.oneclient.git("refs", repo.root)) as typeof refs;
+    } catch (err) {
+      return pushToast("error", `Git: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    const checkout = (name: string) => void scmActions.git("checkout", repo.root, name).catch(() => undefined);
+    setQuickPick({
+      placeholder: `Select a branch or tag to checkout (${repo.name})`,
+      commands: [
+        { id: "new", title: "+ Create new branch…", run: () => void createBranch(repo) },
+        { id: "newFrom", title: "+ Create new branch from…", run: () => void pickBranchSource(repo, refs) },
+        ...refs.map((r) => ({
+          id: `${r.kind}:${r.name}`,
+          title: `${r.kind === "tag" ? "🏷 " : r.kind === "remote" ? "☁ " : "⎇ "}${r.name}`,
+          description: `${r.current ? "current · " : ""}${r.kind === "local" ? "branch" : r.kind === "remote" ? "remote branch" : "tag"} · ${r.sha.slice(0, 8)}`,
+          run: () => !r.current && checkout(r.name),
+        })),
+      ],
+      onClose: () => setQuickPick(null),
+    });
+  }
+  function pickBranchSource(repo: RepoState, refs: Array<{ name: string; kind: string; sha: string }>) {
+    setQuickPick({
+      placeholder: "Create the new branch from…",
+      commands: refs.map((r) => ({ id: r.name, title: r.name, description: r.kind, run: () => void createBranch(repo, r.name) })),
+      onClose: () => setQuickPick(null),
+    });
+  }
+
+  // ---- tasks ----------------------------------------------------------------------------------------------------
+
+  /** Show the Tasks panel on one task. */
+  function showTask(id: string) {
+    panel.show(TASKS_PANEL_KEY, { focus: false });
+    setTimeout(() => window.dispatchEvent(new CustomEvent(TASKS_SELECT_EVENT, { detail: id })), 50);
+  }
+
+  /** Terminal ▸ Run Task… (optionally only build / test tasks; a single default runs at once). */
+  async function pickTask(group?: "build" | "test") {
+    const defs = await window.oneclient.taskDefinitions().catch(() => []);
+    const list = group ? defs.filter((d) => d.group === group) : defs;
+    const run = (id: string) =>
+      void window.oneclient
+        .runTask(id)
+        .then(showTask)
+        .catch((err: unknown) => pushToast("error", `Run Task: ${err instanceof Error ? err.message : String(err)}`));
+    const preferred = list.filter((d) => d.isDefault);
+    if (group && (preferred.length === 1 || list.length === 1)) return run((preferred[0] ?? list[0])!.id);
+    if (list.length === 0) {
+      pushToast("error", group ? `No ${group} task found. Add one to .vscode/tasks.json or .oneclient/tasks.json (Terminal ▸ Configure Tasks…).` : "No tasks found in the open folders (package.json scripts, tasks.json, .NET solutions).");
+      return;
+    }
+    const running = new Set(tasks.filter((t) => t.state === "running" && t.definitionId).map((t) => t.definitionId));
+    setQuickPick({
+      placeholder: group ? `Select the ${group} task to run` : "Select the task to run",
+      commands: list.map((d) => ({
+        id: d.id,
+        title: `${running.has(d.id) ? "⟳ " : ""}${d.label}`,
+        description: [d.folderName, d.detail ?? d.command, running.has(d.id) ? "running — restart" : ""].filter(Boolean).join(" · "),
+        run: () => run(d.id),
+      })),
+      onClose: () => setQuickPick(null),
+    });
+  }
+
+  function pickRunningTask() {
+    const running = tasks.filter((t) => t.state === "running" && t.cancellable);
+    setQuickPick({
+      placeholder: "Select the task to terminate",
+      commands: running.map((t) => ({ id: t.id, title: t.title, description: `${t.source}${t.detail ? ` · ${t.detail}` : ""}`, run: () => void window.oneclient.cancelTask(t.id) })),
+      onClose: () => setQuickPick(null),
+    });
+  }
+
+  /** Terminal ▸ Configure Tasks…: open (or create) .vscode/tasks.json in the first folder. */
+  async function configureTasks() {
+    const folder = folders[0];
+    if (!folder) return pushToast("error", "Open a folder first (File ▸ Open Folder…).");
+    const sep = folder.path.includes("\\") ? "\\" : "/";
+    const file = `${folder.path}${sep}.vscode${sep}tasks.json`;
+    const opened = await window.oneclient.openWorkspaceFile(file).then(
+      () => true,
+      () => false,
+    );
+    if (opened) return;
+    // Doesn't exist yet: create it with an example, then open it.
+    await window.oneclient.executeCommand("files.newFile", [{ connectionId: folder.id, path: "", name: ".vscode/tasks.json" }]);
+    const template = `{\n  // Tasks for Terminal ▸ Run Task… (VS Code's format; \${workspaceFolder} etc. work).\n  "version": "2.0.0",\n  "tasks": [\n    {\n      "label": "build",\n      "type": "shell",\n      "command": "echo build",\n      "group": { "kind": "build", "isDefault": true }\n    }\n  ]\n}\n`;
+    await window.oneclient.executeCommand("files.writeFile", [{ connectionId: folder.id, path: ".vscode/tasks.json", content: template }]);
+    bumpExplorer(folder.id);
+    await window.oneclient.openWorkspaceFile(file).catch(() => undefined);
+  }
+
   const menus: TopMenu[] = buildMenus();
+  pickTaskRef.current = pickTask;
+  scmActionsRef.current = scmActions;
+  reposRef.current = repos;
+  activeRepoRef.current = activeRepo;
   function buildMenus(): TopMenu[] {
     const hasEditor = activeView !== undefined;
     const when: WhenContext = { activeView: activeView?.viewId, activePlugin: activeView?.pluginId };
@@ -994,6 +1180,7 @@ export function App() {
           { id: "goAnything", label: "Go to Anything…", accel: "Ctrl+P", run: () => setSearchOpen(true) },
           { id: "explorer", label: "Explorer", accel: "Ctrl+Shift+E", separator: true, checked: sidebarShows(explorerId), run: () => container.show(explorerId) },
           { id: "search", label: "Search", accel: "Ctrl+Shift+F", checked: sidebarShows("search"), run: () => openFindInFiles() },
+          { id: "scm", label: "Source Control", accel: "Ctrl+Shift+G", checked: sidebarShows("scm"), run: () => container.show("scm") },
           ...explorerPlugins.map((p, i) => ({
             id: `plugin:${p.id}`,
             label: p.displayName ?? p.id,
@@ -1053,7 +1240,13 @@ export function App() {
         items: terminalView
           ? [
               { id: "newTerminal", label: "New Terminal", accel: "Ctrl+Shift+`", run: () => menuActionsRef.current.newTerminal() },
-              { id: "killTerminal", label: "Kill Terminal", run: () => void runMenuCommand("terminal.kill") },
+              { id: "runTask", label: "Run Task…", separator: true, run: () => void pickTask() },
+              { id: "runBuild", label: "Run Build Task…", accel: "Ctrl+Shift+B", run: () => void pickTask("build") },
+              { id: "runTest", label: "Run Test Task…", run: () => void pickTask("test") },
+              { id: "terminateTask", label: "Terminate Task…", enabled: tasks.some((t) => t.state === "running" && t.cancellable), run: pickRunningTask },
+              { id: "showTasks", label: "Show Tasks", run: () => panel.show(TASKS_PANEL_KEY) },
+              { id: "configureTasks", label: "Configure Tasks…", run: () => void configureTasks() },
+              { id: "killTerminal", label: "Kill Terminal", separator: true, run: () => void runMenuCommand("terminal.kill") },
               { id: "clearTerminal", label: "Clear Terminal", run: () => void runMenuCommand("terminal.clear") },
               {
                 id: "showTerminal",
@@ -1164,6 +1357,10 @@ export function App() {
         return openFindInFiles();
       case "showExplorer":
         return container.show("explorer");
+      case "showScm":
+        return container.show("scm");
+      case "runBuildTask":
+        return void pickTask("build");
       case "toggleSidebar":
         return container.setVisible((v) => !v);
       case "closeEditor":
@@ -1203,6 +1400,7 @@ export function App() {
       <TitleBar menus={menus} onSearch={() => setSearchOpen(true)} onOpenChange={setMenuBarOpen} onBeforeOpen={captureEditTarget} />
 
       <ActivityBar
+        scmCount={scmCount}
         plugins={explorerPlugins}
         active={container.active}
         sidebarVisible={container.visible}
@@ -1228,7 +1426,8 @@ export function App() {
             onContextMenu={openFolderContextMenu}
           />
         )}
-        {container.active !== "search" && container.active !== "explorer" && (
+        {container.active === "scm" && <ScmView repos={repos} folders={folders} actions={scmActions} />}
+        {container.active !== "search" && container.active !== "explorer" && container.active !== "scm" && (
         <Sidebar
           container={container.active}
           connections={connections}
@@ -1324,13 +1523,42 @@ export function App() {
           )}
         </div>
 
-        <Panel state={panel} overlayOpen={overlayOpen} />
+        <Panel state={panel} overlayOpen={overlayOpen} onRunTask={() => void pickTask()} />
       </div>
 
       <div className="status-bar">
         <span className="status-brand">
           <Logo size={14} /> oneClient
         </span>
+        {activeRepo && (
+          <>
+            <button className="status-button" title={`${activeRepo.name} — Checkout to…`} onClick={() => pickBranch(activeRepo!)}>
+              ⎇ {activeRepo.branch ?? activeRepo.headSha?.slice(0, 8) ?? "(no commits)"}
+              {activeRepo.staged.length + activeRepo.unstaged.length + activeRepo.untracked.length + activeRepo.conflicts.length > 0 ? "*" : ""}
+            </button>
+            {activeRepo.branch && (
+              <button
+                className="status-button"
+                title={activeRepo.upstream ? `Synchronize with ${activeRepo.upstream} (pull, then push)` : "Publish Branch"}
+                onClick={() => void scmActions.git(activeRepo!.upstream ? "sync" : "push", activeRepo!.root).catch(() => undefined)}
+              >
+                {activeRepo.upstream ? `⟳ ${activeRepo.behind}↓ ${activeRepo.ahead}↑` : "☁ Publish"}
+              </button>
+            )}
+          </>
+        )}
+        {(() => {
+          const running = tasks.filter((t) => t.state === "running");
+          if (running.length === 0) return null;
+          const t = running[0]!;
+          return (
+            <button className="status-button status-task" title={running.map((x) => `${x.title}${x.detail ? ` — ${x.detail}` : ""}`).join("\n")} onClick={() => showTask(t.id)}>
+              <span className="task-state spin">{STATE_ICON.running}</span> {t.title}
+              {t.progress !== undefined ? ` ${Math.round(t.progress * 100)}%` : ""}
+              {running.length > 1 ? ` (+${running.length - 1})` : ""}
+            </button>
+          );
+        })()}
         <span>{plugins.filter((p) => p.state === "active").length} plugin(s) active</span>
         <span style={{ marginLeft: "auto" }}>Ctrl/Cmd+Shift+P — Command Palette</span>
         {/* One toggle for the whole panel; switching between its views is the panel's icon navigator. */}

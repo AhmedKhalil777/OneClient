@@ -186,6 +186,8 @@ export class ViewHostManager {
       else if (mod && !input.shift && !input.alt && input.key.toLowerCase() === "p") shortcut = "quickSearch";
       else if (mod && input.shift && !input.alt && input.key.toLowerCase() === "f") shortcut = "findInFiles";
       else if (mod && input.shift && !input.alt && input.key.toLowerCase() === "e") shortcut = "showExplorer";
+      else if (mod && input.shift && !input.alt && input.key.toLowerCase() === "g") shortcut = "showScm";
+      else if (mod && input.shift && !input.alt && input.key.toLowerCase() === "b") shortcut = "runBuildTask";
       else if (mod && !input.shift && !input.alt && input.key.toLowerCase() === "b") shortcut = "toggleSidebar";
       else if (mod && !input.shift && !input.alt && input.key.toLowerCase() === "w") shortcut = "closeEditor";
       else if (mod && !input.alt && input.key === "PageDown") shortcut = "nextEditor";

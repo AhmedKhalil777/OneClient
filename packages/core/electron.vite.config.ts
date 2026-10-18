@@ -43,6 +43,7 @@ export default defineConfig({
           // Core views: hosted like plugin views (sandboxed, with the view preload) — the file editor and the terminal.
           editor: resolve(__dirname, "src/renderer/views/editor/index.html"),
           terminal: resolve(__dirname, "src/renderer/views/terminal/index.html"),
+          diff: resolve(__dirname, "src/renderer/views/diff/index.html"),
         },
       },
     },

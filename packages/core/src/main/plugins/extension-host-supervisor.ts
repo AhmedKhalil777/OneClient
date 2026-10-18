@@ -4,6 +4,7 @@ import { utilityProcess, type UtilityProcess } from "electron";
 import type { HostInboundMessage, HostOutboundMessage, InvokeKind } from "../../shared/host-protocol.js";
 import type { FileSecretStore } from "../secrets/secret-store.js";
 import type { OutputService } from "../output/output-service.js";
+import type { TaskHandle, TaskService } from "../tasks/task-service.js";
 import type { PluginRecord } from "./plugin-manager.js";
 
 type LogFn = (pluginId: string, level: "debug" | "info" | "warn" | "error", message: string, meta?: unknown) => void;
@@ -41,6 +42,9 @@ export class ExtensionHostSupervisor {
   private readonly hosts = new Map<string, HostHandle>();
   private readonly hostEntryPath = join(__dirname, "extension-host.js");
   private workspace: WorkspaceBridge | undefined;
+  private taskService: TaskService | undefined;
+  /** Plugin tasks by the host's task id. */
+  private readonly pluginTasks = new Map<string, TaskHandle>();
 
   constructor(
     private readonly secrets: FileSecretStore,
@@ -50,6 +54,14 @@ export class ExtensionHostSupervisor {
     private readonly onViewPush: ViewPushFn,
     private readonly output: OutputService,
   ) {}
+
+  private pluginName: (pluginId: string) => string = (id) => id;
+
+  /** Plugins' context.tasks report to this service (labelled with the plugin's display name). */
+  setTasks(service: TaskService, pluginName: (pluginId: string) => string): void {
+    this.taskService = service;
+    this.pluginName = pluginName;
+  }
 
   setWorkspace(bridge: WorkspaceBridge): void {
     this.workspace = bridge;
@@ -206,6 +218,32 @@ export class ExtensionHostSupervisor {
       case "view:push":
         this.onViewPush(handle.pluginId, msg.viewId, msg.connectionId, msg.message);
         break;
+      case "task:start": {
+        if (!this.taskService) break;
+        const task = this.taskService.start({
+          title: msg.title,
+          source: this.pluginName(handle.pluginId),
+          cancellable: msg.cancellable,
+          onCancel: () => this.send(handle, { type: "task:cancel", taskId: msg.taskId }),
+        });
+        this.pluginTasks.set(msg.taskId, task);
+        break;
+      }
+      case "task:update": {
+        const t = this.pluginTasks.get(msg.taskId);
+        if (!t) break;
+        if (msg.log) t.log(msg.log);
+        if (msg.detail !== undefined || msg.progress !== undefined) t.report({ ...(msg.detail !== undefined ? { detail: msg.detail } : {}), ...(msg.progress !== undefined ? { progress: msg.progress } : {}) });
+        break;
+      }
+      case "task:end": {
+        const t = this.pluginTasks.get(msg.taskId);
+        this.pluginTasks.delete(msg.taskId);
+        if (!t) break;
+        if (msg.ok) t.succeed();
+        else t.fail(msg.error ?? "Failed.");
+        break;
+      }
       case "workspace:folders":
         this.send(handle, { type: "workspace:result", requestId: msg.requestId, ok: true, value: this.workspace?.folders() ?? [] });
         break;

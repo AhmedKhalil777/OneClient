@@ -55,6 +55,19 @@ const api: OneClientApi = {
   removeWorkspaceFolder: (id) => ipcRenderer.invoke(IpcChannel.WorkspaceRemoveFolder, id),
   onWorkspaceChanged: (listener) => onEvent(IpcChannel.WorkspaceChanged, listener),
   revealPath: (path) => ipcRenderer.invoke(IpcChannel.RevealPath, path),
+
+  listTasks: () => ipcRenderer.invoke(IpcChannel.TasksList),
+  onTasksChanged: (listener) => onEvent(IpcChannel.TasksChanged, listener),
+  taskOutput: (id) => ipcRenderer.invoke(IpcChannel.TaskOutput, id),
+  onTaskOutput: (listener) => onEvent(IpcChannel.TaskOutputChunk, listener),
+  cancelTask: (id) => ipcRenderer.invoke(IpcChannel.TaskCancel, id),
+  clearFinishedTasks: () => ipcRenderer.invoke(IpcChannel.TasksClear),
+  taskDefinitions: () => ipcRenderer.invoke(IpcChannel.TaskDefinitions),
+  runTask: (definitionId) => ipcRenderer.invoke(IpcChannel.TaskRun, definitionId),
+
+  gitRepos: () => ipcRenderer.invoke(IpcChannel.GitRepos),
+  onGitChanged: (listener) => onEvent(IpcChannel.GitChanged, listener),
+  git: (method, ...args) => ipcRenderer.invoke(IpcChannel.GitCall, method, args),
   openWorkspaceFile: (path, options) => ipcRenderer.invoke(IpcChannel.WorkspaceOpen, path, options ?? {}),
   onOpenWorkspaceFile: (listener) => onEvent(IpcChannel.WorkspaceOpenFile, listener),
 

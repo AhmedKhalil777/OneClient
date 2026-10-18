@@ -302,3 +302,22 @@ view already does on a shortcut:
 `when` takes `activeView` (view id of the active editor tab) and `activePlugin`, with the usual operators —
 `==`, `!=`, `=~ /re/`, `!`, `&&`, `||` and parentheses. Items with the same `group` sit together. The **Run** menu
 is only made of these items (core has nothing to run by itself), so plugins with something runnable should add one.
+
+## Background tasks
+
+Long-running work belongs in a **task**: it shows in the status bar and the Tasks panel (next to core's Git fetch /
+push and Task Runner builds) with progress, output and — if you allow it — a Stop button:
+
+```ts
+await context.tasks.run({ title: "Import customers", cancellable: true }, async (task) => {
+  for (const [i, batch] of batches.entries()) {
+    if (task.isCancelled) return;
+    task.report({ detail: `Batch ${i + 1}/${batches.length}`, progress: i / batches.length });
+    task.log(`inserted ${await insert(batch)} rows
+`);
+  }
+});
+```
+
+Resolving ends the task successfully; throwing marks it failed (the error is shown and rethrown). `task.onCancel(fn)`
+runs `fn` when the user presses Stop.

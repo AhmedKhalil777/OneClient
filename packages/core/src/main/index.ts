@@ -28,6 +28,9 @@ import { SearchWorker } from "./workspace/search-client.js";
 import { EDITOR_VIEW } from "./workspace/files.js";
 import { TERMINAL_VIEW, TerminalService } from "./terminal/terminal-service.js";
 import { CORE_PLUGIN_ID } from "../shared/core.js";
+import { TaskService } from "./tasks/task-service.js";
+import { TaskRunner } from "./tasks/task-runner.js";
+import { GitService } from "./git/git-service.js";
 import { IpcChannel } from "../shared/ipc-contract.js";
 
 function pluginDirs(): string[] {
@@ -39,7 +42,11 @@ function pluginDirs(): string[] {
 }
 
 /** Core's own views (the file editor tab, the Terminal panel): built with the renderer, hosted like plugin views. */
-const CORE_VIEWS: Record<string, string> = { [EDITOR_VIEW]: "views/editor/index.html", [TERMINAL_VIEW]: "views/terminal/index.html" };
+const CORE_VIEWS: Record<string, string> = {
+  [EDITOR_VIEW]: "views/editor/index.html",
+  [TERMINAL_VIEW]: "views/terminal/index.html",
+  "git.diff": "views/diff/index.html",
+};
 function coreViewUrl(viewId: string): string | undefined {
   const page = CORE_VIEWS[viewId];
   if (!page) return undefined;
@@ -176,8 +183,40 @@ async function main(): Promise<void> {
     (message) => views.push(TERMINAL_VIEW, undefined, message),
     () => workspace.folders()[0]?.path,
   );
-  /** Commands implemented by core itself (files.*, terminal.*): views, menus and context menus call them by id. */
-  const coreCommands = { ...workspace.commands(), ...terminal.commands() };
+  // Background tasks (Git network operations, the Task Runner, plugins' context.tasks) and source control.
+  const tasks = new TaskService();
+  supervisor.setTasks(tasks, (pluginId) => pluginManager.getRecord(pluginId)?.manifest?.displayName ?? pluginId);
+  const taskRunner = new TaskRunner(tasks, () => workspace.folders());
+  const gitService = new GitService(tasks);
+  void gitService.setFolders(workspace.folders());
+  workspace.onChanged((folders) => void gitService.setFolders(folders));
+
+  /** Commands implemented by core itself (files.*, terminal.*, git.*): views, menus and context menus call them by id. */
+  const fileCommands = workspace.commands();
+  // Saving, creating, renaming or deleting a file changes what git sees.
+  for (const id of ["files.writeFile", "files.newFile", "files.newFolder", "files.rename", "files.delete", "files.replace"]) {
+    const run = fileCommands[id]!;
+    fileCommands[id] = async (args) => {
+      try {
+        return await run(args);
+      } finally {
+        gitService.scheduleRefresh();
+      }
+    };
+  }
+  const coreCommands: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {
+    ...fileCommands,
+    ...terminal.commands(),
+    // The diff view: both sides of a file.
+    "git.diffContents": async (a) => {
+      const path = String(a.path ?? "");
+      const [left, right] = await Promise.all([
+        gitService.fileVersion(a.root, String(a.origPath ?? path), String(a.left ?? "HEAD")),
+        gitService.fileVersion(a.root, path, String(a.right ?? "worktree")),
+      ]);
+      return { left, right };
+    },
+  };
 
   async function openWorkspaceFile(path: string, options: { line?: number | undefined; column?: number | undefined; length?: number | undefined } = {}): Promise<void> {
     const location = workspace.locate(path);
@@ -229,6 +268,9 @@ async function main(): Promise<void> {
     coreCommands,
     coreViewUrl,
     terminal,
+    tasks,
+    taskRunner,
+    gitService,
   });
 
   await pluginManager.scan();
@@ -240,6 +282,8 @@ async function main(): Promise<void> {
   app.on("before-quit", () => {
     views.closeAll();
     terminal.dispose();
+    taskRunner.stopAll();
+    gitService.dispose();
     void searchWorker.dispose();
     for (const record of pluginManager.getRecords()) {
       if (record.state === "active") void supervisor.deactivate(record.id);

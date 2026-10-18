@@ -25,7 +25,8 @@ export type HostInboundMessage =
   | { type: "view:dispose"; viewId: string; connectionId?: string }
   | { type: "workspace:result"; requestId: string; ok: true; value?: unknown }
   | { type: "workspace:result"; requestId: string; ok: false; error: string }
-  | { type: "workspace:changed"; folders: Array<{ name: string; path: string }> };
+  | { type: "workspace:changed"; folders: Array<{ name: string; path: string }> }
+  | { type: "task:cancel"; taskId: string };
 
 export type RegisteredContribution =
   | { kind: "connection"; typeId: string; configSchema: unknown; uiSchema?: unknown }
@@ -49,4 +50,7 @@ export type HostOutboundMessage =
   | { type: "deactivated" }
   | { type: "view:push"; viewId: string; connectionId?: string; message: unknown }
   | { type: "workspace:folders"; requestId: string }
+  | { type: "task:start"; taskId: string; title: string; cancellable: boolean }
+  | { type: "task:update"; taskId: string; log?: string; detail?: string; progress?: number }
+  | { type: "task:end"; taskId: string; ok: boolean; error?: string }
   | { type: "workspace:openFile"; requestId: string; path: string; options?: { line?: number; column?: number; length?: number } };

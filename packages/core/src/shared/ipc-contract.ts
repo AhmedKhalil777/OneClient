@@ -1,4 +1,8 @@
 import type { SearchHit, SearchOutcome, SearchProviderInfo } from "../main/search/search-service.js";
+import type { TaskInfo } from "../main/tasks/task-service.js";
+import type { TaskDefinition } from "../main/tasks/task-runner.js";
+import type { RepoState } from "../main/git/git-service.js";
+import type { Change, ChangeStatus, Commit, Ref } from "../main/git/git.js";
 import type { OutputChannelInfo, OutputChannelState, OutputEntry } from "./output.js";
 import type {
   ConnectionSummary,
@@ -61,6 +65,19 @@ export const IpcChannel = {
   WorkspaceChanged: "oneclient:workspace:changed",
   RevealPath: "oneclient:shell:reveal-path",
 
+  TasksList: "oneclient:tasks:list",
+  TasksChanged: "oneclient:tasks:changed",
+  TaskOutput: "oneclient:tasks:output",
+  TaskOutputChunk: "oneclient:tasks:output-chunk",
+  TaskCancel: "oneclient:tasks:cancel",
+  TasksClear: "oneclient:tasks:clear",
+  TaskDefinitions: "oneclient:tasks:definitions",
+  TaskRun: "oneclient:tasks:run",
+
+  GitRepos: "oneclient:git:repos",
+  GitChanged: "oneclient:git:changed",
+  GitCall: "oneclient:git:call",
+
   WindowAction: "oneclient:window:action",
   EditAction: "oneclient:window:edit",
   ViewSendKey: "oneclient:view:send-key",
@@ -107,6 +124,8 @@ export type WorkbenchShortcut =
   | "quickSearch"
   | "findInFiles"
   | "showExplorer"
+  | "showScm"
+  | "runBuildTask"
   | "toggleSidebar"
   | "closeEditor"
   | "nextEditor"
@@ -116,6 +135,29 @@ export type WorkbenchShortcut =
   | "zoomReset"
   | "toggleFullScreen";
 export type { SearchHit, SearchOutcome, SearchProviderInfo };
+export type { TaskInfo, TaskDefinition, RepoState, Change, ChangeStatus, Commit, Ref };
+
+/** Git operations the Source Control view can call (GitService methods; the first argument is the repo root). */
+export type GitMethod =
+  | "refresh"
+  | "stage"
+  | "stageAll"
+  | "unstage"
+  | "unstageAll"
+  | "discard"
+  | "commit"
+  | "refs"
+  | "checkout"
+  | "createBranch"
+  | "deleteBranch"
+  | "fetch"
+  | "pull"
+  | "push"
+  | "sync"
+  | "init"
+  | "log"
+  | "commitFiles"
+  | "commitDetails";
 
 export interface ViewBounds {
   x: number;
@@ -201,6 +243,23 @@ export interface OneClientApi {
   onWorkspaceChanged(listener: (folders: WorkspaceFolderInfo[]) => void): () => void;
   /** Show a file or folder in the OS file manager. */
   revealPath(path: string): Promise<void>;
+
+  /** Background tasks (Git, Task Runner, plugins). */
+  listTasks(): Promise<TaskInfo[]>;
+  onTasksChanged(listener: (tasks: TaskInfo[]) => void): () => void;
+  taskOutput(id: string): Promise<string>;
+  onTaskOutput(listener: (event: { id: string; chunk: string }) => void): () => void;
+  cancelTask(id: string): Promise<boolean>;
+  clearFinishedTasks(): Promise<void>;
+  /** Task Runner: runnable tasks found in the open folders. */
+  taskDefinitions(): Promise<TaskDefinition[]>;
+  /** Starts (or restarts) a task definition; resolves to the task id. */
+  runTask(definitionId: string): Promise<string>;
+
+  /** Source control: the repositories of the open folders. */
+  gitRepos(): Promise<RepoState[]>;
+  onGitChanged(listener: (repos: RepoState[]) => void): () => void;
+  git(method: GitMethod, ...args: unknown[]): Promise<unknown>;
   /** Open a workspace file (absolute path) in the editor, optionally revealing a line. Rejects if it's outside every open folder. */
   openWorkspaceFile(path: string, options?: { line?: number; column?: number; length?: number }): Promise<void>;
   /** Core asks the shell to open a file's editor tab (from openWorkspaceFile / a plugin's workspace.openFile). */

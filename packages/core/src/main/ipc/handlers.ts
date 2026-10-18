@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { BrowserWindow, type OpenDialogOptions, app, dialog, ipcMain, shell } from "electron";
 import type { ThemeState, TreeNode } from "@oneclient/plugin-api";
-import { type AppInfo, type EditRole, IpcChannel, type ViewBounds, type ViewKey, type WindowAction } from "../../shared/ipc-contract.js";
+import { type AppInfo, type EditRole, type GitMethod, IpcChannel, type ViewBounds, type ViewKey, type WindowAction } from "../../shared/ipc-contract.js";
 import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "../../shared/types.js";
 import type { ConfigStore } from "../config/config-store.js";
 import type { ConnectionManager } from "../connections/connection-manager.js";
@@ -15,6 +15,9 @@ import type { OutputService } from "../output/output-service.js";
 import type { ViewHostManager } from "../views/view-host-manager.js";
 import type { WorkspaceService } from "../workspace/workspace-service.js";
 import { TERMINAL_VIEW, type TerminalService } from "../terminal/terminal-service.js";
+import type { TaskService } from "../tasks/task-service.js";
+import type { TaskRunner } from "../tasks/task-runner.js";
+import type { GitService } from "../git/git-service.js";
 import { CORE_PLUGIN_ID } from "../../shared/core.js";
 import { FILE_EDITORS_POINT, LEGACY_FILE_EDITORS_POINT } from "@oneclient/plugin-api";
 
@@ -36,13 +39,16 @@ export interface IpcDeps {
   /** URL of a core view (file editor, terminal), or undefined for an unknown view id. */
   coreViewUrl: (viewId: string) => string | undefined;
   terminal: TerminalService;
+  tasks: TaskService;
+  taskRunner: TaskRunner;
+  gitService: GitService;
   /** Opens a workspace file in the shell's editor (shared with plugins' context.workspace.openFile). */
   openWorkspaceFile: (path: string, options?: { line?: number | undefined; column?: number | undefined; length?: number | undefined }) => Promise<void>;
 }
 
 /** Registers every main-process IPC handler and wires registry/plugin change events to all open windows. */
 export function registerIpcHandlers(deps: IpcDeps): void {
-  const { registry, pluginManager, connections, search, config, supervisor, views, output, ensureActivated, getWindows, themes, workspace, openWorkspaceFile, coreCommands, coreViewUrl, terminal } = deps;
+  const { registry, pluginManager, connections, search, config, supervisor, views, output, ensureActivated, getWindows, themes, workspace, openWorkspaceFile, coreCommands, coreViewUrl, terminal, tasks, taskRunner, gitService } = deps;
   const connectionsChanged = () => broadcast(IpcChannel.ConnectionsChanged, connections.list());
 
   // Themes: shell gets the full state; every Tier 2 view gets it too (its preload applies the CSS variables).
@@ -199,6 +205,30 @@ export function registerIpcHandlers(deps: IpcDeps): void {
     // Only paths inside the workspace: a page can't make the shell open arbitrary locations.
     if (typeof path === "string" && (workspace.locate(path) || workspace.folders().some((f) => f.path === path))) shell.showItemInFolder(path);
   });
+  // Background tasks and the Task Runner.
+  tasks.onChanged((list) => broadcast(IpcChannel.TasksChanged, list));
+  tasks.onOutput((id, chunk) => broadcast(IpcChannel.TaskOutputChunk, { id, chunk }));
+  ipcMain.handle(IpcChannel.TasksList, () => tasks.list());
+  ipcMain.handle(IpcChannel.TaskOutput, (_e, id: unknown) => (typeof id === "string" ? tasks.output(id) : ""));
+  ipcMain.handle(IpcChannel.TaskCancel, (_e, id: unknown) => typeof id === "string" && tasks.cancel(id));
+  ipcMain.handle(IpcChannel.TasksClear, () => tasks.clearFinished());
+  ipcMain.handle(IpcChannel.TaskDefinitions, () => taskRunner.detect());
+  ipcMain.handle(IpcChannel.TaskRun, (_e, definitionId: unknown) => {
+    if (typeof definitionId !== "string") throw new Error("Which task?");
+    return taskRunner.run(definitionId);
+  });
+
+  // Source control.
+  gitService.onChanged((repos) => broadcast(IpcChannel.GitChanged, repos));
+  ipcMain.handle(IpcChannel.GitRepos, () => gitService.list());
+  const GIT_METHODS = new Set<GitMethod>(["refresh", "stage", "stageAll", "unstage", "unstageAll", "discard", "commit", "refs", "checkout", "createBranch", "deleteBranch", "fetch", "pull", "push", "sync", "init", "log", "commitFiles", "commitDetails"]);
+  ipcMain.handle(IpcChannel.GitCall, (_e, method: GitMethod, args: unknown[]) => {
+    if (!GIT_METHODS.has(method)) throw new Error(`Unknown git operation "${String(method)}".`);
+    const fn = gitService[method] as (...a: unknown[]) => Promise<unknown>;
+    return fn.apply(gitService, Array.isArray(args) ? args : []);
+  });
+  for (const win of getWindows()) win.on("focus", () => gitService.scheduleRefresh());
+
   ipcMain.handle(IpcChannel.WorkspaceRemoveFolder, (_e, id: unknown) => {
     if (typeof id === "string") workspace.removeFolder(id);
   });

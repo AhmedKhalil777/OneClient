@@ -3,6 +3,7 @@ import type { ViewContribution } from "@oneclient/plugin-api";
 import { ThemeIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
 import { OutputView } from "./OutputView.js";
+import { TasksView } from "./TasksView.js";
 import { Tier2ViewHost } from "./Tier2ViewHost.js";
 
 export type PanelView = ViewContribution & { pluginId: string };
@@ -10,6 +11,9 @@ export type PanelView = ViewContribution & { pluginId: string };
 /** The shell's own panel tab (no plugin behind it): the app-wide Output log. */
 export const OUTPUT_VIEW: PanelView = { pluginId: "core", id: "output", title: "Output", tier: 2, location: "panel", icon: "$(output)" };
 export const OUTPUT_PANEL_KEY = "core:output";
+/** Background tasks (Git, Task Runner, plugins) — the shell's own panel tab too. */
+export const TASKS_VIEW: PanelView = { pluginId: "core", id: "tasks", title: "Tasks", tier: 2, location: "panel", icon: "$(play)" };
+export const TASKS_PANEL_KEY = "core:tasks";
 
 const HEIGHT_KEY = "oneclient.panelHeight";
 const OPEN_KEY = "oneclient.panelOpen";
@@ -92,7 +96,7 @@ export function usePanel(views: PanelView[]) {
 
 export type PanelState = ReturnType<typeof usePanel>;
 
-export function Panel({ state, overlayOpen }: { state: PanelState; overlayOpen: boolean }) {
+export function Panel({ state, overlayOpen, onRunTask }: { state: PanelState; overlayOpen: boolean; onRunTask: () => void }) {
   const { views, open, activeKey, height, mounted } = state;
   const byKey = useMemo(() => new Map(views.map((v) => [keyOf(v), v])), [views]);
 
@@ -155,6 +159,13 @@ export function Panel({ state, overlayOpen }: { state: PanelState; overlayOpen: 
             return (
               <div key={key} className="tier2-slot" hidden={!visible}>
                 <OutputView visible={visible} />
+              </div>
+            );
+          }
+          if (v.pluginId === TASKS_VIEW.pluginId && v.id === TASKS_VIEW.id) {
+            return (
+              <div key={key} className="tier2-slot" hidden={!visible}>
+                <TasksView visible={visible} onRunTask={onRunTask} />
               </div>
             );
           }

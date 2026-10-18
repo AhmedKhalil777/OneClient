@@ -18,6 +18,7 @@ import type {
   ViewMessageHandler,
   Workspace,
   WorkspaceFolder,
+  Tasks,
 } from "@oneclient/plugin-api";
 import type { HostInboundMessage, HostOutboundMessage } from "../shared/host-protocol.js";
 
@@ -116,6 +117,43 @@ function makeWorkspace(): Workspace {
   };
 }
 
+const taskCancelListeners = new Map<string, Set<() => void>>();
+const cancelledTasks = new Set<string>();
+
+function makeTasks(): Tasks {
+  return {
+    async run(options, work) {
+      const taskId = randomUUID();
+      const listeners = new Set<() => void>();
+      taskCancelListeners.set(taskId, listeners);
+      post({ type: "task:start", taskId, title: String(options.title), cancellable: Boolean(options.cancellable) });
+      const task = {
+        log: (text: string) => post({ type: "task:update", taskId, log: String(text) }),
+        report: (u: { detail?: string; progress?: number }) =>
+          post({ type: "task:update", taskId, ...(u.detail !== undefined ? { detail: String(u.detail) } : {}), ...(typeof u.progress === "number" ? { progress: u.progress } : {}) }),
+        get isCancelled() {
+          return cancelledTasks.has(taskId);
+        },
+        onCancel(listener: () => void) {
+          listeners.add(listener);
+          return { dispose: () => listeners.delete(listener) };
+        },
+      };
+      try {
+        const result = await work(task);
+        post({ type: "task:end", taskId, ok: true });
+        return result;
+      } catch (err) {
+        post({ type: "task:end", taskId, ok: false, error: describeError(err) });
+        throw err;
+      } finally {
+        taskCancelListeners.delete(taskId);
+        cancelledTasks.delete(taskId);
+      }
+    },
+  };
+}
+
 function makeContext(extensionPath: string): PluginContext {
   const subscriptions: Disposable[] = [];
   return {
@@ -125,6 +163,7 @@ function makeContext(extensionPath: string): PluginContext {
     secrets: makeSecrets(),
     createOutputChannel: makeOutputChannel,
     workspace: makeWorkspace(),
+    tasks: makeTasks(),
     subscriptions,
     registerConnectionProvider(provider) {
       connectionProviders.set(provider.typeId, provider);
@@ -198,6 +237,17 @@ async function handleMessage(msg: HostInboundMessage): Promise<void> {
       workspaceWaiters.delete(msg.requestId);
       if (msg.ok) waiter?.resolve(msg.value);
       else waiter?.reject(new Error(msg.error));
+      return;
+    }
+    case "task:cancel": {
+      cancelledTasks.add(msg.taskId);
+      for (const listener of taskCancelListeners.get(msg.taskId) ?? []) {
+        try {
+          listener();
+        } catch {
+          // one failing listener must not stop the others
+        }
+      }
       return;
     }
     case "workspace:changed": {

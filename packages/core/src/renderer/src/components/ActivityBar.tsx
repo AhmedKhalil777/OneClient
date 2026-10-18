@@ -3,7 +3,7 @@ import { ThemeIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
 
 /** Which view container the sidebar shows: core's Explorer or Search, one plugin's explorer, or the Plugins list. */
-export type ViewContainerId = `plugin:${string}` | "explorer" | "search" | "plugins";
+export type ViewContainerId = `plugin:${string}` | "explorer" | "search" | "scm" | "plugins";
 
 /**
  * VS Code-style activity bar: core's Explorer and Search first, then one icon per plugin that has an explorer
@@ -11,12 +11,15 @@ export type ViewContainerId = `plugin:${string}` | "explorer" | "search" | "plug
  * icon collapses the sidebar; clicking it again restores it.
  */
 export function ActivityBar({
+  scmCount,
   plugins,
   active,
   sidebarVisible,
   onSelect,
   onManage,
 }: {
+  /** Changes across the open repositories (the Source Control badge). */
+  scmCount: number;
   plugins: PluginSummary[];
   active: ViewContainerId;
   sidebarVisible: boolean;
@@ -32,6 +35,10 @@ export function ActivityBar({
         </ActivityItem>
         <ActivityItem title="Search (Ctrl+Shift+F)" selected={sidebarVisible && active === "search"} onClick={() => onSelect("search")}>
           <ThemeIcon id="search" size={24} />
+        </ActivityItem>
+        <ActivityItem title={`Source Control (Ctrl+Shift+G)${scmCount ? ` — ${scmCount} pending change${scmCount === 1 ? "" : "s"}` : ""}`} selected={sidebarVisible && active === "scm"} onClick={() => onSelect("scm")}>
+          <ThemeIcon id="source-control" size={24} />
+          {scmCount > 0 && <span className="activity-badge">{scmCount > 999 ? "999+" : scmCount}</span>}
         </ActivityItem>
         {plugins.length > 0 && <div className="activity-bar-separator" />}
         {plugins.map((p) => {
