@@ -11,6 +11,12 @@ type RegisteredFn = (pluginId: string, contribution: HostOutboundMessage & { typ
 type ExitFn = (pluginId: string, code: number) => void;
 type ViewPushFn = (pluginId: string, viewId: string, connectionId: string | undefined, message: unknown) => void;
 
+/** What core's workspace offers plugins (context.workspace) — wired in by main/index.ts. */
+export interface WorkspaceBridge {
+  folders(): Array<{ name: string; path: string }>;
+  openFile(path: string, options?: { line?: number; column?: number; length?: number }): Promise<void>;
+}
+
 interface PendingInvoke {
   resolve: (value: unknown) => void;
   reject: (err: Error) => void;
@@ -34,6 +40,7 @@ interface HostHandle {
 export class ExtensionHostSupervisor {
   private readonly hosts = new Map<string, HostHandle>();
   private readonly hostEntryPath = join(__dirname, "extension-host.js");
+  private workspace: WorkspaceBridge | undefined;
 
   constructor(
     private readonly secrets: FileSecretStore,
@@ -43,6 +50,15 @@ export class ExtensionHostSupervisor {
     private readonly onViewPush: ViewPushFn,
     private readonly output: OutputService,
   ) {}
+
+  setWorkspace(bridge: WorkspaceBridge): void {
+    this.workspace = bridge;
+  }
+
+  /** Tells every running plugin that the workspace folders changed (context.workspace.onDidChangeFolders). */
+  broadcastWorkspaceFolders(folders: Array<{ name: string; path: string }>): void {
+    for (const handle of this.hosts.values()) this.send(handle, { type: "workspace:changed", folders });
+  }
 
   isActive(pluginId: string): boolean {
     return this.hosts.has(pluginId);
@@ -190,6 +206,16 @@ export class ExtensionHostSupervisor {
       case "view:push":
         this.onViewPush(handle.pluginId, msg.viewId, msg.connectionId, msg.message);
         break;
+      case "workspace:folders":
+        this.send(handle, { type: "workspace:result", requestId: msg.requestId, ok: true, value: this.workspace?.folders() ?? [] });
+        break;
+      case "workspace:openFile": {
+        const run = this.workspace ? this.workspace.openFile(msg.path, msg.options) : Promise.reject(new Error("The workspace isn't available."));
+        run
+          .then(() => this.send(handle, { type: "workspace:result", requestId: msg.requestId, ok: true }))
+          .catch((err: unknown) => this.send(handle, { type: "workspace:result", requestId: msg.requestId, ok: false, error: err instanceof Error ? err.message : String(err) }));
+        break;
+      }
     }
   }
 

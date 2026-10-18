@@ -1,6 +1,7 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { CompletionProvider } from "@oneclient/editor-kit";
 import { useAutocomplete } from "@oneclient/editor-kit/react";
+import { type FindMatch, FindMarks, type FindMode, FindWidget, type Geometry, GoToLine } from "@oneclient/editor-kit/editor";
 import { highlightSql } from "./highlight.js";
 
 const NO_PROVIDERS: readonly CompletionProvider[] = [];
@@ -14,6 +15,8 @@ export interface SqlEditorHandle {
 }
 
 const LINE_HEIGHT = 19;
+/** .sql-input padding / tab size (styles.css), for placing find marks. */
+const GEOMETRY: Geometry = { paddingTop: 6, paddingLeft: 8, lineHeight: LINE_HEIGHT, tabSize: 4 };
 
 /**
  * Textarea with a syntax-highlighted <pre> drawn underneath it (the textarea's
@@ -27,10 +30,47 @@ export const SqlEditor = forwardRef<
   const preRef = useRef<HTMLPreElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
   const [cursorLine, setCursorLine] = useState(1);
+  // Find / Replace (Ctrl+F / Ctrl+H, F3) and Go to Line (Ctrl+G), shared with the file editor.
+  const [find, setFind] = useState<{ mode: FindMode; nonce: number; step?: 1 | -1 } | null>(null);
+  const [marks, setMarks] = useState<{ matches: FindMatch[]; current: number }>({ matches: [], current: -1 });
+  const onMatches = useCallback((matches: FindMatch[], current: number) => setMarks({ matches, current }), []);
+  const [goToLine, setGoToLine] = useState(false);
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const mod = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+      if (mod && !e.shiftKey && !e.altKey && (key === "f" || key === "h")) {
+        e.preventDefault();
+        setGoToLine(false);
+        setFind((f) => ({ mode: key === "h" ? "replace" : "find", nonce: (f?.nonce ?? 0) + 1 }));
+      } else if (mod && !e.shiftKey && !e.altKey && key === "g") {
+        e.preventDefault();
+        setFind(null);
+        setGoToLine(true);
+      } else if (e.key === "F3" && !mod) {
+        e.preventDefault();
+        setFind((f) => ({ mode: f?.mode ?? "find", nonce: (f?.nonce ?? 0) + 1, ...(f ? { step: e.shiftKey ? -1 : 1 } : {}) }));
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
   useAutocomplete(textareaRef, { providers: completionProviders });
 
   const html = useMemo(() => highlightSql(value), [value]);
   const lineCount = useMemo(() => value.split("\n").length, [value]);
+
+  function goToLineAt(line: number) {
+    const el = textareaRef.current;
+    if (!el) return;
+    const lines = el.value.split("\n");
+    const target = Math.min(Math.max(line, 1), lines.length);
+    const offset = lines.slice(0, target - 1).reduce((n, l) => n + l.length + 1, 0);
+    el.focus();
+    el.setSelectionRange(offset, offset);
+    el.scrollTop = Math.max(0, (target - 1) * LINE_HEIGHT - el.clientHeight / 3);
+    setCursorLine(target);
+  }
 
   useImperativeHandle(ref, () => ({
     getRunnable() {
@@ -93,6 +133,40 @@ export const SqlEditor = forwardRef<
         ))}
       </div>
       <div className="sql-surface">
+        {find && <FindMarks textareaRef={textareaRef} text={value} matches={marks.matches} current={marks.current} geometry={GEOMETRY} />}
+        {find && (
+          <FindWidget
+            textareaRef={textareaRef}
+            text={value}
+            readOnly={false}
+            request={find}
+            geometry={GEOMETRY}
+            onMatches={onMatches}
+            onReplaceAll={(next) => {
+              const el = textareaRef.current;
+              if (!el) return;
+              el.focus();
+              el.select();
+              // execCommand keeps "replace all" on the native undo stack.
+              document.execCommand("insertText", false, next);
+            }}
+            onSelect={updateCursor}
+            onClose={() => setFind(null)}
+          />
+        )}
+        {goToLine && (
+          <GoToLine
+            lineCount={value.split("\n").length}
+            onClose={() => {
+              setGoToLine(false);
+              textareaRef.current?.focus();
+            }}
+            onGo={(line) => {
+              setGoToLine(false);
+              goToLineAt(line);
+            }}
+          />
+        )}
         <pre ref={preRef} className="sql-highlight" aria-hidden dangerouslySetInnerHTML={{ __html: html }} />
         <textarea
           ref={textareaRef}

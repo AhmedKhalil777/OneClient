@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from "react";
+import { type ReactElement, type ReactNode, useState } from "react";
 import type { JsonSchemaObject } from "@oneclient/plugin-api";
 import { JsonSchemaForm } from "./JsonSchemaForm.js";
 
@@ -41,7 +41,18 @@ export function usePrompts() {
     });
   }
 
-  return { element, confirm, input };
+  /** A read-only dialog (About, Keyboard Shortcuts…) with a Close button. */
+  function info(options: { title: string; body: ReactNode; wide?: boolean }): Promise<void> {
+    return new Promise((resolve) => {
+      const done = () => {
+        setElement(null);
+        resolve();
+      };
+      setElement(<InfoDialog {...options} onClose={done} />);
+    });
+  }
+
+  return { element, confirm, input, info };
 }
 
 /** Collects a command's `inputSchema` answers before it runs. */
@@ -121,6 +132,26 @@ export function ConfirmDialog({
           </button>
           <button className={`btn ${danger ? "btn-danger" : "btn-primary"}`} onClick={onConfirm} autoFocus>
             {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoDialog({ title, body, wide, onClose }: { title: string; body: ReactNode; wide?: boolean; onClose: () => void }) {
+  return (
+    <div className="dialog-overlay" onMouseDown={onClose}>
+      <div
+        className={`dialog ${wide ? "dialog-wide" : ""}`}
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.key === "Escape" && onClose()}
+      >
+        <h2>{title}</h2>
+        <div className="dialog-body">{body}</div>
+        <div className="dialog-actions">
+          <button className="btn btn-primary" onClick={onClose} autoFocus>
+            Close
           </button>
         </div>
       </div>

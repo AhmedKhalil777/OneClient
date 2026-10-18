@@ -151,7 +151,7 @@ export function Panel({ state, overlayOpen }: { state: PanelState; overlayOpen: 
           const v = byKey.get(key);
           if (!v) return null;
           const visible = open && key === activeKey;
-          if (v.pluginId === "core") {
+          if (v.pluginId === OUTPUT_VIEW.pluginId && v.id === OUTPUT_VIEW.id) {
             return (
               <div key={key} className="tier2-slot" hidden={!visible}>
                 <OutputView visible={visible} />

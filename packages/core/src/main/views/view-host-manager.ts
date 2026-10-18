@@ -62,6 +62,17 @@ export class ViewHostManager {
       const clean: OpenViewRequest = { viewId: r.viewId, title: r.title, params, ...(typeof r.icon === "string" ? { icon: r.icon } : {}) };
       for (const listener of this.openViewListeners) listener(instance.pluginId, instance.connectionId, clean);
     });
+    ipcMain.handle("oneclient-view:open-file", async (_event, path: unknown, options: unknown) => {
+      if (typeof path !== "string" || !this.openFileHandler) return false;
+      const o = (options ?? {}) as { line?: unknown; column?: unknown; length?: unknown };
+      const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+      try {
+        await this.openFileHandler(path, { line: num(o.line), column: num(o.column), length: num(o.length) });
+        return true;
+      } catch {
+        return false;
+      }
+    });
     ipcMain.on("oneclient-view:refresh-explorer", (event) => {
       const instance = [...this.instances.values()].find((i) => i.view.webContents === event.sender);
       // Only the view's own connection (from main-side state) can be refreshed.
@@ -82,6 +93,12 @@ export class ViewHostManager {
   private readonly refreshListeners = new Set<(connectionId: string) => void>();
 
   /** A view asked for its connection's explorer tree to be re-fetched. */
+  private openFileHandler: ((path: string, options: { line?: number | undefined; column?: number | undefined; length?: number | undefined }) => Promise<void>) | undefined;
+  /** Serves `window.oneclientView.openFile` (core's workspace opens the file in the editor). */
+  setOpenFileHandler(handler: NonNullable<ViewHostManager["openFileHandler"]>): void {
+    this.openFileHandler = handler;
+  }
+
   onRefreshExplorer(listener: (connectionId: string) => void): () => void {
     this.refreshListeners.add(listener);
     return () => this.refreshListeners.delete(listener);
@@ -107,6 +124,12 @@ export class ViewHostManager {
     return () => this.shortcutListeners.delete(listener);
   }
 
+  /** The webContents of an open view instance (Edit menu commands, forwarded keys). */
+  webContentsOf(instanceId: string): Electron.WebContents | undefined {
+    const wc = this.instances.get(instanceId)?.view.webContents;
+    return wc && !wc.isDestroyed() ? wc : undefined;
+  }
+
   focus(instanceId: string): void {
     const wc = this.instances.get(instanceId)?.view.webContents;
     if (wc && !wc.isDestroyed()) wc.focus();
@@ -124,8 +147,11 @@ export class ViewHostManager {
     viewId: string;
     connectionId?: string;
     params?: Record<string, string>;
-    entryDir: string;
-    entryFile: string;
+    /** A plugin view: its page inside the plugin's ui bundle. */
+    entryDir?: string;
+    entryFile?: string;
+    /** A core view: the page's URL (core's renderer build or dev server). */
+    url?: string;
   }): void {
     if (this.instances.has(opts.instanceId)) return;
 
@@ -140,8 +166,8 @@ export class ViewHostManager {
     this.window.contentView.addChildView(view);
     view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
 
-    const entryPath = join(opts.entryDir, opts.entryFile);
-    const url = new URL(pathToFileURL(entryPath).href);
+    if (!opts.url && !(opts.entryDir && opts.entryFile)) throw new Error(`View "${opts.viewId}" has no page.`);
+    const url = new URL(opts.url ?? pathToFileURL(join(opts.entryDir!, opts.entryFile!)).href);
     for (const [key, value] of Object.entries(opts.params ?? {})) {
       if (typeof value === "string") url.searchParams.set(key, value);
     }
@@ -159,6 +185,15 @@ export class ViewHostManager {
       else if (mod && input.shift && input.key.toLowerCase() === "p") shortcut = "commandPalette";
       else if (mod && !input.shift && !input.alt && input.key.toLowerCase() === "p") shortcut = "quickSearch";
       else if (mod && input.shift && !input.alt && input.key.toLowerCase() === "f") shortcut = "findInFiles";
+      else if (mod && input.shift && !input.alt && input.key.toLowerCase() === "e") shortcut = "showExplorer";
+      else if (mod && !input.shift && !input.alt && input.key.toLowerCase() === "b") shortcut = "toggleSidebar";
+      else if (mod && !input.shift && !input.alt && input.key.toLowerCase() === "w") shortcut = "closeEditor";
+      else if (mod && !input.alt && input.key === "PageDown") shortcut = "nextEditor";
+      else if (mod && !input.alt && input.key === "PageUp") shortcut = "previousEditor";
+      else if (mod && !input.alt && (input.key === "=" || input.key === "+")) shortcut = "zoomIn";
+      else if (mod && !input.alt && input.key === "-") shortcut = "zoomOut";
+      else if (mod && !input.alt && input.key === "0") shortcut = "zoomReset";
+      else if (!mod && !input.alt && input.key === "F11") shortcut = "toggleFullScreen";
       if (!shortcut) return;
       event.preventDefault();
       for (const listener of this.shortcutListeners) listener(shortcut);
@@ -174,6 +209,9 @@ export class ViewHostManager {
       console.error(`[view:${opts.instanceId}] preload-error`, preloadPath, error);
     });
 
+    view.webContents.on("did-finish-load", () => {
+      if (this.zoomLevel !== 0) view.webContents.setZoomLevel(this.zoomLevel);
+    });
     void view.webContents.loadURL(url.href);
 
     this.instances.set(opts.instanceId, {
@@ -187,7 +225,19 @@ export class ViewHostManager {
 
   setBounds(instanceId: string, bounds: ViewBounds): void {
     const instance = this.instances.get(instanceId);
-    if (instance && !instance.view.webContents.isDestroyed()) instance.view.setBounds(bounds);
+    if (!instance || instance.view.webContents.isDestroyed()) return;
+    // The shell measures in CSS pixels; when it's zoomed those differ from the window's DIPs.
+    const z = this.window.webContents.getZoomFactor();
+    instance.view.setBounds(
+      z === 1 ? bounds : { x: Math.round(bounds.x * z), y: Math.round(bounds.y * z), width: Math.round(bounds.width * z), height: Math.round(bounds.height * z) },
+    );
+  }
+
+  private zoomLevel = 0;
+  /** View > Zoom: views follow the shell's zoom level (new ones too). */
+  setZoomLevel(level: number): void {
+    this.zoomLevel = level;
+    for (const instance of this.instances.values()) if (!instance.view.webContents.isDestroyed()) instance.view.webContents.setZoomLevel(level);
   }
 
   /** Theme changed: every view's preload re-applies the colors (and icon cache version). */

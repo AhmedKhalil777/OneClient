@@ -32,7 +32,7 @@ async function evalInView(urlMatch, code, attempts = 6, delayMs = 400) {
   for (let i = 0; i < attempts; i++) {
     const result = await app.evaluate(
       async ({ webContents }, { urlMatch, code }) => {
-        const wc = webContents.getAllWebContents().find((w) => w.getURL().includes("/ui/") && w.getURL().includes(urlMatch));
+        const wc = webContents.getAllWebContents().find((w) => (w.getURL().includes("/ui/") || w.getURL().includes("/views/")) && w.getURL().includes(urlMatch));
         if (!wc) return { found: false };
         try {
           return { found: true, value: await wc.executeJavaScript(code) };
@@ -97,7 +97,7 @@ const COMMANDS = {
 
   // Screenshots a Tier 2 view's own WebContentsView by matching its URL
   // (every view's entry lives under a manifest-declared "ui" dir, so any
-  // loaded webContents whose URL contains "/ui/" is one). Pass a substring
+  // loaded webContents whose URL contains "/ui/" is one; core views live under "/views/"). Pass a substring
   // to disambiguate when more than one view is open.
   //
   // KNOWN LIMITATION: WebContents.capturePage() on a WebContentsView added
@@ -115,7 +115,7 @@ const COMMANDS = {
     let shot = null;
     for (let i = 0; i < 8 && !shot; i++) {
       shot = await app.evaluate(async ({ webContents }, match) => {
-        const wc = webContents.getAllWebContents().find((w) => w.getURL().includes("/ui/") && w.getURL().includes(match));
+        const wc = webContents.getAllWebContents().find((w) => (w.getURL().includes("/ui/") || w.getURL().includes("/views/")) && w.getURL().includes(match));
         if (!wc) return null;
         const img = await wc.capturePage();
         const b64 = img.toPNG().toString("base64");

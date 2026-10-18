@@ -21,13 +21,6 @@ interface Section {
 
 /** What each built-in plugin offers. Anything not listed here still appears, with its manifest description. */
 const PLUGIN_FEATURES: Record<string, string[]> = {
-  "oneclient-files": [
-    "Open a folder and browse it as a tree, with real file-type icons.",
-    "Find in Files (Ctrl+Shift+F): text search with match case / whole word / regex, include and exclude globs, click-through to the match, and replace. Also contributes file names to the top search bar.",
-    "Edit and save files; create, rename and delete files and folders from the context menu.",
-    "A smart editor: format, breadcrumbs showing where the cursor is in the document, syntax highlighting, live preview and an Actions menu — all supplied by the Miscellaneous plugin below.",
-    "Remembers line endings and the UTF-8 byte-order mark when saving.",
-  ],
   "oneclient-misc": [
     "JSON: format and minify, breadcrumbs with the path at the cursor, syntax highlighting (.json, .jsonc, .geojson, .har, .webmanifest and well-known config files).",
     "XML: format, element-path breadcrumbs, syntax highlighting (.xml, .csproj, .config, .svg, .xaml, .resx, .nuspec and many more).",
@@ -36,7 +29,6 @@ const PLUGIN_FEATURES: Record<string, string[]> = {
     "Text utilities for every file: sort lines (ascending / descending), remove duplicate lines, trim trailing whitespace, ensure a final newline — on the selection when there is one.",
     "Material Icon Theme: the default file and folder icons in the explorer — 1,300+ file types, 2,000+ special file names and well-known folders (switch via Preferences: Icon Theme).",
   ],
-  "oneclient-terminal": ["An integrated terminal in the bottom panel: PowerShell, Command Prompt, Git Bash, WSL, bash/zsh.", "Open a terminal at any folder from the Files explorer."],
   "oneclient-docker": ["Connect to a local or remote Docker Engine.", "Browse containers, images, volumes and networks; start, stop, restart and remove containers; pull images."],
   "oneclient-mssql": [
     "Connect to Microsoft SQL Server — an object explorer (databases, tables, views, procedures, functions…) and a query editor with result grids, like a small SSMS.",
@@ -108,12 +100,16 @@ export function WelcomePage({ plugins, onNewConnection, onCommandPalette, onPlug
       title: "The workbench",
       body: (
         <ul>
-          <Feature title="Activity bar">one icon per plugin; click to open that plugin’s sidebar (connections and its explorer tree). Click the active one again to hide the sidebar.</Feature>
-          <Feature title="Sidebar">each plugin has a <em>Connections</em> section (use <strong>+</strong> to add one) and its explorer tree; plugins can add more sections (like the SQL Server plugin's <em>Fakers</em>). Right-click any node for its commands; clicking a leaf opens it in an editor tab. Nothing is fetched until you expand it.</Feature>
+          <Feature title="Title bar & menus">File, Edit, View, Go, Run, Terminal and Help — like VS Code (open one with <Kbd>Alt</Kbd>+its letter, then the arrow keys). <em>File</em>: new file, open / close folders, save, close editors, import / export connections, preferences. <em>Edit</em>: undo / redo, clipboard, find / replace in the editor and in files. <em>View</em>: every sidebar and panel, appearance (side bar, panel, full screen, zoom). <em>Go</em>: go to file or line, switch editors. <em>Run</em>: whatever the active editor runs (Execute Query, Send Request…) — plugins add their own items. <em>Help</em>: this guide, keyboard shortcuts, logs, About.</Feature>
+          <Feature title="Explorer (core)">the first activity-bar icon (<Kbd>Ctrl+Shift+E</Kbd>): the folders you open (<em>File ▸ Open Folder…</em>, <Kbd>Ctrl+O</Kbd>) as trees with real file-type icons; create, rename and delete files and folders, open a terminal there. Files open in the shared editor. The open folders are the <strong>workspace</strong> — plugins can list them and open files in the editor too.</Feature>
+          <Feature title="Search (core)">the second icon (<Kbd>Ctrl+Shift+F</Kbd>): find text in every open folder — match case, whole word, regular expressions, files to include / exclude — results grouped per file (and per folder); click one to open the file with the match selected. Replace per file or everywhere (<Kbd>Ctrl+Shift+H</Kbd>).</Feature>
+          <Feature title="Editor">format (<Kbd>Shift+Alt+F</Kbd>), breadcrumbs, highlighting and preview from plugins; <strong>Find / Replace</strong> (<Kbd>Ctrl+F</Kbd> / <Kbd>Ctrl+H</Kbd>, <Kbd>F3</Kbd> for the next match) with every match marked, and <strong>Go to Line</strong> (<Kbd>Ctrl+G</Kbd>) — in files and in SQL query windows.</Feature>
+          <Feature title="Terminal (core)">PowerShell, Command Prompt, Git Bash, WSL, bash / zsh in the bottom panel; <em>Terminal ▸ New Terminal</em> (<Kbd>Ctrl+Shift+`</Kbd>) starts in your first open folder.</Feature>
+          <Feature title="Activity bar">then one icon per plugin; click to open that plugin’s sidebar. Click the active one again (or <Kbd>Ctrl+B</Kbd>) to hide the sidebar.</Feature>
+          <Feature title="Sidebar">each plugin lists its saved servers, clusters or accounts (use <strong>+</strong> to add one) with their explorer trees; plugins can add more sections (like the SQL Server plugin's <em>Fakers</em>). Right-click any node for its commands; clicking a leaf opens it in an editor tab. Nothing is fetched until you expand it.</Feature>
           <Feature title="Editor tabs">requests, tables, editors and dashboards open as tabs (● marks unsaved changes and asks before closing). The ⊞ button on a connection opens its dashboard.</Feature>
           <Feature title="Bottom panel">Terminal, plugin result panels (for example SQL Query Results) and the <strong>Output</strong> log share one panel with an icon navigator. Toggle it with <Kbd>Ctrl+`</Kbd> or the Panel button in the status bar; drag its top edge to resize.</Feature>
-          <Feature title="Search everything">the bar at the top (or <Kbd>Ctrl+P</Kbd>) searches <em>all</em> your connections at once. Every plugin that offers search answers in its own group: the Files plugin finds file names in your open folders (nested, fuzzy — "pm" finds plugin-manager.ts), the SQL Server plugin finds tables, views, procedures and functions across the databases and opens them directly. Results appear as each plugin answers; a slow or unreachable connection never blocks the rest.</Feature>
-          <Feature title="Find in Files">press <Kbd>Ctrl+Shift+F</Kbd> (or the ⊞ button on a folder) for a VS Code-style text search in an open folder: match case, whole word, regular expressions, files to include / exclude, results grouped by file — click a result to open the file with the match selected — and replace (per file or all).</Feature>
+          <Feature title="Search everything">the bar at the top (or <Kbd>Ctrl+P</Kbd>) searches <em>all</em> your connections at once. Every plugin that offers search answers in its own group: the Explorer finds file names in your open folders (nested, fuzzy — "pm" finds plugin-manager.ts), the SQL Server plugin finds tables, views, procedures and functions across the databases and opens them directly. Results appear as each plugin answers; a slow or unreachable connection never blocks the rest.</Feature>
           <Feature title="Command Palette">press <Kbd>Ctrl+Shift+P</Kbd> for every command: View: Toggle Panel, themes, connections, and anything plugins contribute.</Feature>
           <Feature title="Themes">pick a <strong>color theme</strong> and an <strong>icon theme</strong> from the gear menu or palette; plugins can ship their own color themes, icon themes and individual icons. Previews apply live.</Feature>
           <Feature title="Plugin Manager">enable or disable plugins (the choice is remembered); incompatible or invalid plugins are listed with the reason.</Feature>
@@ -154,9 +150,10 @@ export function WelcomePage({ plugins, onNewConnection, onCommandPalette, onPlug
       title: "Plugins & extension model",
       body: (
         <ul>
-          <Feature title="Everything is a plugin">the core has no infrastructure-specific code. A plugin is a folder with an <code>oneclient.json</code> manifest: connection types, explorer nodes, commands, views, themes, icons.</Feature>
+          <Feature title="A small core, everything else is a plugin">the core is the workbench — Explorer, Search, editor, Terminal, menus, Output — and has no infrastructure-specific code. A plugin is a folder with an <code>oneclient.json</code> manifest: connection types, explorer nodes, commands, views, menu items, themes, icons.</Feature>
+          <Feature title="Shared workspace">plugins reach the folders open in the Explorer through <code>context.workspace</code> (list them, follow changes, open a file in the editor at a line) instead of building their own file handling.</Feature>
           <Feature title="Two UI tiers">Tier 1 is declarative (generated connection forms, explorer trees, context menus). Tier 2 is a sandboxed web view for editors, grids and dashboards, with a small host API (commands, messaging, theme, open other views).</Feature>
-          <Feature title="Plugins extend plugins">a plugin can declare an extension point and others contribute to it — for example the Files editor gets JSON, XML, Markdown and Text Tools features this way.</Feature>
+          <Feature title="Plugins extend plugins">a plugin can declare an extension point and others contribute to it — for example the file editor gets JSON, XML, Markdown and Text Tools features this way.</Feature>
           <Feature title="Compatibility">each plugin declares the plugin-API versions it supports (<code>engines.oneclient</code>); incompatible plugins are shown but never run. Plugins run in separate processes, so one crashing cannot take the app down.</Feature>
           <Feature title="Logging">plugins can create Output channels with <code>context.createOutputChannel(name)</code>.</Feature>
         </ul>
@@ -168,7 +165,7 @@ export function WelcomePage({ plugins, onNewConnection, onCommandPalette, onPlug
       body: (
         <div className="doc-plugins">
           {plugins.length === 0 && <p className="doc-dim">No plugins are installed.</p>}
-          {[...plugins]
+          {plugins
             .sort((a, b) => (a.displayName ?? a.id).localeCompare(b.displayName ?? b.id))
             .map((p) => {
               const features = PLUGIN_FEATURES[p.id];
@@ -204,12 +201,19 @@ export function WelcomePage({ plugins, onNewConnection, onCommandPalette, onPlug
             {(
               [
                 ["Ctrl+P", "Search files, SQL objects and more across all connections"],
-                ["Ctrl+Shift+F", "Find in Files (text search in an open folder)"],
+                ["Ctrl+Shift+F / Ctrl+Shift+H", "Search / replace in the open folders"],
                 ["Ctrl+Shift+P", "Command Palette"],
+                ["Alt+letter", "Open a title bar menu (Alt+F = File …)"],
+                ["Ctrl+Shift+E / Ctrl+B", "Explorer / show-hide the side bar"],
+                ["Ctrl+O / Ctrl+N", "Open a folder / new file"],
+                ["Ctrl+F / Ctrl+H / Ctrl+G", "Find, replace, go to line (editor and SQL windows)"],
                 ["Ctrl+`", "Show / hide the bottom panel"],
+                ["Ctrl+Shift+`", "New terminal"],
+                ["Ctrl+W / Ctrl+PageDown", "Close the editor / next editor"],
+                ["Ctrl+= / Ctrl+- / Ctrl+0", "Zoom in / out / reset"],
                 ["Ctrl+S", "Save (file editor, HTTP request, …)"],
                 ["Ctrl+Enter", "Send the HTTP request"],
-                ["F5 / Ctrl+Enter", "Run the SQL query (SQL Server)"],
+                ["F5 / Ctrl+Enter", "Run the SQL query (SQL Server, PostgreSQL)"],
                 ["Shift+Alt+F", "Format document (file editor)"],
                 ["Ctrl+Space", "Autocomplete suggestions (SQL, JSON editors)"],
               ] as const

@@ -7,7 +7,7 @@ import { formatXml, xmlSymbols, xmlTokens } from "./xml.js";
 
 /**
  * Miscellaneous file-editor support, one extension-host process for five file-type contributions to the Files
- * plugin's `oneclient-files.editors` point (declared in oneclient.json): JSON, XML, SQL, Markdown and text utilities.
+ * editor's `oneclient.editors` point (declared in oneclient.json): JSON, XML, SQL, Markdown and text utilities.
  * The Files editor calls these commands with one `{ text, fileName, … }` request (see plugin-api/src/file-editor.ts).
  */
 function request<T extends FileEditorRequest>(args: unknown[]): T {

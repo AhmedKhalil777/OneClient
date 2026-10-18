@@ -1,0 +1,25 @@
+/* Page-level styles only — the editor itself is styled by @oneclient/editor-kit/editor.css. */
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--oc-editor-background, #1e1e1e);
+  color: var(--oc-editor-foreground, #cccccc);
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+}
+
+.message {
+  padding: 24px;
+  color: var(--oc-descriptionForeground, #858585);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.error {
+  color: var(--oc-errorForeground, #f48771);
+}
+

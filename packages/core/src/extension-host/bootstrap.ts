@@ -16,6 +16,8 @@ import type {
   PluginModule,
   SecretStore,
   ViewMessageHandler,
+  Workspace,
+  WorkspaceFolder,
 } from "@oneclient/plugin-api";
 import type { HostInboundMessage, HostOutboundMessage } from "../shared/host-protocol.js";
 
@@ -38,6 +40,8 @@ const connectionHandles = new Map<string, ConnectionHandle>();
 
 const secretGetWaiters = new Map<string, (value: string | undefined) => void>();
 const secretAckWaiters = new Map<string, () => void>();
+const workspaceWaiters = new Map<string, { resolve: (value: unknown) => void; reject: (err: Error) => void }>();
+const folderListeners = new Set<(folders: WorkspaceFolder[]) => void>();
 
 function post(message: HostOutboundMessage): void {
   process.parentPort.postMessage(message);
@@ -94,6 +98,24 @@ function makeSecrets(): SecretStore {
   };
 }
 
+function workspaceRequest<T>(message: { type: "workspace:folders" } | { type: "workspace:openFile"; path: string; options?: { line?: number; column?: number; length?: number } }): Promise<T> {
+  const requestId = randomUUID();
+  const promise = new Promise<T>((resolve, reject) => workspaceWaiters.set(requestId, { resolve: resolve as (v: unknown) => void, reject }));
+  post({ ...message, requestId });
+  return promise;
+}
+
+function makeWorkspace(): Workspace {
+  return {
+    getFolders: () => workspaceRequest<WorkspaceFolder[]>({ type: "workspace:folders" }),
+    onDidChangeFolders(listener) {
+      folderListeners.add(listener);
+      return { dispose: () => folderListeners.delete(listener) };
+    },
+    openFile: (path, options) => workspaceRequest<void>({ type: "workspace:openFile", path, ...(options ? { options } : {}) }),
+  };
+}
+
 function makeContext(extensionPath: string): PluginContext {
   const subscriptions: Disposable[] = [];
   return {
@@ -102,6 +124,7 @@ function makeContext(extensionPath: string): PluginContext {
     logger: makeLogger(),
     secrets: makeSecrets(),
     createOutputChannel: makeOutputChannel,
+    workspace: makeWorkspace(),
     subscriptions,
     registerConnectionProvider(provider) {
       connectionProviders.set(provider.typeId, provider);
@@ -168,6 +191,23 @@ async function handleMessage(msg: HostInboundMessage): Promise<void> {
     case "secret:result": {
       secretGetWaiters.get(msg.requestId)?.(msg.value);
       secretGetWaiters.delete(msg.requestId);
+      return;
+    }
+    case "workspace:result": {
+      const waiter = workspaceWaiters.get(msg.requestId);
+      workspaceWaiters.delete(msg.requestId);
+      if (msg.ok) waiter?.resolve(msg.value);
+      else waiter?.reject(new Error(msg.error));
+      return;
+    }
+    case "workspace:changed": {
+      for (const listener of folderListeners) {
+        try {
+          listener(msg.folders);
+        } catch {
+          // a plugin's listener failing must not break the others
+        }
+      }
       return;
     }
     case "secret:ack": {

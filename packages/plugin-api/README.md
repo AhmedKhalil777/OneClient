@@ -27,7 +27,8 @@ src/
   ui.ts           Tier 1 TableResult/ColumnDescriptor; Tier 2 ViewHostApi/ViewMessageHandler
   completion.ts   CompletionProvider / CompletionItem (autocomplete; UI in @oneclient/editor-kit)
   theme.ts        Color/icon theme contributions, ThemeState, THEME_COLOR_KEYS, icon helpers
-  manifest.ts     PluginManifest + contribution types (oneclient.json shape)
+  manifest.ts     PluginManifest + contribution types (oneclient.json shape), incl. title bar menus
+  workspace.ts    Workspace / WorkspaceFolder: the folders open in core's Explorer (context.workspace)
   context.ts      PluginContext, PluginModule (activate/deactivate)
   index.ts        public exports
 schema/
@@ -112,8 +113,8 @@ theme. In a view, render one with `<Icon id="table" />` from
 
 Users pick themes with **Preferences: Color Theme…** / **Preferences: Icon
 Theme…** (command palette, or the gear at the bottom of the activity bar);
-↑/↓ previews, Enter keeps, Esc reverts. The dev fixture plugin
-(`packages/core/dev-plugins/oneclient-sample`) ships one of each as a working example.
+↑/↓ previews, Enter keeps, Esc reverts. The Miscellaneous plugin
+(`packages/plugins/oneclient-misc`) ships an icon theme as a working example.
 
 ### File & folder icons
 
@@ -155,13 +156,13 @@ for code that has the table.
 ## Extending other plugins
 
 A plugin can contribute to another plugin's **extension point**. Core only brokers
-them — the manifest names the point (`<owning plugin id>.<name>`), the owning plugin
+them — the manifest names the point (`<owning plugin id>.<name>`; core's own points are `oneclient.<name>`), the owner
 defines what an item looks like and what to do with it:
 
 ```jsonc
 "contributes": {
   "extensions": {
-    "oneclient-files.editors": [ { "id": "json", "label": "JSON", "extensions": ["json"], … } ]
+    "oneclient.editors": [ { "id": "json", "label": "JSON", "extensions": ["json"], … } ]
   }
 }
 ```
@@ -170,9 +171,9 @@ A view reads what others contributed with `window.oneclientView.getContributions
 (each item tagged with its `pluginId`, which can't be spoofed). Any plugin can define
 points of its own the same way.
 
-### The file editor: `oneclient-files.editors`
+### The file editor: `oneclient.editors`
 
-The Files plugin's editor knows nothing about JSON, XML or Markdown. Other plugins teach it,
+Core's file editor knows nothing about JSON, XML or Markdown. Plugins teach it,
 per file type (or for every file with `"extensions": ["*"]`). Types are in `src/file-editor.ts`.
 
 | Feature | Command receives → returns | Gives the editor |
@@ -195,7 +196,7 @@ adds "Sort Lines" to every file.
 // oneclient-misc/oneclient.json (abridged)
 "commands": [{ "id": "json.format", "title": "JSON: Format Document", "hidden": true }, …],
 "extensions": {
-  "oneclient-files.editors": [{
+  "oneclient.editors": [{
     "id": "json", "label": "JSON",
     "extensions": ["json", "jsonc"], "fileNames": [".babelrc"],
     "format": "json.format", "symbols": "json.symbols", "tokens": "json.tokens",
@@ -218,7 +219,7 @@ highlighting and task lists) and text utilities (wildcard actions).
 The shell has one bottom-panel tab, **Output**, with a channel picker (like VS Code). Any plugin can write to it:
 
 ```ts
-export function activate(context: PluginContext) {
+export async function activate(context: PluginContext) {
   const tasks = context.createOutputChannel("Tasks");
   tasks.info("Started sync");
   tasks.error("Sync failed", err.stack); // optional 2nd argument = expandable detail
@@ -262,3 +263,42 @@ Core calls the command once per saved connection of the plugin (connecting it fi
 what comes back, and shows it in a group labelled with `label`. A result either opens one of the plugin's views
 (`openView`) or runs a command (`command`; the argument is `{ connectionId, ...args }` and an `openNode` in its result is opened,
 exactly like an explorer context-menu command). Failures show up as a hint under the results and never block other providers.
+
+## The workspace (folders open in the Explorer)
+
+The Explorer, the file editor, Search and the Terminal are part of **core**, not plugins
+(`packages/core/src/main/workspace`, `src/main/terminal`, `src/renderer/views`). The folders the user opens in the Explorer are the *workspace*, and
+every plugin can use it instead of building its own file handling:
+
+```ts
+export async function activate(context: PluginContext) {
+  // List the open folders (absolute paths) and follow changes.
+  const folders = await context.workspace.getFolders();
+  context.subscriptions.push(context.workspace.onDidChangeFolders((next) => rescan(next)));
+
+  // Open a file in core's editor (with every editor feature other plugins contribute), at a line.
+  await context.workspace.openFile("C:/src/app/queries/report.sql", { line: 12, column: 5, length: 6 });
+}
+```
+
+From a Tier 2 view: `await window.oneclientView.openFile(path, { line })` (resolves `false` when the file isn't
+inside an open folder). The built-in Terminal uses this to start new terminals in the first workspace folder.
+
+## Title bar menus
+
+Core draws a VS Code-style menu bar (File, Edit, View, Go, Run, Terminal, Help). Plugins add items with
+`contributes.menus`: an item either runs one of the plugin's `command`s, or — with only a `keybinding` — presses
+that key in the active editor tab when it is one of the plugin's own views, so a menu item can trigger what the
+view already does on a shortcut:
+
+```json
+"menus": [
+  { "menu": "run", "title": "Execute Query", "keybinding": "F5", "when": "activeView == 'postgres.query'", "group": "1_run" },
+  { "menu": "run", "title": "Cancel Query", "keybinding": "Escape", "when": "activeView == 'postgres.query'", "group": "1_run" },
+  { "menu": "help", "title": "Redis Commands Reference", "command": "redis.openDocs" }
+]
+```
+
+`when` takes `activeView` (view id of the active editor tab) and `activePlugin`, with the usual operators —
+`==`, `!=`, `=~ /re/`, `!`, `&&`, `||` and parentheses. Items with the same `group` sit together. The **Run** menu
+is only made of these items (core has nothing to run by itself), so plugins with something runnable should add one.

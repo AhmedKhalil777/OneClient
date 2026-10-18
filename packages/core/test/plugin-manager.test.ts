@@ -100,3 +100,4 @@ describe("PluginManager.scan", () => {
     expect(registry2.findConnectionTypeOwner("good")).toBeUndefined();
   });
 });
+

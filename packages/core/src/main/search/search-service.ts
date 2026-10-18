@@ -24,6 +24,15 @@ export interface SearchOutcome {
   problems: Array<{ connectionName: string; message: string }>;
 }
 
+/** A search provider built into core (e.g. file names in the workspace folders). */
+export interface CoreSearchProvider {
+  id: string;
+  label: string;
+  icon?: string;
+  order: number;
+  run(query: string, limit: number): Promise<SearchHit[]>;
+}
+
 type Invoke = (pluginId: string, kind: "command", target: string, method: string, args: unknown[], connectionId?: string) => Promise<unknown>;
 
 const CONNECT_TIMEOUT_MS = 8000;
@@ -83,16 +92,25 @@ export class SearchService {
     private readonly registry: ContributionRegistry,
     private readonly connections: ConnectionManager,
     private readonly invoke: Invoke,
+    private readonly core: CoreSearchProvider[] = [],
   ) {}
 
   providers(): SearchProviderInfo[] {
-    return this.registry
-      .snapshot()
-      .searchProviders.map((p) => ({ id: `${p.pluginId}:${p.id}`, pluginId: p.pluginId, label: p.label, icon: p.icon, order: p.order ?? 100 }))
-      .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+    return [
+      ...this.core.map((p) => ({ id: `core:${p.id}`, pluginId: "core", label: p.label, icon: p.icon, order: p.order })),
+      ...this.registry.snapshot().searchProviders.map((p) => ({ id: `${p.pluginId}:${p.id}`, pluginId: p.pluginId, label: p.label, icon: p.icon, order: p.order ?? 100 })),
+    ].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
   }
 
   async run(providerId: string, query: string, limit = 20): Promise<SearchOutcome> {
+    const core = this.core.find((p) => `core:${p.id}` === providerId);
+    if (core) {
+      try {
+        return { hits: query.trim() ? (await core.run(query.trim(), limit)).map((h) => ({ ...h, providerId })) : [], problems: [] };
+      } catch (err) {
+        return { hits: [], problems: [{ connectionName: core.label, message: err instanceof Error ? err.message : String(err) }] };
+      }
+    }
     const provider = this.registry.snapshot().searchProviders.find((p) => `${p.pluginId}:${p.id}` === providerId) as (SearchProviderContribution & { pluginId: string }) | undefined;
     const outcome: SearchOutcome = { hits: [], problems: [] };
     const text = query.trim();

@@ -26,6 +26,14 @@ export interface PluginState {
   version?: string;
 }
 
+/** A folder open in the Explorer (the workspace). */
+export interface StoredFolder {
+  id: string;
+  name: string;
+  /** Absolute path. */
+  path: string;
+}
+
 export interface ConfigFile {
   version: number;
   /** App settings (theme choices). */
@@ -33,7 +41,14 @@ export interface ConfigFile {
   /** Plugins the user has touched or the app has seen (anything absent is enabled). */
   plugins: Record<string, PluginState>;
   connections: StoredConnection[];
+  /** The folders open in the Explorer, in order. */
+  workspace: { folders: StoredFolder[] };
 }
+
+/** Before v2, Explorer folders were connections of the old "Files" plugin. */
+const LEGACY_FOLDER = { pluginId: "oneclient-files", typeId: "folder" };
+/** Extensions that became part of core (v2) or were removed: their plugin entries are dropped. */
+const RETIRED_PLUGINS = ["oneclient-files", "oneclient-terminal", "oneclient-sample"];
 
 /**
  * The file format version of `oneclient.json`.
@@ -45,7 +60,7 @@ export interface ConfigFile {
  * A file is migrated in memory on load, the original is copied to `oneclient.json.v<N>.bak`, and the upgraded
  * file is written back. A file from a NEWER app is never touched: the app refuses to start with a clear message.
  */
-export const CONFIG_VERSION = 1;
+export const CONFIG_VERSION = 2;
 
 type Json = Record<string, unknown>;
 interface Migration {
@@ -65,6 +80,20 @@ export const MIGRATIONS: Migration[] = [
       plugins: isObject(data.plugins) ? data.plugins : {},
       connections: Array.isArray(data.connections) ? data.connections : [],
     }),
+  },
+  {
+    from: 1,
+    describe: "Explorer folders become the workspace (they were connections of the Files plugin, which is now part of core)",
+    run: (data) => {
+      const connections = Array.isArray(data.connections) ? (data.connections as Json[]) : [];
+      const isFolder = (c: Json) => c.pluginId === LEGACY_FOLDER.pluginId && c.typeId === LEGACY_FOLDER.typeId;
+      const folders = connections
+        .filter((c) => isFolder(c) && isObject(c.config) && typeof c.config.path === "string" && c.config.path)
+        .map((c) => ({ id: String(c.id), name: String(c.name ?? ""), path: String((c.config as Json).path) }));
+      const plugins = isObject(data.plugins) ? { ...data.plugins } : {};
+      for (const id of RETIRED_PLUGINS) delete plugins[id];
+      return { ...data, plugins, connections: connections.filter((c) => !isFolder(c)), workspace: { folders } };
+    },
   },
 ];
 
@@ -113,7 +142,7 @@ export function oneclientHome(): string {
   return process.env.ONECLIENT_HOME?.trim() || join(homedir(), ".oneclient");
 }
 
-const emptyConfig = (): ConfigFile => ({ version: CONFIG_VERSION, settings: {}, plugins: {}, connections: [] });
+const emptyConfig = (): ConfigFile => ({ version: CONFIG_VERSION, settings: {}, plugins: {}, connections: [], workspace: { folders: [] } });
 
 /**
  * The app's own metadata, as one human-readable JSON file (`~/.oneclient/oneclient.json`): saved connections,
@@ -160,6 +189,7 @@ export class ConfigStore {
       settings: isObject(raw.settings) ? (raw.settings as ThemeSettings) : {},
       plugins: isObject(raw.plugins) ? (raw.plugins as Record<string, PluginState>) : {},
       connections: Array.isArray(raw.connections) ? raw.connections.filter(isStoredConnection) : [],
+      workspace: { folders: isObject(raw.workspace) && Array.isArray(raw.workspace.folders) ? raw.workspace.folders.filter(isStoredFolder) : [] },
     };
     if (result.applied.length > 0) {
       try {
@@ -223,6 +253,25 @@ export class ConfigStore {
     this.data.connections = this.data.connections.filter((c) => c.id !== id);
     this.save();
   }
+
+  // ---- workspace (Explorer folders)
+  listFolders(): StoredFolder[] {
+    return this.data.workspace.folders.map((f) => ({ ...f }));
+  }
+  addFolder(folder: StoredFolder): void {
+    this.data.workspace.folders.push({ ...folder });
+    this.save();
+  }
+  removeFolder(id: string): void {
+    this.data.workspace.folders = this.data.workspace.folders.filter((f) => f.id !== id);
+    this.save();
+  }
+}
+
+export function isStoredFolder(v: unknown): v is StoredFolder {
+  if (typeof v !== "object" || v === null) return false;
+  const f = v as Record<string, unknown>;
+  return typeof f.id === "string" && typeof f.name === "string" && typeof f.path === "string" && f.path.length > 0;
 }
 
 export function isStoredConnection(v: unknown): v is StoredConnection {

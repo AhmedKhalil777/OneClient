@@ -10,5 +10,5 @@
     "moduleResolution": "Bundler",
     "lib": ["ES2022"]
   },
-  "include": ["src/main", "src/preload", "src/extension-host", "src/shared"]
+  "include": ["src/main", "src/preload", "src/extension-host", "src/terminal-host", "src/shared"]
 }

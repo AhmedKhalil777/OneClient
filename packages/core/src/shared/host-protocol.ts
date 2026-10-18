@@ -22,7 +22,10 @@ export type HostInboundMessage =
   | { type: "secret:result"; requestId: string; value?: string }
   | { type: "secret:ack"; requestId: string }
   | { type: "view:message"; viewId: string; connectionId?: string; message: unknown }
-  | { type: "view:dispose"; viewId: string; connectionId?: string };
+  | { type: "view:dispose"; viewId: string; connectionId?: string }
+  | { type: "workspace:result"; requestId: string; ok: true; value?: unknown }
+  | { type: "workspace:result"; requestId: string; ok: false; error: string }
+  | { type: "workspace:changed"; folders: Array<{ name: string; path: string }> };
 
 export type RegisteredContribution =
   | { kind: "connection"; typeId: string; configSchema: unknown; uiSchema?: unknown }
@@ -44,4 +47,6 @@ export type HostOutboundMessage =
   | { type: "secret:set"; requestId: string; key: string; value: string }
   | { type: "secret:delete"; requestId: string; key: string }
   | { type: "deactivated" }
-  | { type: "view:push"; viewId: string; connectionId?: string; message: unknown };
+  | { type: "view:push"; viewId: string; connectionId?: string; message: unknown }
+  | { type: "workspace:folders"; requestId: string }
+  | { type: "workspace:openFile"; requestId: string; path: string; options?: { line?: number; column?: number; length?: number } };

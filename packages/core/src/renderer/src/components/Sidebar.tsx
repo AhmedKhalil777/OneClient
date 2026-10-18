@@ -271,7 +271,7 @@ function PluginsContainer({ plugins, onOpenPluginManager }: { plugins: PluginSum
 }
 
 /** A collapsible VS Code-style section; its expanded state is remembered per container. */
-function SidebarSection({
+export function SidebarSection({
   containerId,
   sectionId,
   title,

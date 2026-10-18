@@ -9,6 +9,9 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, "src/main/index.ts"),
           "extension-host": resolve(__dirname, "src/extension-host/bootstrap.ts"),
+          // Core's own background processes: the integrated terminal and the workspace text search.
+          "terminal-host": resolve(__dirname, "src/terminal-host/host.ts"),
+          "search-worker": resolve(__dirname, "src/main/workspace/search-worker.ts"),
         },
       },
     },
@@ -35,7 +38,12 @@ export default defineConfig({
     },
     build: {
       rollupOptions: {
-        input: resolve(__dirname, "src/renderer/index.html"),
+        input: {
+          index: resolve(__dirname, "src/renderer/index.html"),
+          // Core views: hosted like plugin views (sandboxed, with the view preload) — the file editor and the terminal.
+          editor: resolve(__dirname, "src/renderer/views/editor/index.html"),
+          terminal: resolve(__dirname, "src/renderer/views/terminal/index.html"),
+        },
       },
     },
     plugins: [react()],

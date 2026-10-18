@@ -1,4 +1,5 @@
 import type { ThemeState } from "./theme.js";
+import type { OpenFileOptions } from "./workspace.js";
 
 /**
  * Tier 1: declarative result grids.
@@ -95,6 +96,11 @@ export interface ViewHostApi {
    * (a saved query, a faker…). No-op for views without a connection.
    */
   refreshExplorer(): void;
+  /**
+   * Open a file of the workspace (an absolute path inside a folder open in the Explorer) in core's editor,
+   * optionally at a line. Resolves false when the file isn't inside an open folder.
+   */
+  openFile(path: string, options?: OpenFileOptions): Promise<boolean>;
 }
 
 /**

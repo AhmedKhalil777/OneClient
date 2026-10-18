@@ -50,6 +50,21 @@ const api: OneClientApi = {
   onOutputReveal: (listener) => onEvent(IpcChannel.OutputReveal, listener),
   clearOutput: (channelId) => ipcRenderer.invoke(IpcChannel.OutputClear, channelId),
 
+  workspaceFolders: () => ipcRenderer.invoke(IpcChannel.WorkspaceFolders),
+  addWorkspaceFolder: (path) => ipcRenderer.invoke(IpcChannel.WorkspaceAddFolder, path),
+  removeWorkspaceFolder: (id) => ipcRenderer.invoke(IpcChannel.WorkspaceRemoveFolder, id),
+  onWorkspaceChanged: (listener) => onEvent(IpcChannel.WorkspaceChanged, listener),
+  revealPath: (path) => ipcRenderer.invoke(IpcChannel.RevealPath, path),
+  openWorkspaceFile: (path, options) => ipcRenderer.invoke(IpcChannel.WorkspaceOpen, path, options ?? {}),
+  onOpenWorkspaceFile: (listener) => onEvent(IpcChannel.WorkspaceOpenFile, listener),
+
+  windowAction: (action) => ipcRenderer.invoke(IpcChannel.WindowAction, action),
+  editAction: (role, instanceId) => ipcRenderer.invoke(IpcChannel.EditAction, role, instanceId),
+  sendKeyToView: (instanceId, key) => ipcRenderer.invoke(IpcChannel.ViewSendKey, instanceId, key),
+  appInfo: () => ipcRenderer.invoke(IpcChannel.AppInfo),
+  setTitleBarColors: (background, foreground) => ipcRenderer.invoke(IpcChannel.TitleBarColors, background, foreground),
+  onFullScreenChanged: (listener) => onEvent(IpcChannel.FullScreenChanged, listener),
+
   pickDirectory: (defaultPath) => ipcRenderer.invoke(IpcChannel.DialogPickDirectory, defaultPath),
 
   getThemeState: () => ipcRenderer.invoke(IpcChannel.ThemeGetState),

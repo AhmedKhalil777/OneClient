@@ -29,7 +29,7 @@ export type {
   TransformRequest,
   TransformResult,
 } from "./file-editor.js";
-export { FILE_EDITORS_POINT, matchFileEditors } from "./file-editor.js";
+export { FILE_EDITORS_POINT, LEGACY_FILE_EDITORS_POINT, matchFileEditors } from "./file-editor.js";
 export type {
   ColorThemeContribution,
   FileIconAssociations,
@@ -75,3 +75,6 @@ export type {
 export type { OutputChannel, OutputLevel } from "./output.js";
 
 export type { SearchProviderContribution, SearchRequest, SearchResult } from "./search.js";
+
+export type { OpenFileOptions, Workspace, WorkspaceFolder } from "./workspace.js";
+export type { MenuContribution, MenuId } from "./manifest.js";

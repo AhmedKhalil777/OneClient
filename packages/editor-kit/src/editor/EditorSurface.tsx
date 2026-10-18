@@ -1,4 +1,4 @@
-import { type RefObject, useMemo, useRef } from "react";
+import { type ReactNode, type RefObject, useMemo, useRef } from "react";
 
 const LINE_HEIGHT = 20;
 
@@ -20,7 +20,10 @@ export function EditorSurface({
   onCursor,
   onScrollFraction,
   readOnly = false,
+  underlay,
 }: {
+  /** Drawn between the highlight layer and the textarea (e.g. find-match marks). */
+  underlay?: ReactNode;
   text: string;
   onChange: (value: string) => void;
   textareaRef: RefObject<HTMLTextAreaElement>;
@@ -68,6 +71,7 @@ export function EditorSurface({
       </div>
       <div className="oce-text-layer">
         {highlighted && <pre ref={layerRef} className="oce-hl" aria-hidden dangerouslySetInnerHTML={{ __html: highlightHtml }} />}
+        {underlay}
         <textarea
           ref={textareaRef}
           className={highlighted ? "oce-transparent" : undefined}

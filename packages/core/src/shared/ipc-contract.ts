@@ -53,6 +53,21 @@ export const IpcChannel = {
   SearchProviders: "oneclient:search:providers",
   SearchRun: "oneclient:search:run",
 
+  WorkspaceFolders: "oneclient:workspace:folders",
+  WorkspaceOpen: "oneclient:workspace:open",
+  WorkspaceOpenFile: "oneclient:workspace:open-file",
+  WorkspaceAddFolder: "oneclient:workspace:add-folder",
+  WorkspaceRemoveFolder: "oneclient:workspace:remove-folder",
+  WorkspaceChanged: "oneclient:workspace:changed",
+  RevealPath: "oneclient:shell:reveal-path",
+
+  WindowAction: "oneclient:window:action",
+  EditAction: "oneclient:window:edit",
+  ViewSendKey: "oneclient:view:send-key",
+  AppInfo: "oneclient:app:info",
+  TitleBarColors: "oneclient:window:titlebar-colors",
+  FullScreenChanged: "oneclient:window:fullscreen",
+
   ConnectionExport: "oneclient:connection:export",
   ConnectionImport: "oneclient:connection:import",
   ConfigReveal: "oneclient:config:reveal",
@@ -86,7 +101,20 @@ export interface ThemeListItem {
 }
 
 /** Workbench-level shortcuts that must work even while a Tier 2 view has focus. */
-export type WorkbenchShortcut = "togglePanel" | "commandPalette" | "quickSearch" | "findInFiles";
+export type WorkbenchShortcut =
+  | "togglePanel"
+  | "commandPalette"
+  | "quickSearch"
+  | "findInFiles"
+  | "showExplorer"
+  | "toggleSidebar"
+  | "closeEditor"
+  | "nextEditor"
+  | "previousEditor"
+  | "zoomIn"
+  | "zoomOut"
+  | "zoomReset"
+  | "toggleFullScreen";
 export type { SearchHit, SearchOutcome, SearchProviderInfo };
 
 export interface ViewBounds {
@@ -102,6 +130,36 @@ export interface ViewBounds {
  * interface for both ends means a signature change is a compile error in
  * whichever side didn't get updated.
  */
+export interface WorkspaceFolderInfo {
+  id: string;
+  name: string;
+  /** Absolute path. */
+  path: string;
+}
+export interface OpenWorkspaceFileEvent {
+  folderId: string;
+  /** "/"-separated path inside the folder. */
+  relPath: string;
+}
+export type WindowAction = "toggleDevTools" | "toggleFullScreen" | "zoomIn" | "zoomOut" | "zoomReset" | "reload" | "quit" | "revealConfigFolder";
+export type EditRole = "undo" | "redo" | "cut" | "copy" | "paste" | "selectAll";
+export interface ViewKey {
+  /** Electron keyCode: "F", "F5", "Escape", "Enter"… */
+  key: string;
+  ctrl?: boolean;
+  shift?: boolean;
+  alt?: boolean;
+}
+export interface AppInfo {
+  version: string;
+  electron: string;
+  chrome: string;
+  node: string;
+  v8: string;
+  platform: string;
+  configDir: string;
+}
+
 export interface OneClientApi {
   getRegistry(): Promise<ContributionRegistrySnapshot>;
   onRegistryChanged(listener: (snapshot: ContributionRegistrySnapshot) => void): () => void;
@@ -133,6 +191,31 @@ export interface OneClientApi {
   importConnections(): Promise<{ path: string; added: number; skipped: number; invalid: number; withoutSecrets: number; warnings: string[] } | null>;
   /** Show ~/.oneclient/oneclient.json in the file manager. */
   revealConfigFile(): Promise<void>;
+
+  /** The folders open in the Explorer (core's workspace). */
+  workspaceFolders(): Promise<WorkspaceFolderInfo[]>;
+  /** Open a folder in the Explorer (returns it; an already open one is returned as is). */
+  addWorkspaceFolder(path: string): Promise<WorkspaceFolderInfo>;
+  /** Close a folder (forget it — nothing on disk changes). */
+  removeWorkspaceFolder(id: string): Promise<void>;
+  onWorkspaceChanged(listener: (folders: WorkspaceFolderInfo[]) => void): () => void;
+  /** Show a file or folder in the OS file manager. */
+  revealPath(path: string): Promise<void>;
+  /** Open a workspace file (absolute path) in the editor, optionally revealing a line. Rejects if it's outside every open folder. */
+  openWorkspaceFile(path: string, options?: { line?: number; column?: number; length?: number }): Promise<void>;
+  /** Core asks the shell to open a file's editor tab (from openWorkspaceFile / a plugin's workspace.openFile). */
+  onOpenWorkspaceFile(listener: (event: OpenWorkspaceFileEvent) => void): () => void;
+
+  /** Title bar menus: window-level actions. */
+  windowAction(action: WindowAction): Promise<void>;
+  /** Edit menu: run an edit command in a Tier 2 view (by instance id) or, without one, in the shell itself. */
+  editAction(role: EditRole, instanceId?: string): Promise<void>;
+  /** Forward a key press to a Tier 2 view (menu items like Find, Go to Line, Run send the view its own shortcut). */
+  sendKeyToView(instanceId: string, key: ViewKey): Promise<void>;
+  appInfo(): Promise<AppInfo>;
+  /** Colours of the native window buttons drawn over the custom title bar (Windows / Linux). */
+  setTitleBarColors(background: string, foreground: string): Promise<void>;
+  onFullScreenChanged(listener: (fullScreen: boolean) => void): () => void;
 
   getExplorerChildren(connectionId: string, node: TreeNode | null): Promise<TreeNode[]>;
 

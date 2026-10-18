@@ -11,7 +11,7 @@ The built-in **Miscellaneous** plugin. One extension-host process, six small con
 | Text utilities | sort lines, remove duplicates, trim trailing whitespace, final newline (every file) |
 | **Material Icon Theme** | the default file/folder icon theme: 1,300+ file types, 2,000+ special file names, well-known folders, light-theme variants |
 
-The editor features plug into the Files plugin's `oneclient-files.editors` extension point (see
+The editor features plug into core's file editor through the `oneclient.editors` extension point (see
 `packages/plugin-api/src/file-editor.ts`); the icon theme is declarative (`contributes.iconThemes`).
 
 ## Material Icon Theme

@@ -71,4 +71,4 @@ Theme the popup by overriding the `--oc-ac-*` CSS variables (see `src/styles.ts`
 ### Used by
 
 - **oneclient-mssql**: T-SQL IntelliSense (keywords, functions, databases, schemas, tables, columns, `alias.` / `schema.` / `db.schema.` completion, `@variables`). See `src-ui/completion.ts`.
-- **oneclient-files**: word-based suggestions in the text editor.
+- **the core file editor**: word-based suggestions.

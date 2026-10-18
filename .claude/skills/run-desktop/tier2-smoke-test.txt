@@ -1,16 +1,11 @@
+# Core views (hosted like plugin views): open the first file of the first Explorer folder in the editor,
+# then the terminal. Needs at least one folder open (File > Open Folder…).
 launch
-wait 400
-click-text +
-wait 300
-select #conn-type sample
-wait 400
-fill #field-label demo-conn
-fill #conn-name My Sample
-click-text Save
-wait 500
-ss t2-01-saved
-click-text ⊞
-wait 1500
-ss-view ui t2-02-view-pong
-wait 1500
-ss-view ui t2-03-view-ticks
+wait 2500
+eval (async () => { const [f] = await window.oneclient.workspaceFolders(); if (!f) return 'open a folder first'; const kids = await window.oneclient.getExplorerChildren(f.id, null); const file = kids.find((k) => k.nodeType === 'files.file'); if (!file) return 'no file at the top of ' + f.name; await window.oneclient.openWorkspaceFile(file.data.fsPath, { line: 1 }); return 'opened ' + file.label })()
+wait 2500
+eval-view views/editor (() => document.querySelector('textarea')?.value.length + ' chars')()
+press Control+Backquote
+wait 2500
+eval-view views/terminal [...document.querySelectorAll('.term-item')].map((i) => i.textContent).join(' | ')
+quit

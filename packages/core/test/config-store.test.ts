@@ -145,3 +145,29 @@ describe("connection export / import", () => {
     await expect(mgr.importConnections({ hello: "world" })).rejects.toThrow(/connections/);
   });
 });
+
+describe("v1 → v2: Explorer folders become the workspace", () => {
+  it("moves the old Files plugin's folder connections into workspace.folders (same ids) and drops retired plugins", () => {
+    const folder = { id: "f1", name: "repo", typeId: "folder", pluginId: "oneclient-files", config: { path: "C:/src/repo" }, createdAt: "2026-01-01T00:00:00.000Z" };
+    writeFileSync(
+      join(dir, "oneclient.json"),
+      JSON.stringify({ version: 1, settings: {}, plugins: { "oneclient-files": { enabled: true }, "oneclient-sample": { enabled: true }, redis: { enabled: false } }, connections: [folder, conn("2")] }),
+    );
+    const s = new ConfigStore(dir);
+    expect(s.listFolders()).toEqual([{ id: "f1", name: "repo", path: "C:/src/repo" }]);
+    expect(s.listConnections().map((c) => c.id)).toEqual(["2"]);
+    expect(s.isPluginEnabled("redis")).toBe(false);
+    const saved = JSON.parse(readFileSync(join(dir, "oneclient.json"), "utf-8"));
+    expect(saved.version).toBe(2);
+    expect(Object.keys(saved.plugins)).toEqual(["redis"]);
+    expect(readdirSync(dir)).toContain("oneclient.json.v1.bak");
+  });
+
+  it("adds and removes workspace folders", () => {
+    const s = new ConfigStore(dir);
+    s.addFolder({ id: "a", name: "A", path: "/a" });
+    s.addFolder({ id: "b", name: "B", path: "/b" });
+    s.removeFolder("a");
+    expect(new ConfigStore(dir).listFolders()).toEqual([{ id: "b", name: "B", path: "/b" }]);
+  });
+});

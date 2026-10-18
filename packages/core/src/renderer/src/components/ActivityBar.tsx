@@ -2,14 +2,13 @@ import type { PluginSummary } from "../../../shared/types.js";
 import { ThemeIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
 
-/** Which view container the sidebar shows: one plugin's explorer, or the built-in Plugins list. */
-export type ViewContainerId = `plugin:${string}` | "plugins";
+/** Which view container the sidebar shows: core's Explorer or Search, one plugin's explorer, or the Plugins list. */
+export type ViewContainerId = `plugin:${string}` | "explorer" | "search" | "plugins";
 
 /**
- * VS Code-style activity bar: one icon per plugin that has an explorer
- * (i.e. contributes connection types), plus the built-in Plugins container
- * pinned to the bottom. Clicking the already-selected icon collapses the
- * sidebar; clicking it again restores it.
+ * VS Code-style activity bar: core's Explorer and Search first, then one icon per plugin that has an explorer
+ * (i.e. contributes connection types), and Plugins / Manage pinned to the bottom. Clicking the already-selected
+ * icon collapses the sidebar; clicking it again restores it.
  */
 export function ActivityBar({
   plugins,
@@ -28,6 +27,13 @@ export function ActivityBar({
   return (
     <div className="activity-bar">
       <div className="activity-bar-group">
+        <ActivityItem title="Explorer (Ctrl+Shift+E)" selected={sidebarVisible && active === "explorer"} onClick={() => onSelect("explorer")}>
+          <ThemeIcon id="files" size={24} />
+        </ActivityItem>
+        <ActivityItem title="Search (Ctrl+Shift+F)" selected={sidebarVisible && active === "search"} onClick={() => onSelect("search")}>
+          <ThemeIcon id="search" size={24} />
+        </ActivityItem>
+        {plugins.length > 0 && <div className="activity-bar-separator" />}
         {plugins.map((p) => {
           const id: ViewContainerId = `plugin:${p.id}`;
           return (

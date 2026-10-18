@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { BrowserWindow, app, dialog } from "electron";
 import { registerPluginAssetProtocolHandler, registerPluginAssetSchemeAsPrivileged } from "./assets/plugin-asset-protocol.js";
 
@@ -22,23 +23,28 @@ import { FileSecretStore } from "./secrets/secret-store.js";
 import { ThemeService } from "./themes/theme-service.js";
 import { ViewHostManager } from "./views/view-host-manager.js";
 import { createMainWindow } from "./windows.js";
+import { WorkspaceService } from "./workspace/workspace-service.js";
+import { SearchWorker } from "./workspace/search-client.js";
+import { EDITOR_VIEW } from "./workspace/files.js";
+import { TERMINAL_VIEW, TerminalService } from "./terminal/terminal-service.js";
+import { CORE_PLUGIN_ID } from "../shared/core.js";
+import { IpcChannel } from "../shared/ipc-contract.js";
 
 function pluginDirs(): string[] {
   const dirs = [join(app.getPath("userData"), "plugins")];
-  if (app.isPackaged) {
-    // Built-in plugins (e.g. oneclient-files) ship inside the app bundle's
-    // resources — the packaging step copies packages/plugins/<built-in> there.
-    dirs.push(join(process.resourcesPath, "plugins"));
-  } else {
-    // Dev-only fixture plugin(s) for exercising the loader/extension-host pipeline
-    // without a real install flow — see packages/core/dev-plugins/README.md.
-    dirs.push(join(__dirname, "../../dev-plugins"));
-    // Real reference plugins (packages/plugins/*) load live from the repo in
-    // dev builds too, same as a packaged app's built-in extensions would —
-    // no install step needed while developing them.
-    dirs.push(join(__dirname, "../../../plugins"));
-  }
+  // Bundled plugins ship inside the app bundle's resources (the packaging step copies packages/plugins/* there);
+  // in dev builds they load live from the repo, no install step needed.
+  dirs.push(app.isPackaged ? join(process.resourcesPath, "plugins") : join(__dirname, "../../../plugins"));
   return dirs;
+}
+
+/** Core's own views (the file editor tab, the Terminal panel): built with the renderer, hosted like plugin views. */
+const CORE_VIEWS: Record<string, string> = { [EDITOR_VIEW]: "views/editor/index.html", [TERMINAL_VIEW]: "views/terminal/index.html" };
+function coreViewUrl(viewId: string): string | undefined {
+  const page = CORE_VIEWS[viewId];
+  if (!page) return undefined;
+  const devServer = process.env["ELECTRON_RENDERER_URL"];
+  return !app.isPackaged && devServer ? `${devServer}/${page}` : pathToFileURL(join(__dirname, "../renderer", page)).href;
 }
 
 function log(pluginId: string, level: "debug" | "info" | "warn" | "error", message: string, meta?: unknown): void {
@@ -89,11 +95,14 @@ async function main(): Promise<void> {
   let supervisor!: ExtensionHostSupervisor;
   const output = new OutputService();
 
-  const views = new ViewHostManager(
-    mainWindow,
-    join(__dirname, "../preload"),
-    (pluginId, viewId, connectionId, message) => supervisor.sendViewMessage(pluginId, viewId, connectionId, message),
-  );
+  // Core views talk to core services; plugin views to their plugin's extension host.
+  let workspace!: WorkspaceService;
+  let terminal!: TerminalService;
+  const views = new ViewHostManager(mainWindow, join(__dirname, "../preload"), (pluginId, viewId, connectionId, message) => {
+    if (pluginId !== CORE_PLUGIN_ID) return supervisor.sendViewMessage(pluginId, viewId, connectionId, message);
+    if (viewId === EDITOR_VIEW) workspace.onEditorMessage(connectionId, message);
+    else if (viewId === TERMINAL_VIEW) terminal.fromView(message);
+  });
 
   supervisor = new ExtensionHostSupervisor(
     secrets,
@@ -158,8 +167,49 @@ async function main(): Promise<void> {
     (pluginId) => pluginManager.getRecord(pluginId)?.manifest?.version,
   );
 
-  const search = new SearchService(registry, connections, (pluginId, kind, target, method, args, connectionId) =>
-    supervisor.invoke(pluginId, kind, target, method, args, connectionId),
+  // The workspace (core): the folders open in the Explorer — its tree, file commands, the editor's backend and
+  // text search on a worker thread. Shared with every plugin through context.workspace.
+  const searchWorker = new SearchWorker();
+  workspace = new WorkspaceService(config, searchWorker, (viewId, folderId, message) => views.push(viewId, folderId, message));
+  // The integrated terminal (core): shells in their own process; new terminals start in the first open folder.
+  terminal = new TerminalService(
+    (message) => views.push(TERMINAL_VIEW, undefined, message),
+    () => workspace.folders()[0]?.path,
+  );
+  /** Commands implemented by core itself (files.*, terminal.*): views, menus and context menus call them by id. */
+  const coreCommands = { ...workspace.commands(), ...terminal.commands() };
+
+  async function openWorkspaceFile(path: string, options: { line?: number | undefined; column?: number | undefined; length?: number | undefined } = {}): Promise<void> {
+    const location = workspace.locate(path);
+    if (!location) throw new Error(`"${path}" isn't inside a folder open in the Explorer.`);
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send(IpcChannel.WorkspaceOpenFile, { folderId: location.folder.id, relPath: location.relPath });
+    }
+    // The editor tab picks this up when it has loaded (or right away if it's open already).
+    if (options.line) workspace.reveal(location.folder.id, { path: location.relPath, line: options.line, col: options.column ?? 1, length: options.length ?? 0 });
+  }
+  supervisor.setWorkspace({ folders: () => workspace.folders().map(({ name, path }) => ({ name, path })), openFile: openWorkspaceFile });
+  views.setOpenFileHandler(openWorkspaceFile);
+  workspace.onChanged((folders) => {
+    supervisor.broadcastWorkspaceFolders(folders.map(({ name, path }) => ({ name, path })));
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send(IpcChannel.WorkspaceChanged, folders);
+  });
+
+  const search = new SearchService(
+    registry,
+    connections,
+    (pluginId, kind, target, method, args, connectionId) => supervisor.invoke(pluginId, kind, target, method, args, connectionId),
+    [
+      {
+        // File names in every open folder (nested, fuzzy — "pm" finds plugin-manager.ts).
+        id: "files",
+        label: "Files",
+        icon: "$(file)",
+        order: 10,
+        run: async (query, limit) =>
+          (await workspace.quickOpen(query, limit)).map(({ folderId, folderName, ...hit }) => ({ ...hit, providerId: "core:files", pluginId: CORE_PLUGIN_ID, connectionId: folderId, connectionName: folderName })),
+      },
+    ],
   );
 
   registerIpcHandlers({
@@ -174,6 +224,11 @@ async function main(): Promise<void> {
     output,
     ensureActivated,
     getWindows: () => BrowserWindow.getAllWindows(),
+    workspace,
+    openWorkspaceFile,
+    coreCommands,
+    coreViewUrl,
+    terminal,
   });
 
   await pluginManager.scan();
@@ -184,6 +239,8 @@ async function main(): Promise<void> {
 
   app.on("before-quit", () => {
     views.closeAll();
+    terminal.dispose();
+    void searchWorker.dispose();
     for (const record of pluginManager.getRecords()) {
       if (record.state === "active") void supervisor.deactivate(record.id);
     }

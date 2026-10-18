@@ -71,6 +71,7 @@ const api: ViewHostApi = {
   openExternal: (url) => ipcRenderer.send("oneclient-view:open-external", String(url)),
   openView: (request) => ipcRenderer.send("oneclient-view:open-view", request),
   refreshExplorer: () => ipcRenderer.send("oneclient-view:refresh-explorer"),
+  openFile: (path, options) => ipcRenderer.invoke("oneclient-view:open-file", String(path), options ?? {}),
   onThemeChange: (listener) => {
     themeListeners.add(listener);
     if (theme) listener(theme);

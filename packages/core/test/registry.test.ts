@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ContributionRegistry } from "../src/main/plugins/registry.js";
 
 describe("ContributionRegistry extension points", () => {
-  const POINT = "oneclient-files.editors";
+  const POINT = "oneclient.editors";
 
   function registry() {
     const r = new ContributionRegistry();

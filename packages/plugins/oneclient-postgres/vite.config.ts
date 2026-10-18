@@ -10,7 +10,11 @@ export default defineConfig({
   base: "./",
   plugins: [react()],
   // Shared workspace packages (e.g. @oneclient/editor-kit) must use this bundle's single React copy.
-  resolve: { dedupe: ["react", "react-dom"] },
+  resolve: {
+    dedupe: ["react", "react-dom"],
+    // plugin-api ships as CommonJS; the editor kit (find widget) imports its ESM source.
+    alias: { "@oneclient/plugin-api": resolve(__dirname, "../../plugin-api/src/index.ts") },
+  },
   build: {
     outDir: resolve(__dirname, "dist/ui"),
     emptyOutDir: true,

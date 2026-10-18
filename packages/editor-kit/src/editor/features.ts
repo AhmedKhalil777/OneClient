@@ -30,7 +30,7 @@ export async function callFeature<T extends { ok: boolean }>(command: string, re
 }
 
 /**
- * What other plugins contributed for this file (`oneclient-files.editors`): format, breadcrumbs,
+ * What other plugins contributed for this file (`oneclient.editors`): format, breadcrumbs,
  * highlighting, preview, actions. `null` until the contributions have loaded.
  */
 export function useFileFeatures(fileName: string): FileEditorFeatures | null {

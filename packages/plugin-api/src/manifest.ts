@@ -59,10 +59,12 @@ export interface PluginManifest {
     readonly searchProviders?: SearchProviderContribution[];
     /** New icon ids, usable by any plugin as `$(id)`. */
     readonly icons?: IconContribution[];
+    /** Items in the title bar menus (File, Edit, View, Go, Run, Terminal, Help). */
+    readonly menus?: MenuContribution[];
     /**
      * Contributions to other plugins' extension points, keyed by point id (`<owning plugin id>.<name>`).
      * Core only brokers them (views read them with `ViewHostApi.getContributions`); the plugin that owns the
-     * point defines and validates the item shape. Example: `"oneclient-files.editors"` — see file-editor.ts.
+     * point defines and validates the item shape. Example: core's `"oneclient.editors"` — see file-editor.ts.
      */
     readonly extensions?: Record<string, ReadonlyArray<Record<string, unknown>>>;
   };
@@ -91,6 +93,36 @@ export interface ConnectionTypeContribution {
   readonly connectionLabel?: string;
   /** Plural of `connectionLabel`, the sidebar section heading (e.g. "Servers"). Default: `connectionLabel` + "s". */
   readonly connectionLabelPlural?: string;
+}
+
+export type MenuId = "file" | "edit" | "view" | "go" | "run" | "terminal" | "help";
+
+/**
+ * An item in one of the title bar menus. It either runs a `command` of this plugin, or — with only a
+ * `keybinding` — presses that key in the active editor tab (which must be one of this plugin's views), so a menu
+ * item can trigger what the view already does on a shortcut (Run ▸ Execute Query = F5 in a query tab).
+ *
+ * ```json
+ * "menus": [
+ *   { "menu": "run", "title": "Execute Query", "keybinding": "F5", "when": "activeView == 'postgres.query'" },
+ *   { "menu": "file", "title": "New Query", "command": "postgres.newQuery" }
+ * ]
+ * ```
+ */
+export interface MenuContribution {
+  readonly menu: MenuId;
+  /** Defaults to the command's title. */
+  readonly title?: string;
+  readonly command?: string;
+  /** Shown next to the item; pressed in the active view when there's no `command`. E.g. "F5", "Ctrl+Enter", "Shift+F5". */
+  readonly keybinding?: string;
+  /**
+   * When to show the item. Keys: `activeView` (view id of the active editor tab), `activePlugin`, plus the
+   * operators of `CommandContribution.when`. Omit to always show it.
+   */
+  readonly when?: string;
+  /** Items with the same group sit together, separated from other groups. */
+  readonly group?: string;
 }
 
 export interface ExplorerSectionContribution {

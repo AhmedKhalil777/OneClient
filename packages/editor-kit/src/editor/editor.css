@@ -245,6 +245,7 @@
   flex: 1;
   min-width: 0;
   display: flex;
+  position: relative;
 }
 .oce-body.split .oce-pane-editor {
   flex: 1 1 50%;
@@ -425,3 +426,44 @@
 .oce-error {
   color: var(--oce-danger);
 }
+
+/* ---- find / replace, go to line ---- */
+.oce-find {
+  position: absolute;
+  top: 0;
+  right: 18px;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 4px 6px 4px 2px;
+  background: var(--oc-editorWidget-background, var(--oc-menu-background, #252526));
+  color: var(--oce-text);
+  border: 1px solid var(--oc-editorWidget-border, var(--oce-border));
+  border-top: 0;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.36);
+  font: 13px -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+.oce-goto { left: 50%; right: auto; transform: translateX(-50%); width: min(420px, 80%); padding-left: 6px; }
+.oce-goto .oce-find-rows, .oce-goto .oce-find-row, .oce-goto .oce-find-field { flex: 1; width: 100%; }
+.oce-find-rows { display: flex; flex-direction: column; gap: 4px; }
+.oce-find-row { display: flex; align-items: center; gap: 2px; }
+.oce-find-expand { width: 16px; align-self: stretch; background: none; border: 0; color: inherit; cursor: pointer; padding: 0; border-radius: 3px; }
+.oce-find-expand:hover { background: var(--oc-toolbar-hoverBackground, #ffffff1a); }
+.oce-find-field { display: flex; align-items: center; width: 250px; background: var(--oc-input-background, #3c3c3c); border: 1px solid var(--oc-input-border, transparent); border-radius: 3px; }
+.oce-find-field:focus-within { outline: 1px solid var(--oc-focusBorder, #007fd4); outline-offset: -1px; }
+.oce-find-field.invalid { outline: 1px solid var(--oc-inputValidation-errorBorder, #be1100); }
+.oce-find-field input { flex: 1; min-width: 0; background: transparent; color: inherit; border: 0; padding: 3px 6px; font: inherit; outline: none; }
+.oce-find-toggle { background: transparent; color: var(--oc-descriptionForeground, #858585); border: 1px solid transparent; border-radius: 3px; padding: 0 4px; margin-right: 2px; font: inherit; font-size: 12px; cursor: pointer; }
+.oce-find-toggle:hover { color: var(--oce-text); }
+.oce-find-toggle.on { color: var(--oce-text); border-color: var(--oc-inputOption-activeBorder, #007acc); background: var(--oc-inputOption-activeBackground, #007acc55); }
+.oce-find-count { min-width: 74px; padding: 0 6px; font-size: 12px; color: var(--oc-descriptionForeground, #858585); white-space: nowrap; }
+.oce-find-count.none { color: var(--oc-errorForeground, #f48771); }
+.oce-find-btn { min-width: 22px; height: 22px; background: none; border: 0; border-radius: 3px; color: inherit; cursor: pointer; font: inherit; }
+.oce-find-btn.wide { padding: 0 6px; font-size: 12px; }
+.oce-find-btn:hover:not(:disabled) { background: var(--oc-toolbar-hoverBackground, #ffffff1a); }
+.oce-find-btn:disabled { opacity: 0.4; cursor: default; }
+.oce-find-marks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.oce-find-mark { position: absolute; background: var(--oc-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33)); border-radius: 2px; }
+.oce-find-mark.current { background: var(--oc-editor-findMatchBackground, rgba(81, 92, 106, 0.9)); outline: 1px solid var(--oc-editor-findMatchBorder, #f8b24c); }

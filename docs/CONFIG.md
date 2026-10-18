@@ -4,7 +4,7 @@ Everything the app stores about itself lives in **`~/.oneclient/`** (override wi
 
 | File | What | Safe to share? |
 | --- | --- | --- |
-| `oneclient.json` | Saved connections, which plugins are disabled, last-seen plugin versions, theme choices | Yes — it holds no secrets |
+| `oneclient.json` | Saved connections, the folders open in the Explorer (`workspace.folders`), which plugins are disabled, last-seen plugin versions, theme choices | Yes — it holds no secrets (folder paths are machine-specific, though) |
 | `secrets.json` | Passwords / client secrets, each encrypted with the OS keychain (Electron `safeStorage`) | No — only the same OS user on the same machine can decrypt it |
 
 There is no database. Both files are plain JSON, written atomically (temp file + rename).
@@ -24,7 +24,7 @@ Command palette → **Connections: Export…** / **Export with Passwords (plain 
 
 ## File format versions & migrations
 
-`oneclient.json` has a top-level `"version"` (currently **1**); so does `secrets.json` (`{ "version": 1, "secrets": { … } }`).
+`oneclient.json` has a top-level `"version"` (currently **2**); so does `secrets.json` (`{ "version": 1, "secrets": { … } }`).
 
 On start-up:
 
@@ -39,6 +39,10 @@ On start-up:
 2. Append a migration `{ from: <previous version>, describe, run(data) }` to `MIGRATIONS`. Never edit an existing migration.
 3. Add a test in `packages/core/test/config-store.test.ts` that feeds a file of the old shape through `migrateConfig` / `new ConfigStore`.
 4. Do the same for `secrets.json` (`SECRETS_VERSION` in `secrets/secret-store.ts`) and the export document (`EXPORT_VERSION`) if their shape changes.
+
+History: **v1** normalized the shape; **v2** moved the Explorer's folders out of `connections` (they were connections of the
+old Files plugin, `oneclient-files` / `folder`) into `workspace.folders` (same ids), when the Explorer became part of core.
+Folders are not part of a connections export.
 
 Adding an optional field does not need a migration, but it is still worth a version bump if older apps would mis-handle it.
 

@@ -52,6 +52,20 @@ describe("oneclient-manifest.schema.json", () => {
     expect(validate(manifest)).toBe(true);
   });
 
+  it("accepts title bar menu items and rejects malformed ones", () => {
+    const manifest = (menus: unknown[]) => ({ name: "oneclient-menus", version: "1.0.0", engines: { oneclient: "^0.1.0" }, main: "dist/main.js", contributes: { menus } });
+    expect(
+      validate(
+        manifest([
+          { menu: "run", title: "Execute Query", keybinding: "F5", when: "activeView == 'q.query'", group: "1_run" },
+          { menu: "file", command: "q.newQuery", keybinding: "Ctrl+Shift+Enter" },
+        ]),
+      ),
+    ).toBe(true);
+    expect(validate(manifest([{ menu: "selection", command: "x" }]))).toBe(false);
+    expect(validate(manifest([{ menu: "run", keybinding: "Ctrl+" }]))).toBe(false);
+  });
+
   it("accepts a declarative plugin with no `main` (themes/icons only)", () => {
     const manifest = {
       name: "oneclient-icons-only",

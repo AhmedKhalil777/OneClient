@@ -9,8 +9,11 @@ import { caretAfterReplace, diffEdit, lineOf, mapBack, mapForward, shiftTokens }
 import { FEATURE_TEXT_LIMIT, callFeature, useAnalysis, useFileFeatures } from "./features.js";
 import { buildHighlightHtml } from "./highlight.js";
 import { symbolPath } from "./symbols.js";
+import { type FindMatch, FindMarks, type FindMode, FindWidget, type Geometry, GoToLine } from "./find.js";
 
 const LINE_HEIGHT = 20;
+/** The textarea's padding and tab size (editor.css), for placing find marks. */
+const GEOMETRY: Geometry = { paddingTop: 8, paddingLeft: 4, lineHeight: LINE_HEIGHT, tabSize: 4 };
 const DEFAULT_PROVIDERS: readonly CompletionProvider[] = [wordsProvider()];
 
 interface Problem {
@@ -23,7 +26,7 @@ export interface FeatureEditorProps {
   /** The document text. Always "\n" line endings — convert on load/save. */
   value: string;
   onChange: (value: string) => void;
-  /** Base file name; what other plugins' `oneclient-files.editors` contributions are matched against ("tsconfig.json"). */
+  /** Base file name; what plugins' `oneclient.editors` contributions are matched against ("tsconfig.json"). */
   fileName: string;
   /** Path shown in the breadcrumb bar; defaults to `fileName`. */
   displayPath?: string;
@@ -49,13 +52,13 @@ export interface FeatureEditorProps {
 }
 
 /**
- * A code editor whose smarts come from *other plugins* (`oneclient-files.editors`, see plugin-api/src/file-editor.ts):
+ * A code editor whose smarts come from *other plugins* (`oneclient.editors`, see plugin-api/src/file-editor.ts):
  * Format (Shift+Alt+F), breadcrumbs showing the nesting at the cursor, syntax highlighting, a live preview pane and an
  * Actions menu — for whatever file type `fileName` says. It's a plain <textarea> underneath, so it stays light and
  * behaves natively (selection, undo, IME).
  *
  * Fill the available space: wrap it in a flex/grid cell with a definite height. Import `@oneclient/editor-kit/editor.css`.
- * Vite builds must alias `@oneclient/plugin-api` to its source (it ships as CommonJS) — see the Files plugin's vite.config.
+ * Vite builds must alias `@oneclient/plugin-api` to its source (it ships as CommonJS) — see e.g. packages/plugins/oneclient-postgres/vite.config.ts.
  */
 export function FeatureEditor({
   value: text,
@@ -78,6 +81,11 @@ export function FeatureEditor({
   const [busy, setBusy] = useState<string | null>(null);
   const [previewChoice, setPreviewChoice] = useState<boolean | null>(null); // null = follow the file type's default
   const [actionsOpen, setActionsOpen] = useState(false);
+  /** Find / Replace widget (Ctrl+F / Ctrl+H); `nonce` re-opens / refocuses it, `step` is F3 / Shift+F3. */
+  const [find, setFind] = useState<{ mode: FindMode; nonce: number; step?: 1 | -1 } | null>(null);
+  const [findMarks, setFindMarks] = useState<{ matches: FindMatch[]; current: number }>({ matches: [], current: -1 });
+  const onFindMatches = useCallback((matches: FindMatch[], current: number) => setFindMarks({ matches, current }), []);
+  const [goToLine, setGoToLine] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<PreviewHandle>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -219,9 +227,24 @@ export function FeatureEditor({
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key.toLowerCase() === "s" && onSave) {
+      const key = e.key.toLowerCase();
+      if (mod && key === "s" && onSave) {
         e.preventDefault();
         onSave();
+      } else if (mod && !e.shiftKey && !e.altKey && (key === "f" || key === "h")) {
+        e.preventDefault();
+        setGoToLine(false);
+        setFind((f) => ({ mode: key === "h" && !readOnly ? "replace" : "find", nonce: (f?.nonce ?? 0) + 1 }));
+      } else if (mod && !e.shiftKey && !e.altKey && key === "g") {
+        e.preventDefault();
+        setFind(null);
+        setGoToLine(true);
+      } else if (e.key === "F3" && !mod) {
+        e.preventDefault();
+        setFind((f) => ({ mode: f?.mode ?? "find", nonce: (f?.nonce ?? 0) + 1, ...(f ? { step: e.shiftKey ? -1 : 1 } : {}) }));
+      } else if (e.key === "Escape" && document.activeElement === textareaRef.current && (find || goToLine)) {
+        setFind(null);
+        setGoToLine(false);
       } else if (e.shiftKey && e.altKey && e.key.toLowerCase() === "f" && format) {
         e.preventDefault();
         void runTransform(format, "Format");
@@ -229,7 +252,7 @@ export function FeatureEditor({
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onSave, format, runTransform]);
+  }, [onSave, format, runTransform, readOnly, find, goToLine]);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -302,7 +325,40 @@ export function FeatureEditor({
 
       <div className={`oce-body ${showPreview ? "split" : ""}`}>
         <div className="oce-pane-editor">
+          {find && (
+            <FindWidget
+              textareaRef={textareaRef}
+              text={text}
+              readOnly={readOnly}
+              request={find}
+              geometry={GEOMETRY}
+              onMatches={onFindMatches}
+              onReplaceAll={(next) => {
+                const el = textareaRef.current;
+                if (el) replaceDocument(el, next);
+              }}
+              onSelect={updateCursor}
+              onClose={() => setFind(null)}
+            />
+          )}
+          {goToLine && (
+            <GoToLine
+              lineCount={text.split("\n").length}
+              onClose={() => {
+                setGoToLine(false);
+                textareaRef.current?.focus();
+              }}
+              onGo={(line, col) => {
+                setGoToLine(false);
+                const lines = text.split("\n");
+                let offset = 0;
+                for (let i = 0; i < line - 1; i++) offset += lines[i]!.length + 1;
+                jumpTo(offset + Math.min(Math.max(col - 1, 0), lines[line - 1]?.length ?? 0));
+              }}
+            />
+          )}
           <EditorSurface
+            underlay={find ? <FindMarks textareaRef={textareaRef} text={text} matches={findMarks.matches} current={findMarks.current} geometry={GEOMETRY} /> : null}
             text={text}
             textareaRef={textareaRef}
             highlightHtml={highlightHtml}

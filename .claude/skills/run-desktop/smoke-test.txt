@@ -1,36 +1,24 @@
-# Canonical smoke test: exercises the plugin loader, extension-host IPC,
-# command palette, connection manager, and explorer tree against the
-# oneclient-sample dev fixture plugin. Run with:
+# Canonical smoke test: the workbench (title bar menus, activity bar, Explorer, Search,
+# command palette) against a throw-away folder. Run with:
 #   node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/smoke-test.txt
 launch
-wait 400
+wait 2500
 ss 01-landing
-
+eval [...document.querySelectorAll('.menubar-item')].map((b) => b.textContent).join(' ')
+eval [...document.querySelectorAll('.activity-item')].map((b) => b.title).join(' | ')
 press Control+Shift+P
 wait 300
-type Sample
+type Theme
 wait 200
 ss 02-palette-filtered
-press Enter
+press Escape
+eval (async () => { const r = await window.oneclient.executeCommand('files.find', [{ connectionId: 'nope', query: 'x' }]); return JSON.stringify(r) })()
+eval (async () => { const fs = await window.oneclient.workspaceFolders(); return fs.map((f) => f.name + ' = ' + f.path).join(' | ') || '(no folders open)' })()
+press Control+Shift+E
 wait 400
-ss 03-command-result
-
-click-text +
-wait 300
-select #conn-type sample
+text .sidebar
+ss 03-explorer
+press Control+Shift+F
 wait 400
-fill #field-label demo-conn
-fill #conn-name My Sample
-ss 04-form-filled
-click-text Test
-wait 400
-ss 05-test-result
-click-text Save
-wait 500
-ss 06-connection-saved
-
-click-text My Sample
-wait 600
-click-text Items (demo-conn)
-wait 400
-ss 07-explorer-leaves
+ss 04-search
+quit

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TreeNode } from "@oneclient/plugin-api";
-import type { SearchHit } from "../../shared/ipc-contract.js";
+import type { SearchHit, WorkbenchShortcut, WorkspaceFolderInfo } from "../../shared/ipc-contract.js";
 import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "../../shared/types.js";
 import { ActivityBar, type ViewContainerId } from "./components/ActivityBar.js";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
@@ -14,11 +14,17 @@ import { OUTPUT_PANEL_KEY, OUTPUT_VIEW, Panel, usePanel } from "./components/Pan
 import { OUTPUT_SELECT_EVENT, OUTPUT_SELECT_KEY } from "./components/OutputView.js";
 import { usePrompts } from "./components/PromptDialogs.js";
 import { evaluateWhen, type WhenContext } from "./when.js";
+import type { MenuId } from "@oneclient/plugin-api";
+import type { EditRole, ViewKey } from "../../shared/ipc-contract.js";
 import { NewConnectionDialog } from "./components/NewConnectionDialog.js";
 import { connectionLabel } from "./connection-label.js";
 import { PluginManagerPanel } from "./components/PluginManagerPanel.js";
 import { Sidebar, stripCategory } from "./components/Sidebar.js";
 import { Tier2ViewHost } from "./components/Tier2ViewHost.js";
+import { SearchView, type SearchViewHandle } from "./components/SearchView.js";
+import { ExplorerView, FILE_NODE, FOLDER_NODE } from "./components/ExplorerView.js";
+import { CORE_PLUGIN_ID } from "../../shared/core.js";
+import { type MenuItem, TitleBar, type TopMenu } from "./components/TitleBar.js";
 
 type Tab =
   | { id: "welcome"; title: "Welcome"; kind: "welcome" }
@@ -49,6 +55,7 @@ const emptyRegistry: ContributionRegistrySnapshot = {
   iconThemes: [],
   searchProviders: [],
   icons: [],
+  menus: [],
   extensions: [],
 };
 
@@ -93,12 +100,10 @@ function useResizableSidebar() {
 
 const CONTAINER_STORAGE_KEY = "oneclient.activeViewContainer";
 
-/** Built-in plugins pinned to the top of the activity bar, in this order; everything else keeps load order. */
-const BUILT_IN_PLUGINS = ["oneclient-files", "oneclient-terminal"];
-function builtInRank(pluginId: string): number {
-  const i = BUILT_IN_PLUGINS.indexOf(pluginId);
-  return i === -1 ? BUILT_IN_PLUGINS.length : i;
-}
+/** The integrated terminal: a core view in the bottom panel (first, before plugins' panel views). */
+const TERMINAL_VIEW = { pluginId: CORE_PLUGIN_ID, id: "terminal.panel", title: "Terminal", tier: 2 as const, location: "panel" as const, entry: "", icon: "$(terminal)" };
+/** Core's file editor (a file's tab). */
+const EDITOR_VIEW_ID = "files.editor";
 
 /** Activity-bar selection: which view container the sidebar shows, and whether the sidebar is open. */
 function useViewContainer(explorerPlugins: PluginSummary[]) {
@@ -107,14 +112,9 @@ function useViewContainer(explorerPlugins: PluginSummary[]) {
   );
   const [visible, setVisible] = useState(true);
 
-  // Fall back to the first plugin explorer (Files, on a fresh install) when nothing is
-  // remembered or the remembered one is gone (uninstalled/disabled).
-  const resolved: ViewContainerId =
-    active !== null && (active === "plugins" || explorerPlugins.some((p) => `plugin:${p.id}` === active))
-      ? active
-      : explorerPlugins[0]
-        ? `plugin:${explorerPlugins[0].id}`
-        : "plugins";
+  // Fall back to core's Explorer (on a fresh install) when nothing is remembered or the remembered one is gone.
+  const known = (id: ViewContainerId | null) => id === "explorer" || id === "plugins" || id === "search" || explorerPlugins.some((p) => `plugin:${p.id}` === id);
+  const resolved: ViewContainerId = active !== null && known(active) ? active : "explorer";
 
   function select(id: ViewContainerId) {
     if (id === resolved) {
@@ -126,7 +126,14 @@ function useViewContainer(explorerPlugins: PluginSummary[]) {
     localStorage.setItem(CONTAINER_STORAGE_KEY, id);
   }
 
-  return { active: resolved, visible, select };
+  /** Show a container (never toggles it closed) — menus and shortcuts like Ctrl+Shift+E. */
+  function show(id: ViewContainerId) {
+    setActive(id);
+    setVisible(true);
+    localStorage.setItem(CONTAINER_STORAGE_KEY, id);
+  }
+
+  return { active: resolved, visible, select, show, setVisible };
 }
 
 export function App() {
@@ -148,42 +155,56 @@ export function App() {
   // `null` pluginId = every connection type (command palette); otherwise just that plugin's.
   const [newConnectionFor, setNewConnectionFor] = useState<{ pluginId: string | null } | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  /** A title bar menu is open (its dropdown must not be covered by the native view layers). */
+  const [menuBarOpen, setMenuBarOpen] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
+  /** What the Edit menu acts on: the editor view or the shell element that had focus when the menu bar was clicked. */
+  const editTarget = useRef<{ instanceId?: string; element?: HTMLElement | null }>({});
+  const menuActionsRef = useRef({ newTerminal: () => {}, showPlugins: () => {}, showOutput: () => {}, newConnection: () => {}, newFile: () => {}, openFolder: () => {} });
   const [toasts, setToasts] = useState<Toast[]>([]);
   /** Tier 2 view instances (= tab ids) that reported unsaved changes. */
   const [dirtyViews, setDirtyViews] = useState<Set<string>>(new Set());
   const prompts = usePrompts();
   // Tier 2 views are native layers drawn *over* this DOM, so hide them while
   // anything floating (menu, dialog, palette) is open or it'd be covered.
-  const overlayOpen = paletteOpen || searchOpen || quickPick !== null || newConnectionFor !== null || menu !== null || prompts.element !== null;
+  const overlayOpen = paletteOpen || searchOpen || quickPick !== null || newConnectionFor !== null || menu !== null || menuBarOpen || prompts.element !== null;
 
   // Plugins that get an activity-bar explorer: anything not disabled/broken that contributes connection types.
   const explorerPlugins = useMemo(
     () =>
-      plugins
-        .filter(
-          (p) =>
-            p.state !== "disabled" &&
-            p.state !== "invalid" &&
-            p.state !== "incompatible" &&
-            registry.connectionTypes.some((t) => t.pluginId === p.id),
-        )
-        .sort((a, b) => builtInRank(a.id) - builtInRank(b.id)),
+      plugins.filter(
+        (p) => p.state !== "disabled" && p.state !== "invalid" && p.state !== "incompatible" && registry.connectionTypes.some((t) => t.pluginId === p.id),
+      ),
     [plugins, registry.connectionTypes],
   );
   const container = useViewContainer(explorerPlugins);
+  /** The folders open in the Explorer (core's workspace) — the Explorer, Search and the File menu use them. */
+  const [folders, setFolders] = useState<WorkspaceFolderInfo[]>([]);
+  const foldersRef = useRef(folders);
+  foldersRef.current = folders;
+  useEffect(() => {
+    void window.oneclient.workspaceFolders().then(setFolders);
+    return window.oneclient.onWorkspaceChanged(setFolders);
+  }, []);
+  const searchRef = useRef<SearchViewHandle>(null);
+  const [searchMounted, setSearchMounted] = useState(false);
+  useEffect(() => {
+    if (container.active === "search") setSearchMounted(true);
+  }, [container.active]);
 
   // Bottom panel: every Tier 2 view contributed with location "panel" (e.g. the Terminal).
   const panelViews = useMemo(
     () => [
-      ...registry.views
-        .filter((v) => v.tier === 2 && v.location === "panel")
-        .sort((a, b) => builtInRank(a.pluginId) - builtInRank(b.pluginId)),
+      TERMINAL_VIEW, // core's terminal first
+      ...registry.views.filter((v) => v.tier === 2 && v.location === "panel"),
       OUTPUT_VIEW, // the shell's own Output log, always last
     ],
     [registry.views],
   );
   const panel = usePanel(panelViews);
-  const findInFilesRef = useRef<() => void>(() => {});
+  const findInFilesRef = useRef<(replace?: boolean) => void>(() => {});
+  /** Shortcuts, from the shell's own keydown or forwarded by a focused view (see WorkbenchShortcut). */
+  const shortcutRef = useRef<(shortcut: WorkbenchShortcut) => void>(() => {});
   const panelToggleRef = useRef(panel.toggle);
   panelToggleRef.current = panel.toggle;
   const registryRef = useRef(registry);
@@ -209,12 +230,9 @@ export function App() {
       }),
     );
     // Same shortcuts, pressed while a Tier 2 view (editor, terminal) had keyboard focus.
-    const offShortcut = window.oneclient.onShortcut((shortcut) => {
-      if (shortcut === "togglePanel") panelToggleRef.current();
-      else if (shortcut === "commandPalette") setPaletteOpen((v) => !v);
-      else if (shortcut === "quickSearch") setSearchOpen((v) => !v);
-      else if (shortcut === "findInFiles") findInFilesRef.current();
-    });
+    const offShortcut = window.oneclient.onShortcut((shortcut) => shortcutRef.current(shortcut));
+    const offOpenFile = window.oneclient.onOpenWorkspaceFile(({ folderId, relPath }) => openWorkspaceFileRef.current(folderId, relPath));
+    const offFullScreen = window.oneclient.onFullScreenChanged(setFullScreen);
     // A view revealing another view of its plugin — today that means a panel view (e.g. Query Results).
     // A plugin view asking for another of its views in a new tab (e.g. a table row → that row's editor).
     const offExplorerRefresh = window.oneclient.onExplorerRefresh((connectionId) => setExplorerTokens((prev) => ({ ...prev, [connectionId]: (prev[connectionId] ?? 0) + 1 })));
@@ -258,25 +276,41 @@ export function App() {
       offReveal();
       offOpenView();
       offExplorerRefresh();
+      offOpenFile();
+      offFullScreen();
     };
   }, []);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.shiftKey && e.key.toLowerCase() === "p") {
-        e.preventDefault();
-        setPaletteOpen((v) => !v);
-      } else if (mod && e.shiftKey && !e.altKey && e.key.toLowerCase() === "f") {
-        e.preventDefault();
-        findInFilesRef.current();
-      } else if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p") {
-        e.preventDefault();
-        setSearchOpen((v) => !v);
-      } else if (mod && !e.shiftKey && (e.key === "`" || e.code === "Backquote")) {
-        e.preventDefault();
-        panelToggleRef.current();
-      }
+      const key = e.key.toLowerCase();
+      // Typing in a text field keeps the editing keys (Ctrl+W, Ctrl+B… are fine; Ctrl+N/O aren't text keys either).
+      let action: (() => void) | null = null;
+      if (mod && e.shiftKey && key === "p") action = () => setPaletteOpen((v) => !v);
+      else if (mod && e.shiftKey && !e.altKey && key === "f") action = () => findInFilesRef.current();
+      else if (mod && e.shiftKey && !e.altKey && key === "h") action = () => findInFilesRef.current(true);
+      else if (mod && !e.shiftKey && !e.altKey && key === "p") action = () => setSearchOpen((v) => !v);
+      else if (mod && !e.shiftKey && (e.key === "`" || e.code === "Backquote")) action = () => panelToggleRef.current();
+      else if (mod && e.shiftKey && e.code === "Backquote") action = () => menuActionsRef.current.newTerminal();
+      else if (mod && e.shiftKey && !e.altKey && key === "e") action = () => shortcutRef.current("showExplorer");
+      else if (mod && e.shiftKey && !e.altKey && key === "x") action = () => menuActionsRef.current.showPlugins();
+      else if (mod && e.shiftKey && !e.altKey && key === "u") action = () => menuActionsRef.current.showOutput();
+      else if (mod && e.shiftKey && !e.altKey && key === "n") action = () => menuActionsRef.current.newConnection();
+      else if (mod && !e.shiftKey && !e.altKey && key === "n") action = () => menuActionsRef.current.newFile();
+      else if (mod && !e.shiftKey && !e.altKey && key === "o") action = () => menuActionsRef.current.openFolder();
+      else if (mod && !e.shiftKey && !e.altKey && key === "b") action = () => shortcutRef.current("toggleSidebar");
+      else if (mod && !e.shiftKey && !e.altKey && key === "w") action = () => shortcutRef.current("closeEditor");
+      else if (mod && !e.altKey && e.key === "PageDown") action = () => shortcutRef.current("nextEditor");
+      else if (mod && !e.altKey && e.key === "PageUp") action = () => shortcutRef.current("previousEditor");
+      else if (mod && !e.altKey && (e.key === "=" || e.key === "+")) action = () => shortcutRef.current("zoomIn");
+      else if (mod && !e.altKey && e.key === "-") action = () => shortcutRef.current("zoomOut");
+      else if (mod && !e.altKey && e.key === "0") action = () => shortcutRef.current("zoomReset");
+      else if (!mod && !e.altKey && e.key === "F11") action = () => shortcutRef.current("toggleFullScreen");
+      else if (mod && e.shiftKey && !e.altKey && key === "i") action = () => void window.oneclient.windowAction("toggleDevTools");
+      if (!action) return;
+      e.preventDefault();
+      action();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -490,21 +524,43 @@ export function App() {
     });
   }
 
-  /** Ctrl+Shift+F: the Files plugin's Search view for an open folder (the one in the sidebar if there is one). */
-  function openFindInFiles() {
-    const view = registry.views.find((v) => v.id === "files.search" && v.tier === 2);
-    const candidates = view ? connections.filter((c) => c.pluginId === view.pluginId) : [];
-    const connection = candidates[0];
-    if (!view || !connection) return pushToast("error", "Search needs an open folder — add a Folder connection in the Files plugin first.");
-    openDashboard(connection, { pluginId: view.pluginId, id: view.id, title: "Search" });
+  /** Ctrl+Shift+F / Ctrl+Shift+H: the Search sidebar, focused (with the replace row for Replace in Files). */
+  function openFindInFiles(replace = false) {
+    container.show("search");
+    // The view mounts on the first show; let it render before focusing.
+    setTimeout(() => searchRef.current?.focus({ replace }), 0);
   }
   findInFilesRef.current = openFindInFiles;
+
+  /** An open folder as the "connection" its tabs and commands belong to (owned by core). */
+  function folderOwner(folderId: string): ConnectionSummary {
+    const folder = foldersRef.current.find((x) => x.id === folderId);
+    return { id: folderId, name: folder?.name ?? "", typeId: "folder", pluginId: CORE_PLUGIN_ID };
+  }
+  /** A connection — or a workspace folder — by id. */
+  const ownerOf = (id: string): ConnectionSummary | undefined =>
+    connections.find((c) => c.id === id) ?? (foldersRef.current.some((x) => x.id === id) ? folderOwner(id) : undefined);
+
+  /** Open a file of a workspace folder in the editor — the same tab the Explorer would open. */
+  function openWorkspaceFileTab(folderId: string, relPath: string) {
+    const name = relPath.slice(relPath.lastIndexOf("/") + 1);
+    openNodeView(folderOwner(folderId), {
+      id: relPath,
+      label: name,
+      nodeType: FILE_NODE,
+      collapsible: "none",
+      resource: { name, kind: "file" },
+      openView: { viewId: EDITOR_VIEW_ID, title: name, params: { path: relPath } },
+    });
+  }
+  const openWorkspaceFileRef = useRef(openWorkspaceFileTab);
+  openWorkspaceFileRef.current = openWorkspaceFileTab;
 
   /** Opens a global-search result: a view as a tab, or runs the plugin command it names (and opens what that returns). */
   async function openSearchHit(hit: SearchHit) {
     setSearchOpen(false);
-    const connection = connections.find((c) => c.id === hit.connectionId);
-    if (!connection) return pushToast("error", "That connection no longer exists.");
+    const connection = ownerOf(hit.connectionId);
+    if (!connection) return pushToast("error", "That connection or folder no longer exists.");
     if (hit.openView) {
       openNodeView(connection, {
         id: hit.id ?? hit.label,
@@ -643,6 +699,497 @@ export function App() {
   }, [registry.commands, panelViews, panel.toggle, panel.show]);
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
+  const activeView = activeTab?.kind === "tier2-view" ? activeTab : undefined;
+  const terminalView = TERMINAL_VIEW;
+
+  // ---- title bar menus ------------------------------------------------------------------------------------------
+
+  /** Runs a command from a menu: shows its error, opens what it returns, reveals a panel view it names. */
+  async function runMenuCommand(commandId: string, args: Record<string, unknown> = {}) {
+    try {
+      const result = (await window.oneclient.executeCommand(commandId, [args])) as { ok?: boolean; error?: string; openNode?: TreeNode; revealView?: string } | undefined;
+      if (result?.ok === false) return pushToast("error", result.error ?? `${commandId} failed.`);
+      const connection = typeof args.connectionId === "string" ? ownerOf(args.connectionId) : undefined;
+      if (result?.openNode && connection) openNodeView(connection, result.openNode);
+      const panelKey = result?.revealView ? panel.keyForViewId(result.revealView) : null;
+      if (panelKey) panel.show(panelKey);
+    } catch (err) {
+      pushToast("error", err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function captureEditTarget() {
+    // A focused native view (an editor tab) takes focus away from the shell's document.
+    editTarget.current = !document.hasFocus() && activeView ? { instanceId: activeView.instanceId } : { element: document.activeElement as HTMLElement | null };
+  }
+  function edit(role: EditRole) {
+    const t = editTarget.current;
+    if (t.instanceId) return void window.oneclient.editAction(role, t.instanceId);
+    t.element?.focus?.();
+    void window.oneclient.editAction(role);
+  }
+  /** Press a key in the active editor tab — menu items for what the editor does on a shortcut (Find, Save, Run…). */
+  function pressInEditor(binding: string) {
+    if (activeView) void window.oneclient.sendKeyToView(activeView.instanceId, parseKeybinding(binding));
+  }
+
+  async function newFile() {
+    if (folders.length === 0) {
+      pushToast("error", "Open a folder first (File ▸ Open Folder…).");
+      return;
+    }
+    const multiple = folders.length > 1;
+    const answers = await prompts.input({
+      title: "New File",
+      schema: {
+        type: "object",
+        required: multiple ? ["name", "folder"] : ["name"],
+        properties: {
+          name: { type: "string", title: multiple ? "File name (sub/folders/allowed.txt)" : `File name in “${folders[0]?.name ?? ""}”` },
+          ...(multiple ? { folder: { type: "string", title: "Folder", enum: folders.map((x) => x.name) } } : {}),
+        },
+      },
+      initial: multiple ? { folder: folders[0]?.name } : {},
+    });
+    if (!answers) return;
+    const folder = folders.find((x) => x.name === answers.folder) ?? folders[0];
+    if (folder) await runMenuCommand("files.newFile", { connectionId: folder.id, path: "", name: answers.name });
+    if (folder) bumpExplorer(folder.id);
+  }
+
+  /** Explorer ▸ New Folder (toolbar): in the first open folder, or the one picked. */
+  async function newFolderAtRoot() {
+    const multiple = folders.length > 1;
+    const answers = await prompts.input({
+      title: "New Folder",
+      schema: {
+        type: "object",
+        required: multiple ? ["name", "folder"] : ["name"],
+        properties: { name: { type: "string", title: "Folder name" }, ...(multiple ? { folder: { type: "string", title: "In", enum: folders.map((x) => x.name) } } : {}) },
+      },
+      initial: multiple ? { folder: folders[0]?.name } : {},
+    });
+    if (!answers) return;
+    const folder = folders.find((x) => x.name === answers.folder) ?? folders[0];
+    if (!folder) return;
+    await runMenuCommand("files.newFolder", { connectionId: folder.id, path: "", name: answers.name });
+    bumpExplorer(folder.id);
+  }
+
+  async function openFolder() {
+    const path = await window.oneclient.pickDirectory();
+    if (!path) return;
+    try {
+      await window.oneclient.addWorkspaceFolder(path);
+    } catch (err) {
+      return pushToast("error", `Open Folder: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    container.show("explorer");
+  }
+
+  /** File ▸ Close Folder / the folder's context menu: forget it (nothing on disk changes); its tabs close. */
+  async function closeFolder(folder: WorkspaceFolderInfo) {
+    const openTabs = tabs.filter((t) => t.kind === "tier2-view" && t.connectionId === folder.id);
+    const unsaved = openTabs.filter((t) => dirtyViews.has(t.id)).length;
+    if (unsaved > 0) {
+      const ok = await prompts.confirm({
+        title: "Close Folder",
+        message: `${unsaved} open file(s) from "${folder.name}" have unsaved changes. Close the folder and discard them?`,
+        confirmLabel: "Discard Changes",
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    closeTabs(openTabs.map((t) => t.id));
+    await window.oneclient.removeWorkspaceFolder(folder.id);
+  }
+
+  const bumpExplorer = (folderId: string) => setExplorerTokens((prev) => ({ ...prev, [folderId]: (prev[folderId] ?? 0) + 1 }));
+
+  /** Right-click in the Explorer: core's file actions, plus anything plugins contribute for files and folders. */
+  function openFolderContextMenu(e: React.MouseEvent, folder: WorkspaceFolderInfo, node: TreeNode, refresh: () => void) {
+    const owner = folderOwner(folder.id);
+    const data = (node.data ?? {}) as { path?: string; fsPath?: string; root?: boolean };
+    const path = data.path ?? "";
+    const isDir = node.nodeType === FOLDER_NODE;
+    const dir = isDir ? path : path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+    const run = async (commandId: string, args: Record<string, unknown>, after?: (r: { openNode?: TreeNode }) => void) => {
+      const r = (await window.oneclient.executeCommand(commandId, [{ connectionId: folder.id, ...args }]).catch((err: unknown) => ({ ok: false, error: String(err) }))) as {
+        ok: boolean;
+        error?: string;
+        openNode?: TreeNode;
+        revealView?: string;
+      };
+      if (!r.ok) return pushToast("error", r.error ?? "Failed.");
+      after?.(r);
+      const panelKey = r.revealView ? panel.keyForViewId(r.revealView) : null;
+      if (panelKey) panel.show(panelKey);
+    };
+    const ask = (title: string, label: string, initial = "") =>
+      prompts.input({ title, schema: { type: "object", required: ["name"], properties: { name: { type: "string", title: label } } }, initial: { name: initial } });
+
+    const items: ContextMenuItem[] = [];
+    if (isDir) {
+      items.push(
+        {
+          id: "newFile",
+          label: "New File…",
+          run: () =>
+            void ask("New File", "File name (a/b.txt creates folders too)").then(
+              (a) => a && run("files.newFile", { path: dir, name: a.name }, (r) => (refresh(), r.openNode && openNodeView(owner, r.openNode))),
+            ),
+        },
+        { id: "newFolder", label: "New Folder…", run: () => void ask("New Folder", "Folder name").then((a) => a && run("files.newFolder", { path: dir, name: a.name }, refresh)) },
+      );
+    }
+    items.push(
+      { id: "terminal", label: "Open in Integrated Terminal", separator: isDir, run: () => void run("terminal.openAt", { fsPath: data.fsPath }) },
+      { id: "reveal", label: "Reveal in File Explorer", run: () => data.fsPath && void window.oneclient.revealPath(data.fsPath) },
+      { id: "copyPath", label: "Copy Path", separator: true, run: () => data.fsPath && void navigator.clipboard.writeText(data.fsPath) },
+      { id: "copyRel", label: "Copy Relative Path", run: () => void navigator.clipboard.writeText(path || ".") },
+    );
+    if (!data.root) {
+      items.push(
+        { id: "rename", label: "Rename…", separator: true, run: () => void ask(`Rename "${node.label}"`, "New name", node.label).then((a) => a && run("files.rename", { path, newName: a.name }, () => bumpExplorer(folder.id))) },
+        {
+          id: "delete",
+          label: "Delete",
+          danger: true,
+          run: () =>
+            void prompts
+              .confirm({ title: "Delete", message: `Permanently delete "${node.label}"${isDir ? " and everything in it" : ""}? This can't be undone.`, confirmLabel: "Delete", danger: true })
+              .then((ok) => {
+                if (ok) void run("files.delete", { path }, () => bumpExplorer(folder.id));
+              }),
+        },
+      );
+    }
+    // Plugins' file / folder commands (their `when` matches files.file / files.directory).
+    const ctx: WhenContext = { contextValue: node.contextValue, nodeType: node.nodeType, connectionType: "folder" };
+    const contributed = registry.commands.filter((c) => c.when && evaluateWhen(c.when, ctx));
+    contributed.forEach((c, i) => items.push({ id: c.id, label: stripCategory(c.title), danger: Boolean(c.confirm), ...(i === 0 ? { separator: true } : {}), run: () => void runContextCommand(c, owner, node, refresh) }));
+    items.push({ id: "refresh", label: "Refresh", separator: true, run: refresh });
+    if (data.root) items.push({ id: "closeFolder", label: "Close Folder", run: () => void closeFolder(folder) });
+    setMenu({ x: e.clientX, y: e.clientY, items });
+  }
+
+  async function showAbout() {
+    const info = await window.oneclient.appInfo();
+    const installed = plugins;
+    await prompts.info({
+      title: "About oneClient",
+      body: (
+        <div className="about">
+          <div className="about-head">
+            <Logo size={40} />
+            <div>
+              <div className="about-name">oneClient</div>
+              <div className="about-tag">One client for everything.</div>
+            </div>
+          </div>
+          <table className="about-table">
+            <tbody>
+              {[
+                ["Version", info.version],
+                ["Electron", info.electron],
+                ["Chromium", info.chrome],
+                ["Node.js", info.node],
+                ["V8", info.v8],
+                ["OS", info.platform],
+                ["Plugins", `${installed.length} installed, ${installed.filter((p) => p.state === "active").length} active`],
+                ["Settings", info.configDir],
+              ].map(([k, v]) => (
+                <tr key={k}>
+                  <td>{k}</td>
+                  <td>{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ),
+    });
+  }
+
+  const menus: TopMenu[] = buildMenus();
+  function buildMenus(): TopMenu[] {
+    const hasEditor = activeView !== undefined;
+    const when: WhenContext = { activeView: activeView?.viewId, activePlugin: activeView?.pluginId };
+    // Plugin items (contributes.menus): a command, or a keybinding pressed in the plugin's own active view.
+    const contributed = (menuId: MenuId): MenuItem[] => {
+      const items = registry.menus.filter((m) => m.menu === menuId && (!m.when || evaluateWhen(m.when, when)));
+      const sorted = [...items].sort((a, b) => (a.group ?? "").localeCompare(b.group ?? ""));
+      return sorted.flatMap((m, i): MenuItem[] => {
+        const command = m.command ? registry.commands.find((c) => c.id === m.command && c.pluginId === m.pluginId) : undefined;
+        const title = m.title ?? (command ? stripCategory(command.title) : (m.command ?? m.keybinding ?? ""));
+        const separator = i > 0 && (sorted[i - 1]!.group ?? "") !== (m.group ?? "");
+        const base = { id: `contrib:${m.pluginId}:${i}:${title}`, label: title, ...(m.keybinding ? { accel: m.keybinding } : {}), ...(separator ? { separator } : {}) };
+        if (m.command) return command ? [{ ...base, run: () => void runMenuCommand(m.command!) }] : [];
+        // A keybinding only reaches the plugin's own view.
+        const own = activeView?.pluginId === m.pluginId;
+        return m.keybinding ? [{ ...base, enabled: own, run: () => pressInEditor(m.keybinding!) }] : [];
+      });
+    };
+    const withGroup = (items: MenuItem[]): MenuItem[] => (items.length ? [{ ...items[0]!, separator: true }, ...items.slice(1)] : []);
+    const explorerId: ViewContainerId = "explorer";
+    const sidebarShows = (id: ViewContainerId) => container.visible && container.active === id;
+    const panelShows = (key: string) => panel.open && panel.activeKey === key;
+    const runItems = contributed("run");
+
+    return [
+      {
+        id: "file",
+        label: "&File",
+        items: [
+          { id: "newFile", label: "New File…", accel: "Ctrl+N", run: () => void newFile() },
+          { id: "newConnection", label: "New Connection…", accel: "Ctrl+Shift+N", run: () => setNewConnectionFor({ pluginId: null }) },
+          { id: "openFolder", label: "Open Folder…", accel: "Ctrl+O", separator: true, run: () => void openFolder() },
+          {
+            id: "closeFolder",
+            label: "Close Folder",
+            submenu: folders.map((x) => ({ id: `close:${x.id}`, label: x.name, run: () => void closeFolder(x) })),
+          },
+          { id: "save", label: "Save", accel: "Ctrl+S", separator: true, enabled: hasEditor, run: () => pressInEditor("Ctrl+S") },
+          { id: "closeEditor", label: "Close Editor", accel: "Ctrl+W", separator: true, enabled: tabs.length > 0, run: () => shortcutRef.current("closeEditor") },
+          { id: "closeAll", label: "Close All Editors", enabled: tabs.length > 0, run: () => void closeAllTabs() },
+          ...withGroup(contributed("file")),
+          { id: "import", label: "Import Connections…", separator: true, run: importConnections },
+          { id: "export", label: "Export Connections…", run: exportConnections },
+          {
+            id: "preferences",
+            label: "Preferences",
+            separator: true,
+            submenu: [
+              { id: "colorTheme", label: "Color Theme…", run: () => void openThemePicker("color") },
+              { id: "iconTheme", label: "File Icon Theme…", run: () => void openThemePicker("icon") },
+              { id: "settingsFile", label: "Show Settings File (oneclient.json)", separator: true, run: () => void window.oneclient.revealConfigFile() },
+              { id: "configFolder", label: "Open Settings Folder", run: () => void window.oneclient.windowAction("revealConfigFolder") },
+            ],
+          },
+          { id: "exit", label: "Exit", separator: true, run: () => void window.oneclient.windowAction("quit") },
+        ],
+      },
+      {
+        id: "edit",
+        label: "&Edit",
+        items: [
+          { id: "undo", label: "Undo", accel: "Ctrl+Z", run: () => edit("undo") },
+          { id: "redo", label: "Redo", accel: "Ctrl+Y", run: () => edit("redo") },
+          { id: "cut", label: "Cut", accel: "Ctrl+X", separator: true, run: () => edit("cut") },
+          { id: "copy", label: "Copy", accel: "Ctrl+C", run: () => edit("copy") },
+          { id: "paste", label: "Paste", accel: "Ctrl+V", run: () => edit("paste") },
+          { id: "selectAll", label: "Select All", accel: "Ctrl+A", run: () => edit("selectAll") },
+          { id: "find", label: "Find", accel: "Ctrl+F", separator: true, enabled: hasEditor, run: () => pressInEditor("Ctrl+F") },
+          { id: "replace", label: "Replace", accel: "Ctrl+H", enabled: hasEditor, run: () => pressInEditor("Ctrl+H") },
+          { id: "findInFiles", label: "Find in Files", accel: "Ctrl+Shift+F", separator: true, run: () => openFindInFiles() },
+          { id: "replaceInFiles", label: "Replace in Files", accel: "Ctrl+Shift+H", run: () => openFindInFiles(true) },
+          ...withGroup(contributed("edit")),
+        ],
+      },
+      {
+        id: "view",
+        label: "&View",
+        items: [
+          { id: "palette", label: "Command Palette…", accel: "Ctrl+Shift+P", run: () => setPaletteOpen(true) },
+          { id: "goAnything", label: "Go to Anything…", accel: "Ctrl+P", run: () => setSearchOpen(true) },
+          { id: "explorer", label: "Explorer", accel: "Ctrl+Shift+E", separator: true, checked: sidebarShows(explorerId), run: () => container.show(explorerId) },
+          { id: "search", label: "Search", accel: "Ctrl+Shift+F", checked: sidebarShows("search"), run: () => openFindInFiles() },
+          ...explorerPlugins.map((p, i) => ({
+            id: `plugin:${p.id}`,
+            label: p.displayName ?? p.id,
+            ...(i === 0 ? { separator: true } : {}),
+            checked: sidebarShows(`plugin:${p.id}`),
+            run: () => container.show(`plugin:${p.id}`),
+          })),
+          { id: "plugins", label: "Plugins", accel: "Ctrl+Shift+X", separator: true, checked: sidebarShows("plugins"), run: () => container.show("plugins") },
+          ...panelViews.map((v, i) => ({
+            id: `panel:${v.pluginId}:${v.id}`,
+            label: v.title,
+            ...(i === 0 ? { separator: true } : {}),
+            ...(v.id === "terminal.panel" ? { accel: "Ctrl+`" } : `${v.pluginId}:${v.id}` === OUTPUT_PANEL_KEY ? { accel: "Ctrl+Shift+U" } : {}),
+            checked: panelShows(`${v.pluginId}:${v.id}`),
+            run: () => panel.show(`${v.pluginId}:${v.id}`),
+          })),
+          {
+            id: "appearance",
+            label: "Appearance",
+            separator: true,
+            submenu: [
+              { id: "sidebar", label: "Primary Side Bar", accel: "Ctrl+B", checked: container.visible, run: () => shortcutRef.current("toggleSidebar") },
+              { id: "panel", label: "Panel", accel: "Ctrl+`", checked: panel.open, run: () => panel.toggle() },
+              { id: "fullScreen", label: "Full Screen", accel: "F11", checked: fullScreen, separator: true, run: () => void window.oneclient.windowAction("toggleFullScreen") },
+              { id: "zoomIn", label: "Zoom In", accel: "Ctrl+=", separator: true, run: () => void window.oneclient.windowAction("zoomIn") },
+              { id: "zoomOut", label: "Zoom Out", accel: "Ctrl+-", run: () => void window.oneclient.windowAction("zoomOut") },
+              { id: "zoomReset", label: "Reset Zoom", accel: "Ctrl+0", run: () => void window.oneclient.windowAction("zoomReset") },
+            ],
+          },
+          ...withGroup(contributed("view")),
+        ],
+      },
+      {
+        id: "go",
+        label: "&Go",
+        items: [
+          { id: "goFile", label: "Go to File / Object…", accel: "Ctrl+P", run: () => setSearchOpen(true) },
+          { id: "goLine", label: "Go to Line…", accel: "Ctrl+G", enabled: hasEditor, run: () => pressInEditor("Ctrl+G") },
+          { id: "nextEditor", label: "Next Editor", accel: "Ctrl+PageDown", separator: true, enabled: tabs.length > 1, run: () => shortcutRef.current("nextEditor") },
+          { id: "prevEditor", label: "Previous Editor", accel: "Ctrl+PageUp", enabled: tabs.length > 1, run: () => shortcutRef.current("previousEditor") },
+          {
+            id: "switchEditor",
+            label: "Switch Editor",
+            submenu: tabs.map((t) => ({ id: `tab:${t.id}`, label: t.title, checked: t.id === activeTab?.id, run: () => setActiveTabId(t.id) })),
+          },
+          ...withGroup(contributed("go")),
+        ],
+      },
+      {
+        id: "run",
+        label: "&Run",
+        items: runItems.length ? runItems : [{ id: "nothing", label: hasEditor ? "Nothing to run in this editor" : "Open a query or request to run it", enabled: false }],
+      },
+      {
+        id: "terminal",
+        label: "&Terminal",
+        items: terminalView
+          ? [
+              { id: "newTerminal", label: "New Terminal", accel: "Ctrl+Shift+`", run: () => menuActionsRef.current.newTerminal() },
+              { id: "killTerminal", label: "Kill Terminal", run: () => void runMenuCommand("terminal.kill") },
+              { id: "clearTerminal", label: "Clear Terminal", run: () => void runMenuCommand("terminal.clear") },
+              {
+                id: "showTerminal",
+                label: "Show Terminal",
+                accel: "Ctrl+`",
+                separator: true,
+                checked: panelShows(`${terminalView.pluginId}:${terminalView.id}`),
+                run: () => panel.show(`${terminalView.pluginId}:${terminalView.id}`),
+              },
+              ...withGroup(contributed("terminal")),
+            ]
+          : [{ id: "noTerminal", label: "The terminal isn't available", enabled: false }],
+      },
+      {
+        id: "help",
+        label: "&Help",
+        items: [
+          { id: "welcome", label: "Welcome / Feature Guide", run: openWelcome },
+          { id: "shortcuts", label: "Keyboard Shortcuts", run: () => void showShortcuts() },
+          { id: "logs", label: "Show Logs (Output)", accel: "Ctrl+Shift+U", separator: true, run: () => panel.show(OUTPUT_PANEL_KEY) },
+          { id: "devtools", label: "Toggle Developer Tools", accel: "Ctrl+Shift+I", run: () => void window.oneclient.windowAction("toggleDevTools") },
+          { id: "reload", label: "Reload Window", run: () => void window.oneclient.windowAction("reload") },
+          ...withGroup(contributed("help")),
+          { id: "about", label: "About oneClient", separator: true, run: () => void showAbout() },
+        ],
+      },
+    ];
+  }
+
+  /** Help ▸ Keyboard Shortcuts: everything the menus show a shortcut for, plus the editor keys. */
+  async function showShortcuts() {
+    const rows: Array<[string, string, string]> = [];
+    const walk = (menuLabel: string, items: MenuItem[]) => {
+      for (const item of items) {
+        if (item.submenu) walk(menuLabel, item.submenu);
+        else if (item.accel && !rows.some((r) => r[2] === item.accel && r[1] === item.label)) rows.push([menuLabel, item.label, item.accel]);
+      }
+    };
+    for (const m of menus) walk(m.label.replace("&", ""), m.items);
+    rows.push(
+      ["Editor", "Format Document", "Shift+Alt+F"],
+      ["Editor", "Find / Replace / Go to Line", "Ctrl+F / Ctrl+H / Ctrl+G"],
+      ["Query editor", "Execute (selection or all)", "F5 / Ctrl+Enter"],
+      ["Query editor", "Cancel query", "Esc"],
+      ["Menus", "Open a menu", "Alt+letter"],
+    );
+    await prompts.info({
+      title: "Keyboard Shortcuts",
+      wide: true,
+      body: (
+        <table className="shortcuts-table">
+          <tbody>
+            {rows.map(([group, label, accel], i) => (
+              <tr key={i}>
+                <td className="shortcuts-group">{i === 0 || rows[i - 1]![0] !== group ? group : ""}</td>
+                <td>{label}</td>
+                <td>
+                  <kbd>{accel}</kbd>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ),
+    });
+  }
+
+  function exportConnections() {
+    void window.oneclient
+      .exportConnections(false)
+      .then((r) => r && pushToast("info", `Exported ${r.count} connection${r.count === 1 ? "" : "s"} to ${r.path} (without passwords).`))
+      .catch((err: unknown) => pushToast("error", `Export: ${err instanceof Error ? err.message : String(err)}`));
+  }
+
+  async function closeAllTabs() {
+    const dirty = tabs.filter((t) => dirtyViews.has(t.id));
+    if (dirty.length) {
+      const ok = await prompts.confirm({
+        title: "Unsaved Changes",
+        message: `${dirty.length} editor(s) have unsaved changes. Close all and discard them?`,
+        confirmLabel: "Discard Changes",
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    closeTabs(tabs.map((t) => t.id));
+  }
+
+  menuActionsRef.current = {
+    newTerminal: () => void runMenuCommand("terminal.new"),
+    showPlugins: () => container.show("plugins"),
+    showOutput: () => panel.show(OUTPUT_PANEL_KEY),
+    newConnection: () => setNewConnectionFor({ pluginId: null }),
+    newFile: () => void newFile(),
+    openFolder: () => void openFolder(),
+  };
+
+  shortcutRef.current = (shortcut: WorkbenchShortcut) => {
+    const index = tabs.findIndex((t) => t.id === activeTab?.id);
+    switch (shortcut) {
+      case "togglePanel":
+        return panel.toggle();
+      case "commandPalette":
+        return setPaletteOpen((v) => !v);
+      case "quickSearch":
+        return setSearchOpen((v) => !v);
+      case "findInFiles":
+        return openFindInFiles();
+      case "showExplorer":
+        return container.show("explorer");
+      case "toggleSidebar":
+        return container.setVisible((v) => !v);
+      case "closeEditor":
+        if (activeTab) void requestCloseTab(activeTab.id);
+        return;
+      case "nextEditor":
+        if (tabs.length > 1) setActiveTabId(tabs[(index + 1) % tabs.length]!.id);
+        return;
+      case "previousEditor":
+        if (tabs.length > 1) setActiveTabId(tabs[(index - 1 + tabs.length) % tabs.length]!.id);
+        return;
+      case "zoomIn":
+      case "zoomOut":
+      case "zoomReset":
+      case "toggleFullScreen":
+        return void window.oneclient.windowAction(shortcut);
+    }
+  };
+
+  // The native window buttons (drawn over the title bar on Windows / Linux) follow the theme.
+  useEffect(() => {
+    const bar = document.querySelector(".titlebar");
+    if (!bar) return;
+    const style = getComputedStyle(bar);
+    void window.oneclient.setTitleBarColors(toHex(style.backgroundColor), toHex(style.color));
+  }, [theme]);
 
   return (
     <div
@@ -653,13 +1200,7 @@ export function App() {
           : "var(--activity-bar-width) 1fr",
       }}
     >
-      <div className="topbar">
-        <button className="topbar-search" onClick={() => setSearchOpen(true)} title="Search files, SQL objects and more (Ctrl+P)">
-          <ThemeIcon id="search" size={14} />
-          <span>Search files, tables, procedures…</span>
-          <kbd>Ctrl+P</kbd>
-        </button>
-      </div>
+      <TitleBar menus={menus} onSearch={() => setSearchOpen(true)} onOpenChange={setMenuBarOpen} onBeforeOpen={captureEditTarget} />
 
       <ActivityBar
         plugins={explorerPlugins}
@@ -670,6 +1211,24 @@ export function App() {
       />
 
       <div className="sidebar-wrapper" style={{ width: sidebar.width }} hidden={!container.visible}>
+        {/* Search stays mounted once opened, so its query and results survive switching containers. */}
+        {(container.active === "search" || searchMounted) && (
+          <div hidden={container.active !== "search"} className="sidebar-slot">
+            <SearchView ref={searchRef} folders={folders} onOpenExplorer={() => void openFolder()} onError={(m) => pushToast("error", m)} />
+          </div>
+        )}
+        {container.active === "explorer" && (
+          <ExplorerView
+            folders={folders}
+            tokens={explorerTokens}
+            onOpenFolder={() => void openFolder()}
+            onNewFile={() => void newFile()}
+            onNewFolder={() => void newFolderAtRoot()}
+            onOpenNode={(folder, node) => openNodeView(folderOwner(folder.id), node)}
+            onContextMenu={openFolderContextMenu}
+          />
+        )}
+        {container.active !== "search" && container.active !== "explorer" && (
         <Sidebar
           container={container.active}
           connections={connections}
@@ -686,6 +1245,7 @@ export function App() {
           explorerSections={registry.explorerSections}
           onExplorerContextMenu={openExplorerContextMenu}
         />
+        )}
         <div
           className={`sidebar-resize-handle ${sidebar.resizing ? "active" : ""}`}
           onMouseDown={(e) => {
@@ -828,3 +1388,18 @@ function TabIcon({ resource }: { resource: { name: string; kind: "file" | "folde
   return icon ? <AssetIcon pluginId="" icon={icon} size={14} /> : null;
 }
 
+
+/** "Ctrl+Shift+Enter" → the key press to send to a view. */
+function parseKeybinding(binding: string): ViewKey {
+  const parts = binding.split("+");
+  const key = parts.pop() ?? "";
+  const mods = new Set(parts.map((p) => p.toLowerCase()));
+  return { key: key.length === 1 ? key.toUpperCase() : key, ctrl: mods.has("ctrl"), shift: mods.has("shift"), alt: mods.has("alt") };
+}
+
+/** "rgb(37, 37, 38)" → "#252526" (the native title bar overlay wants hex). */
+function toHex(color: string): string {
+  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color);
+  if (!m) return color;
+  return `#${[m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, "0")).join("")}`;
+}

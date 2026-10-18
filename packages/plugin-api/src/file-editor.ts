@@ -1,14 +1,15 @@
 /**
- * Extending the Files plugin's editor (`oneclient-files.editors`).
+ * Extending core's file editor (`oneclient.editors`).
  *
  * Any plugin can teach the file editor about a file type — or add actions to
- * every file — by contributing to the `oneclient-files.editors` extension
- * point in its manifest:
+ * every file — by contributing to the `oneclient.editors` extension point in
+ * its manifest (`oneclient-files.editors`, its name from when the editor was a
+ * plugin, still works):
  *
  *   "contributes": {
  *     "commands": [{ "id": "json.format", "title": "JSON: Format", "hidden": true }, …],
  *     "extensions": {
- *       "oneclient-files.editors": [{
+ *       "oneclient.editors": [{
  *         "id": "json", "label": "JSON", "extensions": ["json", "jsonc"],
  *         "format": "json.format", "symbols": "json.symbols", "tokens": "json.tokens"
  *       }]
@@ -25,8 +26,10 @@
  * wins; `actions` from all matching contributions are combined.
  */
 
-/** The extension point id (`<owning plugin id>.<point name>`). */
-export const FILE_EDITORS_POINT = "oneclient-files.editors";
+/** The extension point id; `oneclient.` points are owned by core. */
+export const FILE_EDITORS_POINT = "oneclient.editors";
+/** The same point under its old name (the editor used to be the Files plugin's); still read. */
+export const LEGACY_FILE_EDITORS_POINT = "oneclient-files.editors";
 
 export interface FileEditorAction {
   readonly id: string;
@@ -37,7 +40,7 @@ export interface FileEditorAction {
   readonly title?: string;
 }
 
-/** One entry of `contributes.extensions["oneclient-files.editors"]`. */
+/** One entry of `contributes.extensions["oneclient.editors"]`. */
 export interface FileEditorContribution {
   readonly id: string;
   /** Language name shown in the editor's status bar ("JSON"). */

@@ -114,7 +114,7 @@
       }
     ],
     "extensions": {
-      "oneclient-files.editors": [
+      "oneclient.editors": [
         {
           "id": "json",
           "label": "JSON",

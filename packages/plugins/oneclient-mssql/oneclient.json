@@ -266,6 +266,29 @@
         "rootNodeType": "mssql.fakersRoot",
         "connectionType": "mssql"
       }
+    ],
+    "menus": [
+      {
+        "menu": "run",
+        "title": "Execute Query",
+        "keybinding": "F5",
+        "when": "activeView == 'mssql.query'",
+        "group": "1_run"
+      },
+      {
+        "menu": "run",
+        "title": "Cancel Query",
+        "keybinding": "Escape",
+        "when": "activeView == 'mssql.query'",
+        "group": "1_run"
+      },
+      {
+        "menu": "run",
+        "title": "Show Results",
+        "keybinding": "Ctrl+R",
+        "when": "activeView == 'mssql.query'",
+        "group": "2_results"
+      }
     ]
   },
   "activationEvents": [

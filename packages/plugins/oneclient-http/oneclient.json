@@ -25,6 +25,7 @@
       { "id": "http.request", "title": "Request", "tier": 2, "location": "editor", "entry": "request.html" },
       { "id": "http.workspace", "title": "HTTP Workspace", "tier": 2, "location": "editor", "entry": "workspace.html", "connectionType": "http" }
     ],
+    "menus": [{ "menu": "run", "title": "Send Request", "keybinding": "Ctrl+Enter", "when": "activeView == 'http.request'" }],
     "commands": [
       { "id": "http.api", "title": "HTTP: API", "hidden": true },
       {

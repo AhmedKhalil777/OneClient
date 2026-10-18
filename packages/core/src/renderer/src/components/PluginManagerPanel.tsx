@@ -10,7 +10,8 @@ export function PluginManagerPanel({ plugins }: { plugins: PluginSummary[] }) {
       <h2 style={{ marginTop: 0 }}>Plugins</h2>
       <p style={{ color: "var(--text-dim)" }}>
         Installed plugins and their state. Install-from-file/registry lands in Phase 5 — for now this reflects
-        whatever is in the app's plugins directory (plus, in dev builds, <code>packages/core/dev-plugins</code>).
+        whatever is in the app's plugins directory (in dev builds, <code>packages/plugins</code>). The Explorer, Search,
+        editor and Terminal are part of oneClient itself, not plugins.
       </p>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>

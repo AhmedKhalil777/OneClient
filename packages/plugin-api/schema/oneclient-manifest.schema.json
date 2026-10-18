@@ -111,6 +111,23 @@
             }
           }
         },
+        "menus": {
+          "type": "array",
+          "description": "Items in the title bar menus: run a command of this plugin, or press a keybinding in the active editor tab (one of this plugin's views).",
+          "items": {
+            "type": "object",
+            "required": ["menu"],
+            "additionalProperties": false,
+            "properties": {
+              "menu": { "enum": ["file", "edit", "view", "go", "run", "terminal", "help"] },
+              "title": { "type": "string", "maxLength": 60 },
+              "command": { "type": "string" },
+              "keybinding": { "type": "string", "pattern": "^((Ctrl|Shift|Alt)[+])*([A-Za-z0-9]|F[0-9]{1,2}|Enter|Escape|Tab|Space|Delete|Backspace|Up|Down|Left|Right|Home|End|PageUp|PageDown)$" },
+              "when": { "type": "string" },
+              "group": { "type": "string" }
+            }
+          }
+        },
         "icons": {
           "type": "array",
           "description": "New icon ids any plugin can use as $(id).",

@@ -19,15 +19,11 @@ pnpm --filter @oneclient/plugin-api run build   # core depends on this
 pnpm --filter @oneclient/core run build         # electron-vite build -> packages/core/out/
 ```
 
-`pnpm --filter @oneclient/core run rebuild-native` re-links `better-sqlite3`
-against Electron's ABI if you ever see a `NODE_MODULE_VERSION` mismatch
-error at startup (e.g. after bumping the Electron version).
-
 ## Run (agent path)
 
 ```sh
 node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/smoke-test.txt
-node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/tier2-smoke-test.txt  # Tier 2 view pipeline
+node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/tier2-smoke-test.txt  # core views: file editor + terminal
 node .claude/skills/run-desktop/driver.mjs .claude/skills/run-desktop/docker-smoke-test.txt  # oneclient-docker (needs Docker running)
 ```
 
@@ -85,28 +81,25 @@ pnpm run dev     # electron-vite dev, hot reload, opens a real window
   `page.fill()`/`selectOption()`), which go through a real low-level path
   and trigger `onChange` correctly. Cost real debugging time to find —
   see the Phase 2 implementation notes if curious.
-- **`better-sqlite3` is a native addon.** It's prebuilt for Electron's ABI
-  via `@electron/rebuild` (see Build above) — if you add/bump Electron or
-  `better-sqlite3`, rerun `pnpm --filter @oneclient/core run rebuild-native`
-  or you'll get a `NODE_MODULE_VERSION` mismatch at require() time.
+- **`node-pty` (the terminal) is a native addon** loaded in core's terminal
+  host process. It ships N-API prebuilds, so it normally needs no rebuild; a
+  running app locks its `.node` file, so stop the app before `pnpm install`
+  (EPERM on `conpty.node` otherwise).
 - **`@oneclient/plugin-api` is published as CommonJS, not ESM**, even
   though its source uses `import`/`export`. This is deliberate: electron-vite's
   main-process build output is CJS and leaves workspace deps un-bundled
   (`externalizeDepsPlugin`), so a CJS `require()` of an ESM-only package
   fails with `ERR_REQUIRE_ESM`. Keep plugin-api CJS unless core's main
   build is also switched to ESM output.
-- **Dev-only fixture plugin**: `packages/core/dev-plugins/oneclient-sample`
-  loads automatically when `!app.isPackaged`, giving the smoke test a real
-  plugin to exercise (contributed command, connection type, explorer
-  tree) without needing a real infrastructure integration.
-- **SQLite persists across runs** in the real Electron userData dir
-  (`%APPDATA%/oneClient` on Windows). Repeated smoke-test runs will leave
-  behind multiple "My Sample" connections unless you delete that directory
-  between runs — this is expected (it's exactly the persistence Phase 2
-  was asked to add), not a bug. **Also stop any background `pnpm run dev`
-  session first** — the sqlite file and a running Electron instance both
-  hold OS-level locks that make `rm -rf` on userData fail with "Device or
-  resource busy".
+- **Core vs plugins**: the Explorer, Search, file editor and Terminal are
+  core (no manifest); their views load from core's renderer build
+  (`out/renderer/views/*`, or the dev server under `pnpm run dev`). Plugins
+  load from `packages/plugins/*` in dev builds. There is no sample plugin;
+  the smoke tests exercise core features and a temp folder.
+- **State persists across runs** in `~/.oneclient/oneclient.json` (folders
+  open in the Explorer, connections, themes) — set `ONECLIENT_HOME` to a
+  temp dir for a clean run. **Stop any background `pnpm run dev` session
+  first**: two app instances fight over the same files and windows.
 - **Neither `BrowserWindow.capturePage()` nor a Tier 2 view's own
   `WebContents.capturePage()` can be trusted to produce a real screenshot
   of that view's content.** Tier 2 views are hosted as separate
