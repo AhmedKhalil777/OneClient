@@ -1,0 +1,133 @@
+# Release: test, build the installers on Windows, macOS and Linux, and publish them as a GitHub Release.
+#
+#   git tag v0.2.0 && git push origin v0.2.0      → release v0.2.0 (a tag with "-", e.g. v0.2.0-beta.1, is a pre-release)
+#   Actions ▸ Release ▸ Run workflow (version)    → same, from the chosen branch; creates the tag; a draft by default
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 0.2.0 — no leading v)"
+        required: true
+      draft:
+        description: "Create the release as a draft"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+
+jobs:
+  test:
+    name: Build & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the version
+        shell: bash
+        run: |
+          v="${VERSION#v}"
+          if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::\"$VERSION\" isn't a semantic version (e.g. 1.2.3 or 1.2.3-beta.1)."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: pnpm run typecheck
+      - run: pnpm run test
+
+  package:
+    name: Package (${{ matrix.os }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build installers
+        shell: bash
+        run: node scripts/package.mjs
+        env:
+          ONECLIENT_VERSION: ${{ env.VERSION }}
+          # Not code-signed yet: don't look for signing certificates.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: oneclient-${{ runner.os }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            release/*.exe
+            release/*.zip
+            release/*.dmg
+            release/*.AppImage
+            release/*.tar.gz
+
+  release:
+    name: Publish GitHub Release
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(env.VERSION, 'v') && env.VERSION || format('v{0}', env.VERSION) }}
+          name: oneClient ${{ startsWith(env.VERSION, 'v') && env.VERSION || format('v{0}', env.VERSION) }}
+          target_commitish: ${{ github.sha }}
+          draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
+          prerelease: ${{ contains(env.VERSION, '-') }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: dist/*
