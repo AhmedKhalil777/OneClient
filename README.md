@@ -12,7 +12,8 @@ plugin. Plugins add connection types, explorer trees, editors and commands at ru
 
 ![The oneClient workbench: Explorer, editor and terminal](docs/images/workbench.png)
 
-**[Download the latest release â†’](https://github.com/AhmedKhalil777/OneClient/releases/latest)** (Windows, macOS, Linux)
+**[Download the latest release →](https://github.com/AhmedKhalil777/OneClient/releases/latest)** (Windows, macOS, Linux) ·
+**[Website](https://ahmedkhalil777.github.io/OneClient/)**
 
 ## Features
 
@@ -72,7 +73,7 @@ model, and [`packages/plugin-api`](./packages/plugin-api) for the interfaces plu
   Terminal, background tasks / Task Runner, Output, themes, and the plugin host.
 - **Plugins** (`packages/plugins/*`): SQL Server, PostgreSQL, Redis, Kafka, Azure Blob Storage, Docker, Keycloak,
   HTTP client, and Miscellaneous (JSON / XML / SQL / Markdown editor features, Material icons).
-- `packages/plugin-api` â€” the only package plugins depend on; `packages/editor-kit` â€” the shared editor.
+- `packages/plugin-api` — the only package plugins depend on; `packages/editor-kit` — the shared editor.
 
 ### Development
 
@@ -87,7 +88,7 @@ cd packages/core && pnpm run dev   # the app, with hot reload
 ### Packaging & releases
 
 ```sh
-pnpm run package       # installers for this OS â†’ release/ (Windows: NSIS .exe + .zip, macOS: .dmg + .zip, Linux: AppImage + .tar.gz)
+pnpm run package       # installers for this OS → release/ (Windows: NSIS .exe + .zip, macOS: .dmg + .zip, Linux: AppImage + .tar.gz)
 pnpm run package:dir   # just the unpacked app (quick check)
 ```
 
@@ -96,13 +97,20 @@ pnpm run package:dir   # just the unpacked app (quick check)
 
 GitHub Actions:
 
-- **CI** (`.github/workflows/ci.yml`) â€” every push to `main` and every pull request: install, build, typecheck and
-  test on Windows, macOS and Linux, then check that the app still packages.
-- **Release** (`.github/workflows/release.yml`) â€” push a version tag (`git tag v0.2.0 && git push origin v0.2.0`) or run
+- **CI** (`.github/workflows/ci.yml`) — every push to `main` and every pull request: install, build, typecheck and
+  test on Windows, then check that the app still packages.
+- **Release** (`.github/workflows/release.yml`) — push a version tag (`git tag v0.2.0 && git push origin v0.2.0`) or run
   it from the Actions tab with a version: tests, builds the installers on all three OSes, and publishes a GitHub
   Release with them, `SHA256SUMS.txt` and generated release notes. Tags with a `-` (`v0.2.0-beta.1`) become
   pre-releases; manual runs default to a draft. The installers aren't code-signed yet (Windows SmartScreen and macOS
   Gatekeeper will warn).
+
+### Website
+
+The landing page lives in [`site/`](site). `node scripts/build-site.mjs` assembles it into `_site/`, adding the
+screenshots from `docs/images`, the app logo and the plugin icons. The **Website** workflow
+(`.github/workflows/pages.yml`) publishes it to GitHub Pages whenever any of those change on `main`. Its download
+buttons resolve to the latest release's files through the GitHub API.
 
 ### Screenshots
 

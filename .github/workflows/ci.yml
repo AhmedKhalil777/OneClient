@@ -1,4 +1,5 @@
-# Build, typecheck and test on every push to main and every pull request, on Windows, macOS and Linux.
+# Build, typecheck and test on every push to main and every pull request, on Windows.
+# (The release workflow still builds the installers on all three OSes.)
 name: CI
 
 on:
@@ -17,13 +18,9 @@ concurrency:
 
 jobs:
   build-test:
-    name: Build & test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Build & test (windows)
+    runs-on: windows-latest
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
     env:
       # Tests and builds don't start Electron: skip its ~100 MB binary download.
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"

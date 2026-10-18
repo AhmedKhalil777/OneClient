@@ -447,3 +447,6 @@ FodyWeavers.xsd
 
 # Packaging (scripts/package.mjs)
 staging/
+
+# Website build (scripts/build-site.mjs)
+_site/
