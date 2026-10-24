@@ -6,6 +6,7 @@ import type { OutputChannel } from "./output.js";
 import type { SecretStore } from "./secrets.js";
 import type { Workspace } from "./workspace.js";
 import type { Tasks } from "./tasks.js";
+import type { Connections, Contributions } from "./connections.js";
 import type { ViewMessageHandler } from "./ui.js";
 
 export interface Disposable {
@@ -45,6 +46,12 @@ export interface PluginContext {
 
   /** Background tasks shown in the status bar and the Tasks panel — see tasks.ts. */
   readonly tasks: Tasks;
+
+  /** The user's saved connections of every plugin: list, create, test — see connections.ts. */
+  readonly connections: Connections;
+
+  /** Other plugins' `contributes.extensions` entries — see connections.ts. */
+  readonly contributions: Contributions;
 
   /** Disposables registered here are disposed automatically on deactivate/disable. */
   readonly subscriptions: Disposable[];

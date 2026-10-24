@@ -10,6 +10,78 @@
   "main": "dist/main.js",
   "ui": "dist/ui",
   "contributes": {
+    "icons": [{ "id": "keycloak", "description": "Keycloak", "path": "icon.svg", "colored": true }],
+    "extensions": {
+      "docker.containerTemplates": [
+        {
+          "id": "keycloak",
+          "title": "Keycloak 26 (dev mode)",
+          "product": "Keycloak",
+          "description": "Keycloak in start-dev mode with an admin user in the master realm. Takes about a minute to start.",
+          "icon": "$(keycloak)",
+          "image": "quay.io/keycloak/keycloak:26.0",
+          "imagePatterns": [
+            "keycloak/keycloak",
+            "bitnami/keycloak"
+          ],
+          "ports": [
+            {
+              "container": "8080/tcp",
+              "host": 8080,
+              "label": "HTTP"
+            }
+          ],
+          "cmd": [
+            "start-dev"
+          ],
+          "env": {
+            "KC_BOOTSTRAP_ADMIN_USERNAME": "${username}",
+            "KC_BOOTSTRAP_ADMIN_PASSWORD": "${password}"
+          },
+          "variables": {
+            "username": {
+              "label": "Admin user",
+              "default": "admin",
+              "from": [
+                {
+                  "env": "KC_BOOTSTRAP_ADMIN_USERNAME"
+                },
+                {
+                  "env": "KEYCLOAK_ADMIN"
+                },
+                {
+                  "env": "KEYCLOAK_ADMIN_USER"
+                }
+              ]
+            },
+            "password": {
+              "label": "Admin password",
+              "secret": true,
+              "from": [
+                {
+                  "env": "KC_BOOTSTRAP_ADMIN_PASSWORD"
+                },
+                {
+                  "env": "KEYCLOAK_ADMIN_PASSWORD"
+                }
+              ]
+            }
+          },
+          "connection": {
+            "typeId": "keycloak",
+            "name": "Local Keycloak",
+            "config": {
+              "serverUrl": "http://${host}:${port}",
+              "authentication": "Admin user (username & password)",
+              "authRealm": "master",
+              "username": "${username}",
+              "password": "${password}"
+            }
+          },
+          "startupSeconds": 180
+        }
+      ]
+    },
     "connectionTypes": [
       { "id": "keycloak", "connectionLabel": "Server", "label": "Keycloak", "description": "A Keycloak identity server (admin REST API).", "category": "Identity", "icon": "icon.svg" }
     ],

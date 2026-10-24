@@ -56,7 +56,9 @@ Git fetch / pull / push and long plugin jobs show up here too.
 | ![HTTP client request and response](docs/images/http-client.png) | ![Redis key browser](docs/images/redis.png) |
 | Collections, folders, environments and history. Import from Postman or cURL. | Key tree grouped by namespace; editors for strings, hashes, lists, sets, sorted sets, streams and JSON; TTL, rename and delete. |
 
-Docker, Azure Blob Storage and Keycloak are included too, and the Miscellaneous plugin adds JSON / XML / SQL /
+Docker, Azure Blob Storage and Keycloak are included too. Docker's **Templates** start any of these servers in a
+container for local testing (PostgreSQL, SQL Server, Redis, Kafka, Azurite, Keycloak). Each one gets a ready connection
+in its plugin, and every container shows which plugin and connection it belongs to. and the Miscellaneous plugin adds JSON / XML / SQL /
 Markdown editor support and Material file icons. The Plugins view shows what is installed. You can enable or disable
 any plugin live.
 

@@ -1,5 +1,6 @@
-import type { CommandHandler } from "@oneclient/plugin-api";
+import type { CommandHandler, TreeNode } from "@oneclient/plugin-api";
 import { describeDockerError } from "./errors.js";
+import type { Infrastructure } from "./infra.js";
 import { requireSession } from "./sessions.js";
 
 interface ConnectionArg {
@@ -10,6 +11,18 @@ interface ContainerArg extends ConnectionArg {
 }
 interface PullArg extends ConnectionArg {
   image: string;
+}
+interface RunTemplateArg extends ConnectionArg {
+  template: string;
+  name: string;
+  ports: Record<string, number>;
+  variables: Record<string, string>;
+  connectionName: string;
+}
+
+/** The dashboard, opened on its Templates tab. */
+function templatesTab(): TreeNode {
+  return { id: "docker-templates", label: "Templates", nodeType: "docker.templates", collapsible: "none", openView: { viewId: "docker.dashboard", title: "Docker Templates", icon: "$(docker-image)", params: { tab: "templates" } } };
 }
 
 function arg<T>(args: unknown[]): T {
@@ -26,14 +39,23 @@ function arg<T>(args: unknown[]): T {
  * for), so it just includes it in the args — no magic context injection
  * needed on core's side.
  */
-export function createCommandHandlers(): CommandHandler[] {
+export function createCommandHandlers(infra: Infrastructure): CommandHandler[] {
   return [
     {
       commandId: "docker.listContainers",
       async execute(args) {
         const { connectionId } = arg<ConnectionArg>(args);
         const containers = await requireSession(connectionId).listContainers({ all: true });
+        const owners = await infra.annotate(containers).catch(() => new Map());
         return containers.map((c) => ({
+          plugin: owners.get(c.Id)
+            ? {
+                pluginId: owners.get(c.Id)!.template.pluginId,
+                product: owners.get(c.Id)!.template.product ?? owners.get(c.Id)!.template.title,
+                icon: owners.get(c.Id)!.template.icon ?? "",
+                connections: owners.get(c.Id)!.connections.map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })),
+              }
+            : null,
           id: c.Id,
           name: (c.Names[0] ?? c.Id).replace(/^\//, ""),
           image: c.Image,
@@ -105,6 +127,41 @@ export function createCommandHandlers(): CommandHandler[] {
         } catch (err) {
           return { ok: false, error: describeDockerError(err) };
         }
+      },
+    },
+    {
+      commandId: "docker.listTemplates",
+      async execute(args) {
+        const { connectionId } = arg<ConnectionArg>(args);
+        return infra.catalog(connectionId);
+      },
+    },
+    {
+      commandId: "docker.runTemplate",
+      async execute(args) {
+        const a = arg<RunTemplateArg>(args);
+        try {
+          return { ok: true, ...(await infra.run(a)) };
+        } catch (err) {
+          return { ok: false, error: describeDockerError(err) };
+        }
+      },
+    },
+    {
+      commandId: "docker.connectContainer",
+      async execute(args) {
+        const { connectionId, containerId } = arg<ContainerArg>(args);
+        try {
+          return { ok: true, ...(await infra.connectExisting(connectionId, containerId)) };
+        } catch (err) {
+          return { ok: false, error: describeDockerError(err) };
+        }
+      },
+    },
+    {
+      commandId: "docker.openTemplates",
+      async execute() {
+        return { ok: true, openNode: templatesTab() };
       },
     },
     {

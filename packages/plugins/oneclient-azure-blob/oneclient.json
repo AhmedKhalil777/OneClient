@@ -10,6 +10,44 @@
   "main": "dist/main.js",
   "ui": "dist/ui",
   "contributes": {
+    "icons": [{ "id": "azure-blob-storage", "description": "Azure Blob Storage", "path": "icon.svg", "colored": true }],
+    "extensions": {
+      "docker.containerTemplates": [
+        {
+          "id": "azurite",
+          "title": "Azurite (Blob Storage emulator)",
+          "product": "Azure Blob Storage",
+          "description": "Microsoft's local Azure Storage emulator, blob service only.",
+          "icon": "$(azure-blob-storage)",
+          "image": "mcr.microsoft.com/azure-storage/azurite",
+          "imagePatterns": [
+            "azure-storage/azurite"
+          ],
+          "ports": [
+            {
+              "container": "10000/tcp",
+              "host": 10000,
+              "label": "Blob service"
+            }
+          ],
+          "cmd": [
+            "azurite-blob",
+            "--blobHost",
+            "0.0.0.0",
+            "--skipApiVersionCheck"
+          ],
+          "connection": {
+            "typeId": "azure-blob",
+            "name": "Local Azurite",
+            "config": {
+              "authentication": "Local emulator (Azurite)",
+              "endpoint": "http://${host}:${port}/devstoreaccount1"
+            }
+          },
+          "startupSeconds": 60
+        }
+      ]
+    },
     "connectionTypes": [
       { "id": "azure-blob", "connectionLabel": "Storage Account", "label": "Azure Blob Storage", "description": "An Azure Storage account (or Azurite).", "category": "Cloud storage", "icon": "icon.svg" }
     ],

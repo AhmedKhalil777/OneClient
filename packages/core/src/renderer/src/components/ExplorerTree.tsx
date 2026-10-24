@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TreeNode } from "@oneclient/plugin-api";
 import { ThemeIcon, useResourceIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
@@ -21,10 +21,15 @@ interface Props {
   onOpenView: OpenNodeViewFn;
   onContextMenu: NodeContextMenuFn;
   reloadParent: () => void;
+  /**
+   * Bump to re-fetch the children of every expanded node in this subtree in place — expansion is kept (unlike a
+   * remount). Used when a plugin asks for its tree to be refreshed (`refreshExplorer()`).
+   */
+  refreshToken?: number;
 }
 
 /** One lazily-expandable node. Root nodes are rendered by ConnectionRootNodes. */
-export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenView, onContextMenu, reloadParent }: Props) {
+export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenView, onContextMenu, reloadParent, refreshToken = 0 }: Props) {
   const [expanded, setExpanded] = useState(node.collapsible === "expanded");
   const [children, setChildren] = useState<TreeNode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +52,16 @@ export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenVi
   useEffect(() => {
     if (expanded && children === null) void loadChildren();
   }, [expanded, children, loadChildren]);
+
+  const seenToken = useRef(refreshToken);
+  useEffect(() => {
+    if (seenToken.current === refreshToken) return;
+    seenToken.current = refreshToken;
+    // Collapsed nodes just drop their cached children; they reload when next expanded.
+    if (expanded) void loadChildren();
+    else setChildren(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshToken]);
 
   function onClick() {
     if (node.openView) onOpenView(node);
@@ -72,11 +87,12 @@ export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenVi
           e.stopPropagation();
           onContextMenu(e, node, refresh);
         }}
-        title={node.label}
+        title={node.tooltip ?? (node.description ? `${node.label} — ${node.description}` : node.label)}
       >
         <span className="tree-caret">{canExpand && <ThemeIcon id={expanded ? "chevron-down" : "chevron-right"} />}</span>
         <AssetIcon pluginId={pluginId} icon={resourceIcon ?? node.icon} size={14} fallback={canExpand ? "📁" : "•"} />
         <span className="tree-label">{node.label}</span>
+        {node.description && <span className="tree-description">{node.description}</span>}
       </div>
       {expanded && error && (
         <div className="tree-row tree-row-error" style={{ paddingLeft: 12 + (depth + 1) * 14 }}>
@@ -94,6 +110,7 @@ export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenVi
             onOpenView={onOpenView}
             onContextMenu={onContextMenu}
             reloadParent={() => void loadChildren()}
+            refreshToken={refreshToken}
           />
         ))}
     </div>
@@ -105,12 +122,15 @@ export function ConnectionRootNodes({
   connectionId,
   pluginId,
   version,
+  refreshToken = 0,
   onOpenView,
   onContextMenu,
 }: {
   connectionId: string;
   pluginId: string;
   version: number;
+  /** See ExplorerTreeNode — re-fetches the roots and every expanded node, keeping expansion. */
+  refreshToken?: number;
   onOpenView: OpenNodeViewFn;
   onContextMenu: NodeContextMenuFn;
 }) {
@@ -133,7 +153,7 @@ export function ConnectionRootNodes({
     return () => {
       cancelled = true;
     };
-  }, [connectionId, version, localVersion]);
+  }, [connectionId, version, localVersion, refreshToken]);
 
   if (error) return <div className="tree-row tree-row-error">{error}</div>;
   if (children === null) return <div className="empty-hint">Loading…</div>;
@@ -151,6 +171,7 @@ export function ConnectionRootNodes({
           onOpenView={onOpenView}
           onContextMenu={onContextMenu}
           reloadParent={() => setLocalVersion((v) => v + 1)}
+          refreshToken={refreshToken}
         />
       ))}
     </>

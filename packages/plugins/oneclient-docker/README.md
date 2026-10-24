@@ -1,21 +1,109 @@
-# oneclient-docker (Phase 3 — first reference plugin)
+# oneclient-docker
 
-Reference plugin, not implemented yet. Connects to the local (or remote)
-Docker Engine API and gives oneClient its first real contribution:
+Connects to the local Docker Engine (named pipe on Windows, Unix socket elsewhere) or a remote one (`tcp://host:2375`),
+through [`dockerode`](https://github.com/apocas/dockerode).
 
-- **Tier 1**: connection form (socket/named-pipe path or `tcp://host:port` +
-  TLS), explorer nodes for containers / images / volumes / networks,
-  commands (start/stop/restart/remove container, pull image).
-- **Tier 2 (likely)**: a live log-tailing view, same pattern
-  `oneclient-kafka`'s message browser will use later — Docker's log/stats
-  endpoints are streams, which is exactly what Tier 1's static
-  `TableResult` can't express.
+- **Explorer:** Containers, Images, Volumes, Networks and **Templates**.
+- **Dashboard** (Tier 2 view): containers with Start / Stop / Restart / Logs / Remove, images with Pull, and the
+  Templates gallery.
+- **Commands:** start, stop, restart and remove containers; pull an image; create a connection for a container; run a
+  template.
 
-**Client library**: [`dockerode`](https://github.com/apocas/dockerode) —
-pure JS, talks to the Docker Engine API over a Unix socket
-(`/var/run/docker.sock` on macOS/Linux) or a named pipe
-(`\\.\pipe\docker_engine` on Windows). No native/node-gyp dependency, so no
-per-OS prebuilt-binary concerns — just an OS-conditional transport path in
-`connect()`. Requires the user to have Docker Desktop/Engine installed and
-running; `test()` should give a clear error when the socket/pipe isn't
-reachable rather than a raw ECONNREFUSED.
+## Templates: infrastructure for testing, with a ready connection
+
+**Templates** lists a container recipe for every installed plugin that has one: PostgreSQL, SQL Server, Redis, Kafka,
+Azurite (Azure Blob Storage) and Keycloak. Clicking one opens a small form with fields already filled in:
+
+- the container name,
+- free host ports,
+- a generated password,
+- the connection name.
+
+**Run & connect** then:
+
+1. pulls the image if needed, with download progress in the **Tasks** panel;
+2. creates and starts the container, labelled `oneclient.template=<plugin>/<id>`;
+3. waits until the owning plugin's own connection test passes — the real readiness check, not a log line;
+4. saves that plugin's connection, which appears in its sidebar right away.
+
+If the container exits, the task fails with its last log lines. If it doesn't become reachable within the template's
+`startupSeconds`, the task fails too, and the container is left running so you can inspect it.
+
+## Containers know their plugin
+
+Every container whose image a template recognises shows its product and its connection:
+
+```
+oneclient-postgres-test   running · PostgreSQL → Shop database
+oneclient-keycloak-test   running · Keycloak
+```
+
+- **Recognising the image:** it was started from a template (the label), or it matches the template's
+  `imagePatterns`. That covers `postgres`, `postgis/postgis`, `bitnami/redis`, `confluentinc/cp-kafka`…
+- **Finding the connection:** a saved connection of the plugin's type mentions one of the container's published host
+  ports.
+
+A recognised container without a connection gets **Create Connection for Container** (right-click, or the button on
+its dashboard card). The credentials are read back from the container, using the template's `variables[].from`: an
+env var, or the argument after a flag such as `--requirepass`. The connection is tested and then saved.
+
+## Contributing a template (for plugin authors)
+
+Templates belong to the plugin that owns the connection type. Add one to your manifest, and the Docker plugin picks it
+up with no code change:
+
+```jsonc
+"contributes": {
+  "icons": [{ "id": "postgresql", "description": "PostgreSQL", "path": "icon.svg", "colored": true }],
+  "extensions": {
+    "docker.containerTemplates": [{
+      "id": "postgres",                       // unique within your plugin
+      "title": "PostgreSQL 17",
+      "product": "PostgreSQL",                // shown next to matching containers
+      "description": "…",
+      "icon": "$(postgresql)",                // a registry icon (contributes.icons)
+      "image": "postgres:17",
+      "imagePatterns": ["^(docker\\.io/)?(library/)?postgres([:@]|$)", "postgis/postgis"],
+      "ports": [{ "container": "5432/tcp", "host": 5432, "label": "PostgreSQL" }],
+      "env": { "POSTGRES_PASSWORD": "${password}" },
+      "cmd": ["…"],                           // optional
+      "variables": {
+        "password": { "label": "Password", "secret": true, "from": [{ "env": "POSTGRES_PASSWORD" }] }
+      },
+      "connection": {
+        "typeId": "postgres",
+        "name": "Local PostgreSQL",
+        "config": { "host": "${host}", "port": "${port}", "user": "postgres", "password": "${password}" }
+      },
+      "startupSeconds": 90
+    }]
+  }
+}
+```
+
+**Placeholders** (in `env`, `cmd` and `connection.config`):
+
+| Placeholder | Becomes |
+|---|---|
+| `${host}` | Where the published ports are reachable from this machine (`127.0.0.1` for a local engine). |
+| `${port}` / `${port:5432/tcp}` | The host port of the first port entry, or of the named one. A value that is only this placeholder becomes a number. |
+| `${name}` | The container name. |
+| `${<variable>}` | A template variable. |
+
+**Variables:**
+- `secret` ones are masked in the form and, when they have no `default`, generated. The password generator meets SQL
+  Server's complexity rules.
+- `from` lists where to read the value back from an existing container: `{ "env": "NAME" }` or
+  `{ "argAfter": "--flag" }`.
+
+Secrets are stored by the target plugin as usual: any `connection.config` field its schema marks `"x-secret": true` goes
+to the secret store.
+
+## Code
+
+| File | What |
+|---|---|
+| `src/templates.ts` | Pure template logic: matching, placeholders, create options, linking connections. Unit-tested in `test/templates.test.ts` against the real manifests. |
+| `src/infra.ts` | The Docker side: pull with progress, run, readiness wait, connect to an existing container, free ports. |
+| `src/explorer-provider.ts` | The tree, including container descriptions. |
+| `src-ui/components/TemplatesPanel.tsx` | The Templates gallery. |

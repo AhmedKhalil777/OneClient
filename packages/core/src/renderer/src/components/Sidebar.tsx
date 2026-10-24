@@ -164,7 +164,8 @@ function PluginContainer({
               const connectionType = connectionTypes.find((t) => t.id === c.typeId);
               return (
                 <ConnectionRow
-                  key={`${c.id}:${refreshKey}:${explorerTokens[c.id] ?? 0}`}
+                  key={`${c.id}:${refreshKey}`}
+                  refreshToken={explorerTokens[c.id] ?? 0}
                   connection={c}
                   icon={connectionType?.icon}
                   dashboard={dashboard}
@@ -211,7 +212,8 @@ function PluginContainer({
                 };
                 return (
                   <ExplorerTreeNode
-                    key={`${section.id}:${c.id}:${refreshKey}:${explorerTokens[c.id] ?? 0}`}
+                    key={`${section.id}:${c.id}:${refreshKey}`}
+                    refreshToken={explorerTokens[c.id] ?? 0}
                     connectionId={c.id}
                     pluginId={c.pluginId}
                     node={root}
@@ -331,8 +333,11 @@ function ConnectionRow({
   onOpenDashboard,
   onOpenNodeView,
   onContextMenu,
+  refreshToken,
 }: {
   connection: ConnectionSummary;
+  /** Bumped when the plugin asks to refresh this connection's tree. */
+  refreshToken: number;
   icon?: string;
   dashboard?: DashboardView;
   onOpenDashboard?: () => void;
@@ -392,6 +397,7 @@ function ConnectionRow({
           connectionId={connection.id}
           pluginId={connection.pluginId}
           version={rootVersion}
+          refreshToken={refreshToken}
           onOpenView={onOpenNodeView}
           onContextMenu={onNodeContextMenu}
         />

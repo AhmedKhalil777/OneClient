@@ -244,6 +244,30 @@ async function main(): Promise<void> {
     if (options.line) workspace.reveal(location.folder.id, { path: location.relPath, line: options.line, col: options.column ?? 1, length: options.length ?? 0 });
   }
   supervisor.setWorkspace({ folders: () => workspace.folders().map(({ name, path }) => ({ name, path })), openFile: openWorkspaceFile });
+  // context.connections / context.contributions: what plugins may read and do across plugins.
+  supervisor.setApi(async (_pluginId, method, args) => {
+    switch (method) {
+      case "connections.list":
+        return connections.listWithConfig();
+      case "connections.create": {
+        const { typeId, name, config } = (args[0] ?? {}) as { typeId?: unknown; name?: unknown; config?: unknown };
+        if (typeof typeId !== "string" || typeof name !== "string" || !name.trim()) throw new Error("A connection needs a typeId and a name.");
+        const created = await connections.create(typeId, name.trim(), config && typeof config === "object" ? (config as Record<string, unknown>) : {});
+        return { id: created.id };
+      }
+      case "connections.test": {
+        const [typeId, config] = args as [unknown, unknown];
+        if (typeof typeId !== "string") throw new Error("connections.test needs a typeId.");
+        try {
+          return await connections.test(typeId, config && typeof config === "object" ? (config as Record<string, unknown>) : {});
+        } catch (err) {
+          return { success: false, message: err instanceof Error ? err.message : String(err) };
+        }
+      }
+      case "contributions.get":
+        return typeof args[0] === "string" ? registry.getExtensions(args[0]) : [];
+    }
+  });
   views.setOpenFileHandler(openWorkspaceFile);
   workspace.onChanged((folders) => {
     supervisor.broadcastWorkspaceFolders(folders.map(({ name, path }) => ({ name, path })));

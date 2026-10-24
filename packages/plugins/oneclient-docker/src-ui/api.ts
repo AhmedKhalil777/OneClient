@@ -5,6 +5,32 @@ export interface ContainerRow {
   state: string;
   status: string;
   ports: string[];
+  /** The plugin whose template the container matches, and the saved connections pointing at it. */
+  plugin: { pluginId: string; product: string; icon: string; connections: Array<{ id: string; name: string }> } | null;
+}
+
+/** A container template with defaults for this Docker host (docker.listTemplates). */
+export interface TemplateItem {
+  key: string;
+  pluginId: string;
+  title: string;
+  product: string;
+  description: string;
+  icon: string;
+  image: string;
+  typeId: string;
+  ports: Array<{ container: string; label: string; host: number }>;
+  variables: Array<{ name: string; label: string; description: string; secret: boolean; value: string }>;
+  name: string;
+  connectionName: string;
+  /** Containers already running this template's image. */
+  existing: Array<{ id: string; name: string; state: string }>;
+}
+
+export interface RunResult extends CommandResult {
+  message?: string;
+  containerId?: string;
+  connectionId?: string;
 }
 
 export interface ImageRow {
@@ -32,6 +58,16 @@ export const stopContainer = (containerId: string) => invoke<CommandResult>("doc
 export const restartContainer = (containerId: string) => invoke<CommandResult>("docker.restartContainer", { containerId });
 export const removeContainer = (containerId: string) => invoke<CommandResult>("docker.removeContainer", { containerId });
 export const pullImage = (image: string) => invoke<CommandResult>("docker.pullImage", { image });
+export const listTemplates = () => invoke<TemplateItem[]>("docker.listTemplates", {});
+export const runTemplate = (args: { template: string; name: string; ports: Record<string, number>; variables: Record<string, string>; connectionName: string }) =>
+  invoke<RunResult>("docker.runTemplate", args);
+export const connectContainer = (containerId: string) => invoke<RunResult>("docker.connectContainer", { containerId });
+
+/** Tab and template the view was opened for (a Templates node passes them). */
+export const initialParams = {
+  tab: new URLSearchParams(location.search).get("tab"),
+  template: new URLSearchParams(location.search).get("template"),
+};
 
 export type LogEvent =
   | { type: "logLine"; containerId: string; text: string }

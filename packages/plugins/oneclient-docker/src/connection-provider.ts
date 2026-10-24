@@ -1,7 +1,7 @@
 import type { ConnectionProvider } from "@oneclient/plugin-api";
-import { createDockerClient, type DockerConnectionConfig } from "./docker-client.js";
+import { createDockerClient, publishHost, type DockerConnectionConfig } from "./docker-client.js";
 import { describeDockerError } from "./errors.js";
-import { sessions } from "./sessions.js";
+import { dropSession, setSession } from "./sessions.js";
 
 export function createConnectionProvider(): ConnectionProvider<DockerConnectionConfig> {
   return {
@@ -20,7 +20,7 @@ export function createConnectionProvider(): ConnectionProvider<DockerConnectionC
     async connect(config, ctx) {
       const client = createDockerClient(config);
       await client.ping();
-      if (ctx.connectionId) sessions.set(ctx.connectionId, client);
+      if (ctx.connectionId) setSession(ctx.connectionId, client, publishHost(config));
       return { id: ctx.connectionId ?? `docker-${Date.now()}`, typeId: "docker", state: {} };
     },
 
@@ -39,7 +39,7 @@ export function createConnectionProvider(): ConnectionProvider<DockerConnectionC
     },
 
     async disconnect(_handle, ctx) {
-      if (ctx.connectionId) sessions.delete(ctx.connectionId);
+      if (ctx.connectionId) dropSession(ctx.connectionId);
     },
   };
 }

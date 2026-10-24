@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { utilityProcess, type UtilityProcess } from "electron";
-import type { HostInboundMessage, HostOutboundMessage, InvokeKind } from "../../shared/host-protocol.js";
+import type { HostApiMethod, HostInboundMessage, HostOutboundMessage, InvokeKind } from "../../shared/host-protocol.js";
 import type { FileSecretStore } from "../secrets/secret-store.js";
 import type { OutputService } from "../output/output-service.js";
 import type { TaskHandle, TaskService } from "../tasks/task-service.js";
@@ -17,6 +17,9 @@ export interface WorkspaceBridge {
   folders(): Array<{ name: string; path: string }>;
   openFile(path: string, options?: { line?: number; column?: number; length?: number }): Promise<void>;
 }
+
+/** Answers the host APIs that need core state (context.connections, context.contributions) — wired in by main/index.ts. */
+export type HostApiBridge = (pluginId: string, method: HostApiMethod, args: unknown[]) => Promise<unknown>;
 
 interface PendingInvoke {
   resolve: (value: unknown) => void;
@@ -65,6 +68,12 @@ export class ExtensionHostSupervisor {
 
   setWorkspace(bridge: WorkspaceBridge): void {
     this.workspace = bridge;
+  }
+
+  private api: HostApiBridge | undefined;
+
+  setApi(bridge: HostApiBridge): void {
+    this.api = bridge;
   }
 
   /** Tells every running plugin that the workspace folders changed (context.workspace.onDidChangeFolders). */
@@ -252,6 +261,13 @@ export class ExtensionHostSupervisor {
         run
           .then(() => this.send(handle, { type: "workspace:result", requestId: msg.requestId, ok: true }))
           .catch((err: unknown) => this.send(handle, { type: "workspace:result", requestId: msg.requestId, ok: false, error: err instanceof Error ? err.message : String(err) }));
+        break;
+      }
+      case "api:request": {
+        const run = this.api ? this.api(handle.pluginId, msg.method, msg.args) : Promise.reject(new Error("Host APIs aren't available."));
+        run
+          .then((value) => this.send(handle, { type: "api:result", requestId: msg.requestId, ok: true, value }))
+          .catch((err: unknown) => this.send(handle, { type: "api:result", requestId: msg.requestId, ok: false, error: err instanceof Error ? err.message : String(err) }));
         break;
       }
     }

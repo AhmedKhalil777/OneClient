@@ -26,7 +26,15 @@ export type HostInboundMessage =
   | { type: "workspace:result"; requestId: string; ok: true; value?: unknown }
   | { type: "workspace:result"; requestId: string; ok: false; error: string }
   | { type: "workspace:changed"; folders: Array<{ name: string; path: string }> }
-  | { type: "task:cancel"; taskId: string };
+  | { type: "task:cancel"; taskId: string }
+  | { type: "api:result"; requestId: string; ok: true; value?: unknown }
+  | { type: "api:result"; requestId: string; ok: false; error: string };
+
+/**
+ * Host APIs answered by main through one request/response pair (`api:request` → `api:result`) — context.connections
+ * and context.contributions. `method` is one of these; `args` are its arguments.
+ */
+export type HostApiMethod = "connections.list" | "connections.create" | "connections.test" | "contributions.get";
 
 export type RegisteredContribution =
   | { kind: "connection"; typeId: string; configSchema: unknown; uiSchema?: unknown }
@@ -53,4 +61,5 @@ export type HostOutboundMessage =
   | { type: "task:start"; taskId: string; title: string; cancellable: boolean }
   | { type: "task:update"; taskId: string; log?: string; detail?: string; progress?: number }
   | { type: "task:end"; taskId: string; ok: boolean; error?: string }
-  | { type: "workspace:openFile"; requestId: string; path: string; options?: { line?: number; column?: number; length?: number } };
+  | { type: "workspace:openFile"; requestId: string; path: string; options?: { line?: number; column?: number; length?: number } }
+  | { type: "api:request"; requestId: string; method: HostApiMethod; args: unknown[] };

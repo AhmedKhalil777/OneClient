@@ -1,12 +1,12 @@
 {
   "name": "oneclient-docker",
   "displayName": "Docker",
-  "description": "Connect to a local or remote Docker Engine: browse containers, images, volumes, networks.",
+  "description": "Connect to a local or remote Docker Engine: browse containers, images, volumes, networks — and run the databases, brokers and caches your other plugins support, with a ready connection to each.",
   "version": "0.1.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",
-  "engines": { "oneclient": "^0.1.0" },
+  "engines": { "oneclient": "^0.1.1" },
   "main": "dist/main.js",
   "ui": "dist/ui",
   "contributes": {
@@ -35,7 +35,9 @@
       { "id": "docker.volumes", "connectionType": "docker" },
       { "id": "docker.volume", "parentNodeType": "docker.volumes" },
       { "id": "docker.networks", "connectionType": "docker" },
-      { "id": "docker.network", "parentNodeType": "docker.networks" }
+      { "id": "docker.network", "parentNodeType": "docker.networks" },
+      { "id": "docker.templates", "connectionType": "docker" },
+      { "id": "docker.template", "parentNodeType": "docker.templates" }
     ],
     "commands": [
       {
@@ -48,9 +50,21 @@
         "title": "Docker: List Images",
         "when": "contextValue == 'connection' && connectionType == 'docker' || nodeType == 'docker.images'"
       },
-      { "id": "docker.startContainer", "title": "Docker: Start Container", "when": "contextValue == 'docker.container.stopped'" },
-      { "id": "docker.stopContainer", "title": "Docker: Stop Container", "when": "contextValue == 'docker.container.running'" },
-      { "id": "docker.restartContainer", "title": "Docker: Restart Container", "when": "contextValue == 'docker.container.running'" },
+      { "id": "docker.startContainer", "title": "Docker: Start Container", "when": "contextValue =~ /^docker\\.container\\.stopped/" },
+      { "id": "docker.stopContainer", "title": "Docker: Stop Container", "when": "contextValue =~ /^docker\\.container\\.running/" },
+      { "id": "docker.restartContainer", "title": "Docker: Restart Container", "when": "contextValue =~ /^docker\\.container\\.running/" },
+      {
+        "id": "docker.connectContainer",
+        "title": "Docker: Create Connection for Container",
+        "when": "contextValue == 'docker.container.running.detached'"
+      },
+      {
+        "id": "docker.openTemplates",
+        "title": "Docker: Run Infrastructure from a Template…",
+        "when": "contextValue == 'connection' && connectionType == 'docker' || nodeType == 'docker.templates'"
+      },
+      { "id": "docker.listTemplates", "title": "Docker: List Container Templates", "hidden": true },
+      { "id": "docker.runTemplate", "title": "Docker: Run Container Template", "hidden": true },
       {
         "id": "docker.removeContainer",
         "title": "Docker: Remove Container",

@@ -167,9 +167,36 @@ defines what an item looks like and what to do with it:
 }
 ```
 
-A view reads what others contributed with `window.oneclientView.getContributions(point)`
-(each item tagged with its `pluginId`, which can't be spoofed). Any plugin can define
-points of its own the same way.
+What others contributed can be read from two places:
+- a view: `window.oneclientView.getContributions(point)`;
+- the plugin's backend: `await context.contributions.get(point)`.
+
+Each item is tagged with its `pluginId`, which can't be spoofed. Any plugin can define points of its own the same way.
+For example, the Docker plugin reads `docker.containerTemplates` to learn how to run each plugin's server in a
+container (see `packages/plugins/oneclient-docker/README.md`).
+
+### Other plugins' connections: `context.connections`
+
+Plugins can create connections for each other. For example, the Docker plugin starts a PostgreSQL container and hands
+the user a ready PostgreSQL connection:
+
+```ts
+const result = await context.connections.test("postgres", config); // the owning plugin's own test, nothing saved
+if (result.success) await context.connections.create({ typeId: "postgres", name: "Local PostgreSQL", config });
+const all = await context.connections.list(); // [{ id, name, typeId, pluginId, config }]: settings only, never secrets
+```
+
+- `create` activates the owning plugin, fills in its schema defaults, and moves `"x-secret"` fields into the secret
+  store. The new connection appears in that plugin's sidebar right away.
+- Declare `"engines": { "oneclient": "^0.1.1" }` to use `context.connections` and `context.contributions`.
+
+### Tree node descriptions
+
+A `TreeNode` can carry a `description`: dimmed text after the label, which gives way first when the sidebar is narrow.
+The Docker plugin uses it for `running · PostgreSQL → Shop database`. A `tooltip` sets the hover text.
+
+The tree also keeps its expansion state when your view calls `refreshExplorer()`: expanded nodes re-fetch their
+children in place.
 
 ### The file editor: `oneclient.editors`
 

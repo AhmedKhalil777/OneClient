@@ -10,6 +10,54 @@
   "main": "dist/main.js",
   "ui": "dist/ui",
   "contributes": {
+    "icons": [{ "id": "kafka", "description": "Apache Kafka", "path": "icon.svg", "colored": true }],
+    "extensions": {
+      "docker.containerTemplates": [
+        {
+          "id": "kafka",
+          "title": "Apache Kafka 3.9 (KRaft)",
+          "product": "Kafka",
+          "description": "A single-node broker in KRaft mode — no ZooKeeper.",
+          "icon": "$(kafka)",
+          "image": "apache/kafka:3.9.0",
+          "imagePatterns": [
+            "apache/kafka",
+            "confluentinc/cp-kafka",
+            "bitnami/kafka",
+            "redpandadata/redpanda"
+          ],
+          "ports": [
+            {
+              "container": "19092/tcp",
+              "host": 19092,
+              "label": "Bootstrap server"
+            }
+          ],
+          "env": {
+            "KAFKA_NODE_ID": "1",
+            "KAFKA_PROCESS_ROLES": "broker,controller",
+            "KAFKA_LISTENERS": "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:19092",
+            "KAFKA_ADVERTISED_LISTENERS": "PLAINTEXT://localhost:9092,EXTERNAL://${host}:${port}",
+            "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP": "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT",
+            "KAFKA_CONTROLLER_LISTENER_NAMES": "CONTROLLER",
+            "KAFKA_CONTROLLER_QUORUM_VOTERS": "1@localhost:9093",
+            "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR": "1",
+            "KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR": "1",
+            "KAFKA_TRANSACTION_STATE_LOG_MIN_ISR": "1",
+            "KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS": "0"
+          },
+          "connection": {
+            "typeId": "kafka",
+            "name": "Local Kafka",
+            "config": {
+              "brokers": "${host}:${port}",
+              "sasl": "none"
+            }
+          },
+          "startupSeconds": 90
+        }
+      ]
+    },
     "connectionTypes": [{ "id": "kafka", "connectionLabel": "Cluster", "label": "Apache Kafka", "description": "A Kafka cluster (or Redpanda, Confluent Cloud, Event Hubs for Kafka).", "category": "Messaging", "icon": "icon.svg" }],
     "explorerNodes": [
       { "id": "kafka.brokers", "connectionType": "kafka" },

@@ -12,6 +12,62 @@
   "main": "dist/main.js",
   "ui": "dist/ui",
   "contributes": {
+    "icons": [{ "id": "sql-server", "description": "Microsoft SQL Server", "path": "icon.svg", "colored": true }],
+    "extensions": {
+      "docker.containerTemplates": [
+        {
+          "id": "mssql",
+          "title": "SQL Server 2022",
+          "product": "SQL Server",
+          "description": "SQL Server 2022 Developer edition (x64 hosts). The SA password must be at least 8 characters with 3 of: upper, lower, digit, symbol.",
+          "icon": "$(sql-server)",
+          "image": "mcr.microsoft.com/mssql/server:2022-latest",
+          "imagePatterns": [
+            "mcr\\.microsoft\\.com/mssql/server",
+            "mcr\\.microsoft\\.com/azure-sql-edge"
+          ],
+          "ports": [
+            {
+              "container": "1433/tcp",
+              "host": 1433,
+              "label": "SQL Server"
+            }
+          ],
+          "env": {
+            "ACCEPT_EULA": "Y",
+            "MSSQL_PID": "Developer",
+            "MSSQL_SA_PASSWORD": "${password}"
+          },
+          "variables": {
+            "password": {
+              "label": "SA password",
+              "secret": true,
+              "from": [
+                {
+                  "env": "MSSQL_SA_PASSWORD"
+                },
+                {
+                  "env": "SA_PASSWORD"
+                }
+              ]
+            }
+          },
+          "connection": {
+            "typeId": "mssql",
+            "name": "Local SQL Server",
+            "config": {
+              "server": "${host},${port}",
+              "authentication": "SQL Server Authentication",
+              "user": "sa",
+              "password": "${password}",
+              "encrypt": true,
+              "trustServerCertificate": true
+            }
+          },
+          "startupSeconds": 150
+        }
+      ]
+    },
     "connectionTypes": [
       {
         "id": "mssql",

@@ -49,7 +49,8 @@ export interface IpcDeps {
 /** Registers every main-process IPC handler and wires registry/plugin change events to all open windows. */
 export function registerIpcHandlers(deps: IpcDeps): void {
   const { registry, pluginManager, connections, search, config, supervisor, views, output, ensureActivated, getWindows, themes, workspace, openWorkspaceFile, coreCommands, coreViewUrl, terminal, tasks, taskRunner, gitService } = deps;
-  const connectionsChanged = () => broadcast(IpcChannel.ConnectionsChanged, connections.list());
+  // Every add / remove — from the UI, an import or a plugin (context.connections.create) — reaches the renderer.
+  connections.onChanged(() => broadcast(IpcChannel.ConnectionsChanged, connections.list()));
 
   // Themes: shell gets the full state; every Tier 2 view gets it too (its preload applies the CSS variables).
   // Plugin views don't draw file trees, so they skip the (potentially thousands of entries) file icon table.
@@ -148,14 +149,11 @@ export function registerIpcHandlers(deps: IpcDeps): void {
   ipcMain.handle(
     IpcChannel.ConnectionCreate,
     async (_event, typeId: string, name: string, config: Record<string, unknown>) => {
-      const summary = await connections.create(typeId, name, config);
-      connectionsChanged();
-      return summary;
+      return connections.create(typeId, name, config);
     },
   );
   ipcMain.handle(IpcChannel.ConnectionDelete, async (_event, id: string) => {
     await connections.delete(id);
-    connectionsChanged();
   });
 
   // Global search: which providers exist, then one provider at a time (results stream in as each answers).
@@ -190,7 +188,6 @@ export function registerIpcHandlers(deps: IpcDeps): void {
       throw new Error(`${file} is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
     }
     const result = await connections.importConnections(document);
-    connectionsChanged();
     return { path: file, ...result };
   });
   ipcMain.handle(IpcChannel.ConfigReveal, () => shell.showItemInFolder(config.filePath));

@@ -68,8 +68,25 @@ export class ConnectionManager {
     private readonly getPluginVersion: (pluginId: string) => string | undefined = () => undefined,
   ) {}
 
+  private readonly changeListeners = new Set<() => void>();
+
+  /** Fires after connections are added or removed (by the UI, an import, or a plugin). */
+  onChanged(listener: () => void): () => void {
+    this.changeListeners.add(listener);
+    return () => this.changeListeners.delete(listener);
+  }
+
+  private changed(): void {
+    for (const listener of this.changeListeners) listener();
+  }
+
   list(): ConnectionSummary[] {
     return this.config.listConnections().map((c) => ({ id: c.id, name: c.name, typeId: c.typeId, pluginId: c.pluginId }));
+  }
+
+  /** Like `list()`, with each connection's saved settings — never its secrets (those live in the secret store). */
+  listWithConfig(): Array<ConnectionSummary & { config: Record<string, unknown> }> {
+    return this.config.listConnections().map((c) => ({ id: c.id, name: c.name, typeId: c.typeId, pluginId: c.pluginId, config: { ...c.config } }));
   }
 
   async getFormInfo(typeId: string): Promise<ConnectionTypeFormInfo> {
@@ -97,11 +114,12 @@ export class ConnectionManager {
       throw new Error(`Plugin "${pluginId}" did not register a provider for connection type "${typeId}".`);
     }
     const id = randomUUID();
-    const { publicConfig, secretValues } = splitSecrets(info.configSchema, rawConfig);
+    const { publicConfig, secretValues } = splitSecrets(info.configSchema, withDefaults(info.configSchema, rawConfig));
     for (const [key, value] of Object.entries(secretValues)) {
       await this.secrets.set(`${id}:${key}`, value);
     }
     this.config.addConnections([{ id, name, typeId, pluginId, config: publicConfig, createdAt: new Date().toISOString(), ...pluginVersionField(this.getPluginVersion(pluginId)) }]);
+    this.changed();
     return { id, name, typeId, pluginId };
   }
 
@@ -109,6 +127,7 @@ export class ConnectionManager {
     this.config.removeConnection(id);
     await this.secrets.deleteByPrefix(`${id}:`);
     this.connected.delete(id);
+    this.changed();
   }
 
   /** Reconstructs full config (public + secrets) and calls `connect()` once; no-op if already connected this session. */
@@ -200,7 +219,10 @@ export class ConnectionManager {
       }
       toAdd.push({ id: item.id, name: item.name, typeId: item.typeId, pluginId: item.pluginId, config: item.config, createdAt: typeof item.createdAt === "string" ? item.createdAt : new Date().toISOString(), ...pluginVersionField(typeof item.pluginVersion === "string" ? item.pluginVersion : have) });
     }
-    if (toAdd.length > 0) this.config.addConnections(toAdd);
+    if (toAdd.length > 0) {
+      this.config.addConnections(toAdd);
+      this.changed();
+    }
     return { added: toAdd.length, skipped, invalid, withoutSecrets, warnings: [...warnings] };
   }
 
@@ -225,6 +247,15 @@ function splitSecrets(
     }
   }
   return { publicConfig, secretValues };
+}
+
+/** Fills settings the caller left out with the schema's defaults (the connection form does the same). */
+function withDefaults(schema: JsonSchemaObject, config: Record<string, unknown>): Record<string, unknown> {
+  const filled: Record<string, unknown> = { ...config };
+  for (const [key, prop] of Object.entries(schema.properties ?? {})) {
+    if (filled[key] === undefined && prop.default !== undefined) filled[key] = prop.default;
+  }
+  return filled;
 }
 
 async function mergeSecrets(

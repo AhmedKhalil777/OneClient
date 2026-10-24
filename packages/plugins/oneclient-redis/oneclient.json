@@ -10,6 +10,62 @@
   "main": "dist/main.js",
   "ui": "dist/ui",
   "contributes": {
+    "icons": [{ "id": "redis", "description": "Redis", "path": "icon.svg", "colored": true }],
+    "extensions": {
+      "docker.containerTemplates": [
+        {
+          "id": "redis",
+          "title": "Redis 7",
+          "product": "Redis",
+          "description": "The official redis image, password-protected.",
+          "icon": "$(redis)",
+          "image": "redis:7",
+          "imagePatterns": [
+            "^(docker\\.io/)?(library/)?redis([:@]|$)",
+            "redis/redis-stack",
+            "bitnami/redis",
+            "^(docker\\.io/)?(library/)?valkey",
+            "valkey/valkey"
+          ],
+          "ports": [
+            {
+              "container": "6379/tcp",
+              "host": 6379,
+              "label": "Redis"
+            }
+          ],
+          "cmd": [
+            "redis-server",
+            "--requirepass",
+            "${password}"
+          ],
+          "variables": {
+            "password": {
+              "label": "Password",
+              "secret": true,
+              "from": [
+                {
+                  "argAfter": "--requirepass"
+                },
+                {
+                  "env": "REDIS_PASSWORD"
+                }
+              ]
+            }
+          },
+          "connection": {
+            "typeId": "redis",
+            "name": "Local Redis",
+            "config": {
+              "host": "${host}",
+              "port": "${port}",
+              "password": "${password}"
+            }
+          },
+          "startupSeconds": 60
+        }
+      ]
+    },
     "connectionTypes": [
       { "id": "redis", "connectionLabel": "Server", "label": "Redis", "description": "A Redis (or Valkey / compatible) server.", "category": "Databases", "icon": "icon.svg" }
     ],

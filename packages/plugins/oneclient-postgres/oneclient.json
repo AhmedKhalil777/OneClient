@@ -12,6 +12,64 @@
   "main": "dist/main.js",
   "ui": "dist/ui",
   "contributes": {
+    "icons": [{ "id": "postgresql", "description": "PostgreSQL", "path": "icon.svg", "colored": true }],
+    "extensions": {
+      "docker.containerTemplates": [
+        {
+          "id": "postgres",
+          "title": "PostgreSQL 17",
+          "product": "PostgreSQL",
+          "description": "The official postgres image with a fresh, empty cluster.",
+          "icon": "$(postgresql)",
+          "image": "postgres:17",
+          "imagePatterns": [
+            "^(docker\\.io/)?(library/)?postgres([:@]|$)",
+            "postgis/postgis",
+            "timescale/timescaledb",
+            "bitnami/postgresql",
+            "pgvector/pgvector",
+            "supabase/postgres"
+          ],
+          "ports": [
+            {
+              "container": "5432/tcp",
+              "host": 5432,
+              "label": "PostgreSQL"
+            }
+          ],
+          "env": {
+            "POSTGRES_PASSWORD": "${password}"
+          },
+          "variables": {
+            "password": {
+              "label": "Password (user postgres)",
+              "secret": true,
+              "from": [
+                {
+                  "env": "POSTGRES_PASSWORD"
+                },
+                {
+                  "env": "POSTGRESQL_PASSWORD"
+                }
+              ]
+            }
+          },
+          "connection": {
+            "typeId": "postgres",
+            "name": "Local PostgreSQL",
+            "config": {
+              "host": "${host}",
+              "port": "${port}",
+              "user": "postgres",
+              "password": "${password}",
+              "database": "postgres",
+              "ssl": "Disable"
+            }
+          },
+          "startupSeconds": 90
+        }
+      ]
+    },
     "connectionTypes": [
       {
         "id": "postgres",

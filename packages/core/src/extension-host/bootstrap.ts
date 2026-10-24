@@ -19,8 +19,12 @@ import type {
   Workspace,
   WorkspaceFolder,
   Tasks,
+  Connections,
+  Contributions,
+  SavedConnection,
+  ConnectionTestResult,
 } from "@oneclient/plugin-api";
-import type { HostInboundMessage, HostOutboundMessage } from "../shared/host-protocol.js";
+import type { HostApiMethod, HostInboundMessage, HostOutboundMessage } from "../shared/host-protocol.js";
 
 /**
  * Entry module loaded into each plugin's dedicated `utilityProcess` (see
@@ -117,6 +121,27 @@ function makeWorkspace(): Workspace {
   };
 }
 
+const apiWaiters = new Map<string, { resolve: (value: unknown) => void; reject: (err: Error) => void }>();
+
+function apiRequest<T>(method: HostApiMethod, ...args: unknown[]): Promise<T> {
+  const requestId = randomUUID();
+  const promise = new Promise<T>((resolve, reject) => apiWaiters.set(requestId, { resolve: resolve as (v: unknown) => void, reject }));
+  post({ type: "api:request", requestId, method, args });
+  return promise;
+}
+
+function makeConnections(): Connections {
+  return {
+    list: () => apiRequest<SavedConnection[]>("connections.list"),
+    create: (connection) => apiRequest<{ id: string }>("connections.create", connection),
+    test: (typeId, config) => apiRequest<ConnectionTestResult>("connections.test", typeId, config),
+  };
+}
+
+function makeContributions(): Contributions {
+  return { get: (point) => apiRequest("contributions.get", point) };
+}
+
 const taskCancelListeners = new Map<string, Set<() => void>>();
 const cancelledTasks = new Set<string>();
 
@@ -164,6 +189,8 @@ function makeContext(extensionPath: string): PluginContext {
     createOutputChannel: makeOutputChannel,
     workspace: makeWorkspace(),
     tasks: makeTasks(),
+    connections: makeConnections(),
+    contributions: makeContributions(),
     subscriptions,
     registerConnectionProvider(provider) {
       connectionProviders.set(provider.typeId, provider);
@@ -235,6 +262,13 @@ async function handleMessage(msg: HostInboundMessage): Promise<void> {
     case "workspace:result": {
       const waiter = workspaceWaiters.get(msg.requestId);
       workspaceWaiters.delete(msg.requestId);
+      if (msg.ok) waiter?.resolve(msg.value);
+      else waiter?.reject(new Error(msg.error));
+      return;
+    }
+    case "api:result": {
+      const waiter = apiWaiters.get(msg.requestId);
+      apiWaiters.delete(msg.requestId);
       if (msg.ok) waiter?.resolve(msg.value);
       else waiter?.reject(new Error(msg.error));
       return;

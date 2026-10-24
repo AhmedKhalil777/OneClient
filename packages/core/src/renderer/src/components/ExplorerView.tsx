@@ -89,7 +89,8 @@ export function ExplorerView({
         ) : (
           folders.map((f) => (
             <ExplorerTreeNode
-              key={`${f.id}:${refreshKey}:${collapseKey}:${tokens[f.id] ?? 0}`}
+              key={`${f.id}:${refreshKey}:${collapseKey}`}
+              refreshToken={tokens[f.id] ?? 0}
               connectionId={f.id}
               pluginId="core"
               node={folderRoot(f, folders.length === 1 && collapseKey === 0)}

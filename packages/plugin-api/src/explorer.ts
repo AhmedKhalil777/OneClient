@@ -22,6 +22,10 @@ export interface ExplorerContext {
 export interface TreeNode {
   readonly id: string;
   readonly label: string;
+  /** Secondary text shown dimmed after the label (like VS Code's tree descriptions), e.g. "running · PostgreSQL". */
+  readonly description?: string;
+  /** Hover text; defaults to the label. */
+  readonly tooltip?: string;
   /** Must match one of the provider's `nodeTypes`, and a `contributes.explorerNodes[].id` in the manifest. */
   readonly nodeType: string;
   readonly icon?: string;

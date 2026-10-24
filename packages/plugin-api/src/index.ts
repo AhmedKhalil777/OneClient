@@ -78,4 +78,5 @@ export type { SearchProviderContribution, SearchRequest, SearchResult } from "./
 
 export type { OpenFileOptions, Workspace, WorkspaceFolder } from "./workspace.js";
 export type { Task, TaskOptions, Tasks } from "./tasks.js";
+export type { Connections, Contributions, NewConnection, SavedConnection } from "./connections.js";
 export type { MenuContribution, MenuId } from "./manifest.js";
