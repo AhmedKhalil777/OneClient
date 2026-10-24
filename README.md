@@ -91,7 +91,7 @@ Plugins run unchanged in both runtimes.
 
 | Tool | Version | Notes |
 |---|---|---|
-| Node.js | **22 LTS** (minimum 20) | `.nvmrc` pins 22 (`nvm use`); CI and releases build on 22. |
+| Node.js | **22 LTS**, 22.13 or later (minimum 20.19) | `.nvmrc` pins 22 (`nvm use`); CI and releases build on 22. Older 20.x / 22.x can't `require()` ES modules, which the faker library (SQL Server plugin) and the test runner need. |
 | pnpm | **10** | `npm i -g pnpm@10` or `corepack enable`. Packaging uses `pnpm deploy --legacy`, which pnpm 9 doesn't have. |
 | Git | any recent | For the Source Control view. |
 
