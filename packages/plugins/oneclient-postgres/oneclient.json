@@ -183,6 +183,14 @@
         "entry": "index.html"
       },
       {
+        "id": "postgres.diagram",
+        "title": "Diagram",
+        "tier": 2,
+        "location": "editor",
+        "entry": "diagram.html",
+        "icon": "$(diagram)"
+      },
+      {
         "id": "postgres.results",
         "title": "PostgreSQL Results",
         "tier": 2,
@@ -196,6 +204,17 @@
         "id": "postgres.newQuery",
         "title": "PostgreSQL: New Query",
         "when": "contextValue == 'connection' && connectionType == 'postgres' || contextValue == 'postgres.database' || contextValue == 'postgres.schema'"
+      },
+      {
+        "id": "postgres.diagram",
+        "title": "PostgreSQL: Database Diagram",
+        "icon": "$(diagram)",
+        "when": "contextValue == 'postgres.database' || contextValue == 'postgres.schema' || contextValue == 'postgres.tables' || contextValue == 'postgres.table'"
+      },
+      {
+        "id": "postgres.erModel",
+        "title": "PostgreSQL: Diagram Model",
+        "hidden": true
       },
       {
         "id": "postgres.selectTop",

@@ -33,6 +33,9 @@ export function createClientApi(t: ClientTransport): OneClientApi {
     testConnection: (typeId, config) => call(IpcChannel.ConnectionTest, typeId, config),
     createConnection: (typeId, name, config) => call(IpcChannel.ConnectionCreate, typeId, name, config),
     deleteConnection: (id) => call(IpcChannel.ConnectionDelete, id),
+    getConnectionForEdit: (id) => call(IpcChannel.ConnectionGetForEdit, id),
+    updateConnection: (id, name, config) => call(IpcChannel.ConnectionUpdate, id, name, config),
+    testExistingConnection: (id, config) => call(IpcChannel.ConnectionTestExisting, id, config),
 
     searchProviders: () => call(IpcChannel.SearchProviders),
     runSearch: (providerId, query) => call(IpcChannel.SearchRun, providerId, query),

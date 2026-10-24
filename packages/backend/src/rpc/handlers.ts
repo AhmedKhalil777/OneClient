@@ -143,6 +143,9 @@ export function registerIpcHandlers(deps: IpcDeps): void {
   rpc.handle(IpcChannel.ConnectionGetForm, (_event, typeId: string) => connections.getFormInfo(typeId));
   rpc.handle(IpcChannel.ConnectionTest, (_event, typeId: string, config: Record<string, unknown>) => connections.test(typeId, config));
   rpc.handle(IpcChannel.ConnectionCreate, (_event, typeId: string, name: string, config: Record<string, unknown>) => connections.create(typeId, name, config));
+  rpc.handle(IpcChannel.ConnectionGetForEdit, (_event, id: string) => connections.getForEdit(String(id)));
+  rpc.handle(IpcChannel.ConnectionUpdate, (_event, id: string, name: string, config: Record<string, unknown>) => connections.update(String(id), String(name ?? ""), config && typeof config === "object" ? config : {}));
+  rpc.handle(IpcChannel.ConnectionTestExisting, (_event, id: string, config: Record<string, unknown>) => connections.testExisting(String(id), config && typeof config === "object" ? config : {}));
   rpc.handle(IpcChannel.ConnectionDelete, async (_event, id: string) => {
     await connections.delete(id);
   });

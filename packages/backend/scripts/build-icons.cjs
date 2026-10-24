@@ -25,6 +25,8 @@ const icons = {
   table: `<rect ${S} x="1.5" y="2.5" width="13" height="11" rx="1"/><path ${S} d="M1.5 6h13M1.5 9.7h13M6 6v7.5"/>`,
   view: `<rect ${S} x="1.5" y="2.5" width="13" height="11" rx="1" stroke-dasharray="2 1.4"/><circle ${S} cx="8" cy="8" r="2"/>`,
   column: `<rect ${S} x="5" y="1.5" width="6" height="13" rx="1"/><path ${S} d="M5 5.8h6M5 10.2h6"/>`,
+  // two tables joined by a relation (ER diagrams)
+  diagram: `<rect ${S} x="1.5" y="1.5" width="5.5" height="5" rx="0.8"/><rect ${S} x="9" y="9.5" width="5.5" height="5" rx="0.8"/><path ${S} d="M7 4h2.5a1.5 1.5 0 0 1 1.5 1.5V9.5"/><path ${S} d="M1.5 3.5h5.5M9 11.5h5.5"/>`,
   key: `<circle ${S} cx="5" cy="8" r="3"/><path ${S} d="M8 8h6.5M12.5 8v2.5M14.5 8v2"/>`,
   index: `<path ${S} d="M3 3.5h10M3 6.5h6.5M3 9.5h10M3 12.5h5"/>`,
   function: `<path ${S} d="M10.5 2.3c-1.6-.5-2.8.3-3.1 1.9L5.9 11.8c-.3 1.6-1.5 2.4-3.1 1.9M4.6 6.2h5"/><path ${S} d="M10 9.2l3 3.8M13 9.2l-3 3.8"/>`,

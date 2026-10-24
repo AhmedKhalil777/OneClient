@@ -15,6 +15,7 @@ import { cancelQuery, executeQuery } from "./query-runner.js";
 import { callFakerApi, deleteSavedFaker, fakerTab, renameSavedFaker, runSavedFaker } from "./faker/api.js";
 import { attachFolder, detachFolder } from "./faker/store.js";
 import { searchObjects } from "./search.js";
+import { erModel } from "./diagram.js";
 import { requireSession } from "./sessions.js";
 
 /** Context-menu args: core spreads the right-clicked node's `data` in (see CommandContribution.when). */
@@ -58,8 +59,35 @@ async function action(fn: () => Promise<{ ok: true; openNode?: TreeNode }>): Pro
   }
 }
 
+/** The ER diagram tab of a database; one tab per database, so opening it again focuses it. */
+function diagramTab(database: string, focus?: string): TreeNode {
+  const title = `Diagram: ${database}`;
+  const params: Record<string, string> = { database };
+  if (focus) params.focus = focus;
+  return { id: `diagram:${database}`, label: title, nodeType: "mssql.diagram", collapsible: "none", openView: { viewId: "mssql.diagram", title, icon: "$(diagram)", params } };
+}
+
 export function createCommandHandlers(): CommandHandler[] {
   return [
+    {
+      // The diagram view's data: tables, columns, keys and relations.
+      commandId: "mssql.erModel",
+      execute: (args) => {
+        const { connectionId, database, schema } = arg<{ connectionId: string; database?: string; schema?: string }>(args);
+        if (!database) throw new Error("Which database?");
+        return erModel(requireSession(connectionId).pool, database, schema || undefined);
+      },
+    },
+    {
+      commandId: "mssql.diagram",
+      execute: (args) =>
+        action(async () => {
+          const { connectionId, database = "", schema, name } = arg<NodeArg>(args);
+          const session = requireSession(connectionId);
+          const db = database || (await session.pool.request().query<{ db: string }>("SELECT DB_NAME() AS db")).recordset[0]!.db;
+          return { ok: true, openNode: diagramTab(db, schema && name ? `${schema}.${name}` : undefined) };
+        }),
+    },
     // ---- Fake data ("fakers") ------------------------------------------------------------------
     {
       // The Generate Data view's backend.

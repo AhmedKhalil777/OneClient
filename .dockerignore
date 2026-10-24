@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/out
+**/.vite
+**/*.tsbuildinfo
+release
+staging
+_site
+.git
+.claude
+docs/images
+**/*.log

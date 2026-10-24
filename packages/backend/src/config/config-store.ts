@@ -253,6 +253,15 @@ export class ConfigStore {
     this.data.connections = this.data.connections.filter((c) => c.id !== id);
     this.save();
   }
+  /** Renames / re-configures a connection in place (its id — and so its secrets and open tabs — stays). */
+  updateConnection(id: string, patch: { name?: string; config?: Record<string, unknown>; pluginVersion?: string }): void {
+    const c = this.data.connections.find((x) => x.id === id);
+    if (!c) throw new Error(`Unknown connection "${id}".`);
+    if (patch.name !== undefined) c.name = patch.name;
+    if (patch.config !== undefined) c.config = patch.config;
+    if (patch.pluginVersion !== undefined) c.pluginVersion = patch.pluginVersion;
+    this.save();
+  }
 
   // ---- workspace (Explorer folders)
   listFolders(): StoredFolder[] {

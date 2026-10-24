@@ -164,6 +164,14 @@
         "entry": "index.html"
       },
       {
+        "id": "mssql.diagram",
+        "title": "Diagram",
+        "tier": 2,
+        "location": "editor",
+        "entry": "diagram.html",
+        "icon": "$(diagram)"
+      },
+      {
         "id": "mssql.results",
         "title": "Query Results",
         "tier": 2,
@@ -185,6 +193,17 @@
         "id": "mssql.newQuery",
         "title": "SQL Server: New Query",
         "when": "contextValue == 'connection' && connectionType == 'mssql' || contextValue == 'mssql.database'"
+      },
+      {
+        "id": "mssql.diagram",
+        "title": "SQL Server: Database Diagram",
+        "icon": "$(diagram)",
+        "when": "contextValue == 'mssql.database' || contextValue == 'mssql.tables' || contextValue == 'mssql.table'"
+      },
+      {
+        "id": "mssql.erModel",
+        "title": "SQL Server: Diagram Model",
+        "hidden": true
       },
       {
         "id": "mssql.selectTop",

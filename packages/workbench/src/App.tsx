@@ -157,6 +157,7 @@ export function App() {
   const theme = useThemeState();
   // `null` pluginId = every connection type (command palette); otherwise just that plugin's.
   const [newConnectionFor, setNewConnectionFor] = useState<{ pluginId: string | null } | null>(null);
+  const [editConnection, setEditConnection] = useState<ConnectionSummary | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
   /** A title bar menu is open (its dropdown must not be covered by the native view layers). */
   const [menuBarOpen, setMenuBarOpen] = useState(false);
@@ -435,6 +436,7 @@ export function App() {
         (v) => v.tier === 2 && v.connectionType === connection.typeId && v.pluginId === connection.pluginId,
       );
       if (dashboard) builtIns.push({ id: "core.openDashboard", label: `Open ${dashboard.title}`, run: () => openDashboard(connection, dashboard) });
+      builtIns.push({ id: "core.editConnection", label: `Edit ${nounFor(connection).one}…`, run: () => setEditConnection(connection) });
       builtIns.push({ id: "core.removeConnection", label: `Remove ${nounFor(connection).one}`, danger: true, run: () => void removeConnection(connection) });
     }
     if (items.length > 0) builtIns[0] = { ...builtIns[0]!, separator: true };
@@ -1583,6 +1585,18 @@ export function App() {
           )}
           onClose={() => setNewConnectionFor(null)}
           onCreated={() => void window.oneclient.listConnections().then(setConnections)}
+        />
+      )}
+      {editConnection && (
+        <NewConnectionDialog
+          editId={editConnection.id}
+          connectionTypes={registry.connectionTypes.filter((t) => t.pluginId === editConnection.pluginId && t.id === editConnection.typeId)}
+          onClose={() => setEditConnection(null)}
+          onCreated={() => {
+            // Reconnect with the new settings: re-fetch the connection's tree.
+            setExplorerTokens((prev) => ({ ...prev, [editConnection.id]: (prev[editConnection.id] ?? 0) + 1 }));
+            void window.oneclient.listConnections().then(setConnections);
+          }}
         />
       )}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}

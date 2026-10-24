@@ -4,6 +4,7 @@ import { describeError } from "./errors.js";
 import type { NodeData } from "./explorer-provider.js";
 import { type ObjectKind, completionCatalog, listColumns, listDatabases, listParameters, objectDefinition, scriptTable } from "./metadata.js";
 import { cancelQuery, executeQuery } from "./query-runner.js";
+import { erModel } from "./diagram.js";
 import { searchObjects } from "./search.js";
 import { poolFor, requireSession } from "./sessions.js";
 
@@ -40,8 +41,37 @@ async function action(fn: () => Promise<{ ok: true; openNode?: TreeNode }>): Pro
 
 const isRoutine = (kind: ObjectKind | undefined) => kind === "functions" || kind === "procedures";
 
+/** The ER diagram tab of a database or one schema; one tab per target, so opening it again focuses it. */
+function diagramTab(database: string, schema?: string, focus?: string): TreeNode {
+  const title = `Diagram: ${schema ? `${database}.${schema}` : database}`;
+  const params: Record<string, string> = { database };
+  if (schema) params.schema = schema;
+  if (focus) params.focus = focus;
+  return { id: `diagram:${database}:${schema ?? "*"}`, label: title, nodeType: "postgres.diagram", collapsible: "none", openView: { viewId: "postgres.diagram", title, icon: "$(diagram)", params } };
+}
+
 export function createCommandHandlers(): CommandHandler[] {
   return [
+    {
+      // The diagram view's data: tables, columns, keys and relations.
+      commandId: "postgres.erModel",
+      execute: (args) => {
+        const { connectionId, database, schema } = arg<{ connectionId: string; database?: string; schema?: string }>(args);
+        return erModel(poolFor(connectionId, database), schema || undefined);
+      },
+    },
+    {
+      commandId: "postgres.diagram",
+      execute: (args) =>
+        action(async () => {
+          const { connectionId, database = "", schema, name, kind } = arg<NodeArg>(args);
+          requireSession(connectionId);
+          const db = database || (await poolFor(connectionId).query<{ db: string }>("SELECT current_database() AS db")).rows[0]!.db;
+          // From a table: its schema, with that table selected.
+          const focus = name && (kind === "tables" || !kind) && schema ? `${schema}.${name}` : undefined;
+          return { ok: true, openNode: diagramTab(db, schema, focus) };
+        }),
+    },
     {
       // Global search provider (contributes.searchProviders).
       commandId: "postgres.search",

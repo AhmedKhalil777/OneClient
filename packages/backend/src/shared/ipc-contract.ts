@@ -29,6 +29,9 @@ export const IpcChannel = {
   ConnectionTest: "oneclient:connection:test",
   ConnectionCreate: "oneclient:connection:create",
   ConnectionDelete: "oneclient:connection:delete",
+  ConnectionGetForEdit: "oneclient:connection:getForEdit",
+  ConnectionUpdate: "oneclient:connection:update",
+  ConnectionTestExisting: "oneclient:connection:testExisting",
   ConnectionsChanged: "oneclient:connection:changed",
 
   ExplorerGetChildren: "oneclient:explorer:getChildren",
@@ -204,6 +207,18 @@ export interface AppInfo {
   runtime: "desktop" | "web";
 }
 
+/** See OneClientApi.getConnectionForEdit. */
+export interface ConnectionForEdit {
+  id: string;
+  name: string;
+  typeId: string;
+  pluginId: string;
+  config: Record<string, unknown>;
+  /** Secret fields with a stored value in this app (the desktop app and the web server keep their own). */
+  savedSecrets: string[];
+  missingSecrets: string[];
+}
+
 export interface OneClientApi {
   getRegistry(): Promise<ContributionRegistrySnapshot>;
   onRegistryChanged(listener: (snapshot: ContributionRegistrySnapshot) => void): () => void;
@@ -224,6 +239,12 @@ export interface OneClientApi {
     config: Record<string, unknown>,
   ): Promise<ConnectionSummary>;
   deleteConnection(id: string): Promise<void>;
+  /** A saved connection's settings for the edit form (never secrets), and which secrets this app has a value for. */
+  getConnectionForEdit(id: string): Promise<ConnectionForEdit>;
+  /** Saves new settings / name for a connection, keeping its id. Empty secret fields keep the stored value. */
+  updateConnection(id: string, name: string, config: Record<string, unknown>): Promise<ConnectionSummary>;
+  /** Tests edited settings; empty secret fields use the connection's stored ones. */
+  testExistingConnection(id: string, config: Record<string, unknown>): Promise<ConnectionTestResult>;
 
   /** Global search: the providers plugins declared, then the hits of one provider for a query. */
   searchProviders(): Promise<SearchProviderInfo[]>;

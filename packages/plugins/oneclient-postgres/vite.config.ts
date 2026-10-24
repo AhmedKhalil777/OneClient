@@ -22,6 +22,7 @@ export default defineConfig({
       input: {
         index: resolve(__dirname, "src-ui/index.html"),
         results: resolve(__dirname, "src-ui/results.html"),
+        diagram: resolve(__dirname, "src-ui/diagram.html"),
       },
     },
   },

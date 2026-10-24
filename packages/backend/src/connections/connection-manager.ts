@@ -123,6 +123,59 @@ export class ConnectionManager {
     return { id, name, typeId, pluginId };
   }
 
+  /**
+   * What the edit form needs: the saved settings (never secrets) and which secret fields this runtime has a value for.
+   * The desktop app and the web server keep separate secret stores, so a connection made in one has no password in
+   * the other until it's entered there once.
+   */
+  async getForEdit(id: string): Promise<{ id: string; name: string; typeId: string; pluginId: string; config: Record<string, unknown>; savedSecrets: string[]; missingSecrets: string[] }> {
+    const row = this.config.getConnection(id);
+    if (!row) throw new Error(`Unknown connection "${id}".`);
+    const info = await this.getFormInfo(row.typeId);
+    const secretKeys = Object.entries(info.configSchema.properties ?? {}).filter(([, p]) => p["x-secret"]).map(([k]) => k);
+    const saved: string[] = [];
+    for (const key of secretKeys) if ((await this.secrets.get(`${id}:${key}`)) !== undefined) saved.push(key);
+    return { id, name: row.name, typeId: row.typeId, pluginId: row.pluginId, config: { ...row.config }, savedSecrets: saved, missingSecrets: secretKeys.filter((k) => !saved.includes(k)) };
+  }
+
+  /**
+   * Saves new settings for an existing connection, keeping its id. A secret field left empty keeps the stored value;
+   * a filled one replaces it. The connection reconnects with the new settings on next use.
+   */
+  async update(id: string, name: string, rawConfig: Record<string, unknown>): Promise<ConnectionSummary> {
+    const row = this.config.getConnection(id);
+    if (!row) throw new Error(`Unknown connection "${id}".`);
+    await this.ensureActivated(row.pluginId);
+    const info = this.providers.getConnectionInfo(row.typeId);
+    if (!info) throw new Error(`Plugin "${row.pluginId}" did not register a provider for connection type "${row.typeId}".`);
+    const { publicConfig, secretValues } = splitSecrets(info.configSchema, withDefaults(info.configSchema, rawConfig));
+    for (const [key, value] of Object.entries(secretValues)) {
+      if (value !== "") await this.secrets.set(`${id}:${key}`, value);
+    }
+    this.config.updateConnection(id, { name: name.trim() || row.name, config: publicConfig, ...pluginVersionField(this.getPluginVersion(row.pluginId)) });
+    if (this.connected.delete(id)) {
+      // Drop the old session; the next explorer/command use connects with the new settings.
+      await this.invoke(row.pluginId, "connection", row.typeId, "disconnect", [], id).catch(() => undefined);
+    }
+    this.changed();
+    return { id, name: name.trim() || row.name, typeId: row.typeId, pluginId: row.pluginId };
+  }
+
+  /** Tests settings typed into the edit form; empty secret fields use the connection's stored ones. */
+  async testExisting(id: string, rawConfig: Record<string, unknown>): Promise<ConnectionTestResult> {
+    const row = this.config.getConnection(id);
+    if (!row) throw new Error(`Unknown connection "${id}".`);
+    const info = await this.getFormInfo(row.typeId);
+    const merged: Record<string, unknown> = { ...rawConfig };
+    for (const [key, prop] of Object.entries(info.configSchema.properties ?? {})) {
+      if (prop["x-secret"] && (merged[key] === undefined || merged[key] === "")) {
+        const stored = await this.secrets.get(`${id}:${key}`);
+        if (stored !== undefined) merged[key] = stored;
+      }
+    }
+    return this.test(row.typeId, merged);
+  }
+
   async delete(id: string): Promise<void> {
     this.config.removeConnection(id);
     await this.secrets.deleteByPrefix(`${id}:`);
