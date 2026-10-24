@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { QueryWindow } from "./QueryWindow.js";
 import "@oneclient/editor-kit/theme.css";
 import "@oneclient/editor-kit/editor.css";
+import "@oneclient/editor-kit/sql.css";
 import "./styles.css";
 
 const root = document.getElementById("root");

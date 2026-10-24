@@ -91,10 +91,28 @@ body.dragging {
   min-height: 0;
 }
 /* Query window: toolbar + editor, nothing else (results live in the app's bottom panel). */
-.editor-pane {
+.window-body {
   flex: 1;
   min-height: 0;
   display: flex;
+}
+.editor-pane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+.btn-on {
+  background: var(--oc-list-inactiveSelectionBackground, #37373d);
+}
+.safe-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
 }
 .spacer {
   flex: 1;
@@ -265,95 +283,6 @@ body.dragging {
 .result-sets.single {
   height: 100%;
 }
-.grid-wrap {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border);
-}
-.grid-wrap.fill {
-  flex: 1;
-  min-height: 0;
-}
-.grid-scroll {
-  overflow: auto;
-  outline: none;
-  flex: 1;
-  min-height: 0;
-}
-.grid {
-  position: relative;
-  font-size: 12.5px;
-}
-.grid-header {
-  display: flex;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--oc-grid-headerBackground, #2d2d30);
-}
-.grid-row {
-  position: absolute;
-  left: 0;
-  display: flex;
-}
-.grid-cell {
-  flex-shrink: 0;
-  padding: 0 6px;
-  line-height: 21px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  border-right: 1px solid var(--oc-grid-border, #2f2f2f);
-  border-bottom: 1px solid var(--oc-grid-border, #2f2f2f);
-  cursor: default;
-}
-.grid-cell.num {
-  text-align: right;
-}
-.grid-cell.null {
-  font-style: italic;
-  color: var(--oc-grid-nullForeground, #bfa94f);
-  background: rgba(255, 238, 150, 0.07);
-}
-.grid-head {
-  position: relative;
-  font-weight: 600;
-  border-bottom: 1px solid var(--border);
-}
-.grid-resize {
-  position: absolute;
-  top: 0;
-  right: -3px;
-  width: 6px;
-  height: 100%;
-  cursor: col-resize;
-  z-index: 1;
-}
-.grid-rownum {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: var(--oc-grid-headerBackground, #2d2d30);
-  color: var(--text-dim);
-  text-align: right;
-}
-.grid-corner {
-  z-index: 3;
-  cursor: pointer;
-}
-.grid-row.selected .grid-cell,
-.grid-cell.selected {
-  background: var(--oc-list-activeSelectionBackground, #264f78);
-  color: var(--oc-list-activeSelectionForeground, #ffffff);
-}
-.grid-note {
-  padding: 3px 8px;
-  font-size: 12px;
-  color: var(--text-dim);
-  background: var(--bg-bar);
-  border-top: 1px solid var(--border);
-}
-
 /* ---- messages ---- */
 .messages {
   margin: 0;

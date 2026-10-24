@@ -1,0 +1,496 @@
+/*
+ * Styles for @oneclient/editor-kit/sql — import once in the view's entry:
+ *   import "@oneclient/editor-kit/sql.css";
+ * Everything follows the user's theme through the --oc-* variables (fallbacks: oneClient Dark).
+ */
+
+.sqlg {
+  --sqlg-border: var(--oc-widget-border, #3c3c3c);
+  --sqlg-dim: var(--oc-descriptionForeground, #9d9d9d);
+  --sqlg-bar: var(--oc-editorGroupHeader-tabsBackground, #252526);
+  --sqlg-head: var(--oc-grid-headerBackground, #2d2d30);
+  --sqlg-sel: var(--oc-list-activeSelectionBackground, #264f78);
+  --sqlg-sel-fg: var(--oc-list-activeSelectionForeground, #ffffff);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--sqlg-border);
+  min-width: 0;
+}
+.sqlg.fill {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ---- toolbar ---- */
+.sqlg-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  background: var(--sqlg-bar);
+  border-bottom: 1px solid var(--sqlg-border);
+  font-size: 12px;
+  min-height: 26px;
+  flex-wrap: wrap;
+}
+.sqlg-filter {
+  background: var(--oc-input-background, #3c3c3c);
+  color: var(--oc-input-foreground, inherit);
+  border: 1px solid var(--oc-input-border, transparent);
+  border-radius: 2px;
+  padding: 2px 6px;
+  font: inherit;
+  width: 260px;
+  max-width: 100%;
+  outline: none;
+}
+.sqlg-filter:focus {
+  border-color: var(--oc-focusBorder, #007fd4);
+}
+.sqlg-count,
+.sqlg-stats,
+.sqlg-dim {
+  color: var(--sqlg-dim, #9d9d9d);
+  white-space: nowrap;
+}
+.sqlg-stats {
+  font-variant-numeric: tabular-nums;
+}
+.sqlg-toast {
+  color: var(--oc-terminal-ansiGreen, #89d185);
+  white-space: nowrap;
+}
+.sqlg-spacer {
+  flex: 1;
+}
+.sqlg-btn {
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--oc-widget-border, #454545);
+  border-radius: 3px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sqlg-btn:hover:not(:disabled) {
+  background: var(--oc-list-hoverBackground, #2a2d2e);
+}
+.sqlg-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.sqlg-btn.on {
+  background: var(--oc-list-inactiveSelectionBackground, #37373d);
+}
+.sqlg-btn.danger {
+  background: var(--oc-inputValidation-errorBorder, #be1100);
+  border-color: transparent;
+  color: #fff;
+}
+.sqlg-btn.danger:hover {
+  filter: brightness(1.15);
+  background: var(--oc-inputValidation-errorBorder, #be1100);
+}
+.sqlg-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--oc-textLink-foreground, #3794ff);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ---- grid ---- */
+.sqlg-scroll {
+  position: relative;
+  overflow: auto;
+  outline: none;
+  flex: 1;
+  min-height: 0;
+}
+.sqlg-grid {
+  position: relative;
+  font-size: 12.5px;
+  user-select: none;
+}
+.sqlg-header {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--sqlg-head);
+}
+.sqlg-row {
+  position: absolute;
+  left: 0;
+  display: flex;
+}
+.sqlg-cell {
+  flex-shrink: 0;
+  padding: 0 6px;
+  line-height: 21px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: 1px solid var(--oc-grid-border, #2f2f2f);
+  border-bottom: 1px solid var(--oc-grid-border, #2f2f2f);
+  cursor: default;
+  font-family: var(--oc-editor-fontFamily, var(--mono, Consolas, "Cascadia Mono", monospace));
+}
+.sqlg-cell.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sqlg-cell.null {
+  font-style: italic;
+  color: var(--oc-grid-nullForeground, #bfa94f);
+  background: rgba(255, 238, 150, 0.07);
+}
+.sqlg-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  font-family: inherit;
+  border-bottom: 1px solid var(--sqlg-border);
+  cursor: pointer;
+}
+.sqlg-head:hover {
+  background: var(--oc-list-hoverBackground, #2a2d2e);
+}
+.sqlg-head.sorted {
+  color: var(--oc-textLink-foreground, #3794ff);
+}
+.sqlg-head-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sqlg-arrow {
+  font-size: 9px;
+}
+.sqlg-resize {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 1;
+}
+.sqlg-rownum {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--sqlg-head);
+  color: var(--sqlg-dim);
+  text-align: right;
+  font-family: inherit;
+  cursor: pointer;
+}
+.sqlg-rownum.hit {
+  color: var(--sqlg-sel-fg);
+  background: color-mix(in srgb, var(--sqlg-sel) 60%, var(--sqlg-head));
+}
+.sqlg-corner {
+  z-index: 3;
+}
+.sqlg-cell.selected {
+  background: var(--sqlg-sel);
+  color: var(--sqlg-sel-fg);
+}
+.sqlg-scroll:not(:focus) .sqlg-cell.selected {
+  background: var(--oc-list-inactiveSelectionBackground, #37373d);
+  color: inherit;
+}
+.sqlg-empty {
+  padding: 14px;
+  color: var(--sqlg-dim);
+  font-style: italic;
+}
+.sqlg-note {
+  padding: 3px 8px;
+  font-size: 12px;
+  color: var(--sqlg-dim);
+  background: var(--sqlg-bar);
+  border-top: 1px solid var(--sqlg-border);
+}
+
+/* ---- menus ---- */
+.sqlg-menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 220px;
+  max-height: calc(100vh - 8px);
+  overflow-y: auto;
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--oc-menu-background, #252526);
+  color: var(--oc-menu-foreground, #cccccc);
+  border: 1px solid var(--oc-menu-border, #454545);
+  border-radius: 5px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  font-size: 12.5px;
+}
+.sqlg-menu button {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 4px 14px;
+  cursor: pointer;
+}
+.sqlg-menu button:hover {
+  background: var(--oc-menu-selectionBackground, #04395e);
+  color: var(--oc-menu-selectionForeground, #ffffff);
+}
+.sqlg-menu kbd {
+  font: inherit;
+  opacity: 0.6;
+}
+.sqlg-menu hr {
+  border: none;
+  border-top: 1px solid var(--oc-menu-separatorBackground, #454545);
+  margin: 4px 0;
+}
+.sqlg-menu-head {
+  padding: 3px 14px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--oc-descriptionForeground, #9d9d9d);
+}
+.sqlg-menu-table {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 14px 5px;
+  font-size: 12px;
+  color: var(--oc-descriptionForeground, #9d9d9d);
+}
+.sqlg-menu-table input {
+  flex: 1;
+  min-width: 0;
+  background: var(--oc-input-background, #3c3c3c);
+  color: var(--oc-input-foreground, #cccccc);
+  border: 1px solid var(--oc-input-border, transparent);
+  border-radius: 2px;
+  padding: 1px 5px;
+  font: inherit;
+}
+
+/* ---- overlays: cell viewer, safe mode ---- */
+.sqlg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 16px;
+}
+.sqlg-viewer,
+.sqlg-dialog {
+  background: var(--oc-editorWidget-background, #252526);
+  color: var(--oc-foreground, #cccccc);
+  border: 1px solid var(--oc-widget-border, #454545);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  outline: none;
+}
+.sqlg-viewer {
+  display: flex;
+  flex-direction: column;
+  width: min(900px, 100%);
+  height: min(640px, 100%);
+}
+.sqlg-viewer-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--oc-widget-border, #454545);
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+.sqlg-viewer-body {
+  flex: 1;
+  margin: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  font-family: var(--oc-editor-fontFamily, var(--mono, Consolas, "Cascadia Mono", monospace));
+  font-size: 12.5px;
+  user-select: text;
+  white-space: pre;
+}
+.sqlg-viewer-body.wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.sqlg-viewer-body.null {
+  font-style: italic;
+  color: var(--oc-grid-nullForeground, #bfa94f);
+}
+.sqlg-dialog {
+  width: min(620px, 100%);
+  padding: 16px 18px 14px;
+  font-size: 13px;
+}
+.sqlg-dialog-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.sqlg-risks {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+.sqlg-risks li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 9px;
+  border-left: 3px solid var(--oc-inputValidation-errorBorder, #be1100);
+  background: rgba(190, 17, 0, 0.08);
+}
+.sqlg-risks code {
+  font-family: var(--oc-editor-fontFamily, var(--mono, Consolas, monospace));
+  font-size: 12px;
+  color: var(--oc-descriptionForeground, #9d9d9d);
+  word-break: break-word;
+}
+.sqlg-dialog-note {
+  font-size: 12px;
+  color: var(--oc-descriptionForeground, #9d9d9d);
+  margin-bottom: 14px;
+}
+.sqlg-dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sqlg-dialog-actions .sqlg-btn {
+  padding: 4px 14px;
+  font-size: 13px;
+}
+
+/* ---- history panel ---- */
+.sqlh {
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  max-width: 45%;
+  min-width: 0;
+  border-left: 1px solid var(--oc-widget-border, #3c3c3c);
+  background: var(--oc-sideBar-background, #252526);
+  font-size: 12.5px;
+}
+.sqlh-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--oc-widget-border, #3c3c3c);
+}
+.sqlh-search {
+  margin: 6px 8px;
+  width: auto;
+}
+.sqlh-list {
+  flex: 1;
+  overflow: auto;
+}
+.sqlh-empty {
+  padding: 14px;
+  color: var(--oc-descriptionForeground, #9d9d9d);
+  font-style: italic;
+}
+.sqlh-empty.error {
+  color: var(--oc-errorForeground, #f48771);
+  font-style: normal;
+}
+.sqlh-item {
+  padding: 6px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--oc-widget-border, #3c3c3c) 60%, transparent);
+  cursor: pointer;
+}
+.sqlh-item:hover {
+  background: var(--oc-list-hoverBackground, #2a2d2e);
+}
+.sqlh-item.active {
+  background: var(--oc-list-inactiveSelectionBackground, #37373d);
+}
+.sqlh-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--oc-descriptionForeground, #9d9d9d);
+}
+.sqlh-db {
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--oc-badge-background, #4d4d4d);
+  color: var(--oc-badge-foreground, #ffffff);
+}
+.sqlh-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--oc-terminal-ansiGreen, #89d185);
+  flex-shrink: 0;
+}
+.sqlh-dot.error {
+  background: var(--oc-errorForeground, #f48771);
+}
+.sqlh-dot.cancelled {
+  background: var(--oc-editorWarning-foreground, #cca700);
+}
+.sqlh-x {
+  visibility: hidden;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 12px;
+}
+.sqlh-item:hover .sqlh-x {
+  visibility: visible;
+}
+.sqlh-x:hover {
+  color: var(--oc-foreground, #cccccc);
+}
+.sqlh-sql {
+  margin: 4px 0 0;
+  max-height: 7.5em;
+  overflow: hidden;
+  font-family: var(--oc-editor-fontFamily, var(--mono, Consolas, monospace));
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.sqlh-error {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--oc-errorForeground, #f48771);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

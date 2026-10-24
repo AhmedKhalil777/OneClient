@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { QueryRun } from "./api.js";
 import type { ToResults, WindowUpdate } from "./protocol.js";
 import { formatElapsed } from "./format.js";
-import { ResultGrid } from "./ResultGrid.js";
+import { ResultGrid, guessTables } from "@oneclient/editor-kit/sql";
 
 /**
  * "Query Results" — the SQL Server plugin's view in the app's shared bottom
@@ -75,7 +75,7 @@ export function ResultsPanel() {
         </span>
       </div>
       <div className="results-body">
-        {tab === "results" ? <ResultsView run={run} running={running} /> : <MessagesView update={current} onGoToLine={goToLine} />}
+        {tab === "results" ? <ResultsView run={run} running={running} sql={current.sql} /> : <MessagesView update={current} onGoToLine={goToLine} />}
       </div>
       <div className={`statusbar ${statusClass(current)}`}>
         <span className="status-text">{statusText(current)}</span>
@@ -90,14 +90,15 @@ export function ResultsPanel() {
   );
 }
 
-function ResultsView({ run, running }: { run: QueryRun | null; running: boolean }) {
+function ResultsView({ run, running, sql }: { run: QueryRun | null; running: boolean; sql: string | undefined }) {
   if (!run) return <div className="empty">{running ? "Executing query…" : "No results."}</div>;
   if (run.resultSets.length === 0) return <div className="empty">The query returned no result sets — see Messages.</div>;
   const single = run.resultSets.length === 1;
+  const tables = sql ? guessTables(sql) : [];
   return (
     <div className={`result-sets ${single ? "single" : ""}`}>
       {run.resultSets.map((rs, i) => (
-        <ResultGrid key={i} result={rs} fill={single} />
+        <ResultGrid key={i} result={rs} fill={single} dialect="mssql" tableHint={tables[i]} />
       ))}
     </div>
   );

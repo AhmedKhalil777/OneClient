@@ -14,6 +14,7 @@ export interface WindowUpdate {
   title: string;
   info: WindowInfo | null;
   state: WindowState;
+  sql?: string;
 }
 
 /** Backend → Query Results panel. */

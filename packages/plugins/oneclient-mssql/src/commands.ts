@@ -16,6 +16,7 @@ import { callFakerApi, deleteSavedFaker, fakerTab, renameSavedFaker, runSavedFak
 import { attachFolder, detachFolder } from "./faker/store.js";
 import { searchObjects } from "./search.js";
 import { erModel } from "./diagram.js";
+import { deleteHistory, listHistory } from "./history.js";
 import { requireSession } from "./sessions.js";
 
 /** Context-menu args: core spreads the right-clicked node's `data` in (see CommandContribution.when). */
@@ -34,12 +35,13 @@ let queryCounter = 0;
  * `openView` core opens as a tab. A fresh id each time = a fresh window
  * (SSMS's SQLQuery1.sql, SQLQuery2.sql, …).
  */
-function queryWindow(opts: { database?: string | undefined; sql?: string; autorun?: boolean; title?: string }): TreeNode {
+function queryWindow(opts: { database?: string | undefined; sql?: string; autorun?: boolean; title?: string; history?: boolean }): TreeNode {
   queryCounter++;
   const params: Record<string, string> = { windowId: `q${Date.now()}-${queryCounter}` };
   if (opts.database) params.database = opts.database;
   if (opts.sql) params.sql = opts.sql;
   if (opts.autorun) params.autorun = "1";
+  if (opts.history) params.history = "1";
   const title = opts.title ?? `SQLQuery${queryCounter}.sql`;
   params.title = title; // the window labels its results in the Query Results panel with this
   return {
@@ -249,7 +251,32 @@ export function createCommandHandlers(): CommandHandler[] {
         }),
     },
 
+    {
+      commandId: "mssql.queryHistory",
+      execute: (args) =>
+        action(async () => {
+          const { connectionId, database } = arg<NodeArg>(args);
+          requireSession(connectionId);
+          return { ok: true, openNode: queryWindow({ database, history: true, title: "Query History" }) };
+        }),
+    },
+
     // ---- Used by the query window (view == 'mssql.query') ----
+    {
+      commandId: "mssql.history",
+      async execute(args) {
+        const { connectionId, search, limit } = arg<{ connectionId: string; search?: string; limit?: number }>(args);
+        return listHistory(connectionId, { ...(search ? { search } : {}), ...(limit ? { limit } : {}) });
+      },
+    },
+    {
+      commandId: "mssql.deleteHistory",
+      async execute(args) {
+        const { connectionId, id } = arg<{ connectionId: string; id?: string }>(args);
+        await deleteHistory(connectionId, id);
+        return { ok: true };
+      },
+    },
     {
       commandId: "mssql.executeQuery",
       async execute(args) {

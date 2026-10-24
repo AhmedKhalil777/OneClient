@@ -1,4 +1,5 @@
 import type { ViewMessageHandler } from "@oneclient/plugin-api";
+import { recordHistory } from "./history.js";
 import { type QueryRun, executeQuery } from "./query-runner.js";
 
 /**
@@ -27,6 +28,8 @@ export interface WindowUpdate {
   title: string;
   info: WindowInfo | null;
   state: WindowState;
+  /** The script that ran — the results panel guesses table names for exports from it. */
+  sql?: string;
 }
 
 const MAX_CACHED_WINDOWS = 10;
@@ -82,7 +85,10 @@ export function createQueryViewHandler(): ViewMessageHandler {
           ctx.reply({ type: "failed", windowId, queryId, error: "This query window has no connection." });
           return;
         }
-        remember({ type: "update", windowId, title, info, state: { kind: "running", started: Date.now() } });
+        const sql = msg.sql;
+        const started = Date.now();
+        const history = (entry: Parameters<typeof recordHistory>[1]) => void recordHistory(ctx.connectionId!, entry).catch(() => undefined);
+        remember({ type: "update", windowId, title, info, sql, state: { kind: "running", started } });
         try {
           const run = await executeQuery({
             connectionId: ctx.connectionId,
@@ -92,7 +98,10 @@ export function createQueryViewHandler(): ViewMessageHandler {
             database: msg.database,
             lineOffset: msg.lineOffset,
           });
-          remember({ type: "update", windowId, title, info: info && { ...info, database: run.database }, state: { kind: "done", run } });
+          remember({ type: "update", windowId, title, info: info && { ...info, database: run.database }, sql, state: { kind: "done", run } });
+          const rows = run.resultSets.reduce((n, rs) => n + rs.totalRows, 0);
+          const firstError = run.messages.find((m) => m.kind === "error")?.text;
+          history({ sql, database: run.database, status: run.cancelled ? "cancelled" : run.hasErrors ? "error" : "ok", elapsedMs: run.elapsedMs, rows: rows || run.rowsAffected, ...(firstError ? { error: firstError } : {}) });
           ctx.reply({
             type: "done",
             windowId,
@@ -101,11 +110,12 @@ export function createQueryViewHandler(): ViewMessageHandler {
             hasErrors: run.hasErrors,
             cancelled: run.cancelled,
             elapsedMs: run.elapsedMs,
-            rows: run.resultSets.reduce((n, rs) => n + rs.totalRows, 0),
+            rows,
           });
         } catch (err) {
           const error = err instanceof Error ? err.message : String(err);
-          remember({ type: "update", windowId, title, info, state: { kind: "failed", error } });
+          remember({ type: "update", windowId, title, info, sql, state: { kind: "failed", error } });
+          history({ sql, database: msg.database ?? null, status: "error", elapsedMs: Date.now() - started, rows: 0, error });
           ctx.reply({ type: "failed", windowId, queryId, error });
         }
       }

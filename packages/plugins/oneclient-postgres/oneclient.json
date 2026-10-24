@@ -206,6 +206,11 @@
         "when": "contextValue == 'connection' && connectionType == 'postgres' || contextValue == 'postgres.database' || contextValue == 'postgres.schema'"
       },
       {
+        "id": "postgres.queryHistory",
+        "title": "PostgreSQL: Query History",
+        "when": "contextValue == 'connection' && connectionType == 'postgres' || contextValue == 'postgres.database' || contextValue == 'postgres.schema'"
+      },
+      {
         "id": "postgres.diagram",
         "title": "PostgreSQL: Database Diagram",
         "icon": "$(diagram)",
@@ -245,6 +250,16 @@
         "id": "postgres.scriptExecute",
         "title": "PostgreSQL: Script as SELECT / CALL",
         "when": "contextValue == 'postgres.function' || contextValue == 'postgres.procedure'"
+      },
+      {
+        "id": "postgres.history",
+        "title": "PostgreSQL: List Query History",
+        "when": "view == 'postgres.query'"
+      },
+      {
+        "id": "postgres.deleteHistory",
+        "title": "PostgreSQL: Delete Query History",
+        "when": "view == 'postgres.query'"
       },
       {
         "id": "postgres.executeQuery",

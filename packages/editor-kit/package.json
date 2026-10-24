@@ -12,7 +12,9 @@
     "./editor": "./src/editor.ts",
     "./editor.css": "./src/editor/editor.css",
     "./erd": "./src/erd/index.ts",
-    "./erd.css": "./src/erd/erd.css"
+    "./erd.css": "./src/erd/erd.css",
+    "./sql": "./src/sql/index.ts",
+    "./sql.css": "./src/sql/sql.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

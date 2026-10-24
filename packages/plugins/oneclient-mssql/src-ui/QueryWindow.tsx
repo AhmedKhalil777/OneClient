@@ -3,13 +3,17 @@ import {
   type ServerInfo,
   autorun,
   cancelQuery,
+  deleteHistory,
   executeQuery,
   initialDatabase,
   initialSql,
   listDatabases,
+  openHistory,
+  queryHistory,
   serverInfo,
   windowId,
 } from "./api.js";
+import { HistoryPanel, type RiskyStatement, SafeModeDialog, findRiskyStatements } from "@oneclient/editor-kit/sql";
 import { createSqlCompletionProvider } from "./completion.js";
 import { formatElapsed } from "./format.js";
 import type { ToQueryWindow } from "./protocol.js";
@@ -22,6 +26,15 @@ type Status =
   | { kind: "failed"; error: string };
 
 const RESULTS_VIEW = "mssql.results";
+const SAFE_MODE_KEY = "oneclient.sql.safeMode";
+
+function initialSafeMode(): boolean {
+  try {
+    return localStorage.getItem(SAFE_MODE_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
 
 /**
  * One SSMS-style query window: toolbar + editor. Results and messages show in
@@ -35,6 +48,10 @@ export function QueryWindow() {
   const [info, setInfo] = useState<ServerInfo | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [now, setNow] = useState(Date.now());
+  const [showHistory, setShowHistory] = useState(openHistory);
+  const [historyToken, setHistoryToken] = useState(0);
+  const [safeMode, setSafeMode] = useState(initialSafeMode);
+  const [pending, setPending] = useState<{ risks: RiskyStatement[]; runnable: { sql: string; lineOffset: number } } | null>(null);
   const editorRef = useRef<SqlEditorHandle>(null);
   const title = useMemo(() => document.title, []);
 
@@ -48,10 +65,17 @@ export function QueryWindow() {
   const running = status.kind === "running";
 
   const execute = useCallback(
-    (override?: { sql: string; lineOffset: number }) => {
+    (override?: { sql: string; lineOffset: number }, confirmed = false) => {
       if (status.kind === "running") return;
       const runnable = override ?? editorRef.current?.getRunnable() ?? { sql, lineOffset: 1 };
       if (!runnable.sql.trim()) return;
+      if (safeMode && !confirmed) {
+        const risks = findRiskyStatements(runnable.sql);
+        if (risks.length) {
+          setPending({ risks, runnable: { sql: runnable.sql, lineOffset: runnable.lineOffset } });
+          return;
+        }
+      }
       const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       setStatus({ kind: "running", started: Date.now(), queryId });
       window.oneclientView.postMessage({
@@ -68,7 +92,7 @@ export function QueryWindow() {
       // The script may create/alter/drop objects — refresh IntelliSense lazily.
       if (/\b(CREATE|ALTER|DROP|SELECT\s+[\s\S]*\bINTO|sp_rename)\b/i.test(runnable.sql)) completion.invalidate();
     },
-    [status.kind, sql, completion],
+    [status.kind, sql, completion, safeMode],
   );
 
   const cancel = useCallback(() => {
@@ -83,8 +107,10 @@ export function QueryWindow() {
       if (msg.type === "done") {
         if (msg.database) setDatabase(msg.database);
         setStatus({ kind: "done", hasErrors: msg.hasErrors, cancelled: msg.cancelled, elapsedMs: msg.elapsedMs, rows: msg.rows });
+        setHistoryToken((n) => n + 1);
       } else if (msg.type === "failed") {
         setStatus({ kind: "failed", error: msg.error });
+        setHistoryToken((n) => n + 1);
       } else if (msg.type === "goToLine") {
         editorRef.current?.goToLine(msg.line);
       }
@@ -135,6 +161,9 @@ export function QueryWindow() {
       } else if ((e.altKey && (e.key === "Pause" || e.key === "Cancel")) || (e.key === "Escape" && running)) {
         e.preventDefault();
         cancel();
+      } else if (mod && e.shiftKey && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        setShowHistory((v) => !v);
       } else if (mod && e.key.toLowerCase() === "r") {
         e.preventDefault();
         window.oneclientView.revealView(RESULTS_VIEW);
@@ -143,6 +172,15 @@ export function QueryWindow() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [execute, cancel, running]);
+
+  function toggleSafeMode(on: boolean) {
+    setSafeMode(on);
+    try {
+      localStorage.setItem(SAFE_MODE_KEY, on ? "on" : "off");
+    } catch {
+      // not remembered
+    }
+  }
 
   const dbOptions = database && !databases.includes(database) ? [database, ...databases] : databases;
   const badge = statusBadge(status, now);
@@ -174,6 +212,13 @@ export function QueryWindow() {
         <button className="btn" onClick={() => window.oneclientView.revealView(RESULTS_VIEW)} title="Show results (Ctrl+R)">
           ▦ Results
         </button>
+        <button className={`btn ${showHistory ? "btn-on" : ""}`} onClick={() => setShowHistory((v) => !v)} title="Query history of this connection (Ctrl+Shift+H)">
+          ⟲ History
+        </button>
+        <label className="safe-toggle" title="Safe mode: ask before UPDATE/DELETE without WHERE, DROP, TRUNCATE">
+          <input type="checkbox" checked={safeMode} onChange={(e) => toggleSafeMode(e.target.checked)} />
+          Safe mode
+        </label>
         <span className="spacer" />
         {badge && (
           <button className={`run-badge ${badge.tone}`} onClick={() => window.oneclientView.revealView(RESULTS_VIEW)} title="Show results">
@@ -184,9 +229,41 @@ export function QueryWindow() {
           {info ? `${info.server} · ${info.login}` : ""}
         </span>
       </div>
-      <div className="editor-pane">
-        <SqlEditor ref={editorRef} value={sql} onChange={setSql} completionProviders={completionProviders} />
+      <div className="window-body">
+        <div className="editor-pane">
+          <SqlEditor ref={editorRef} value={sql} onChange={setSql} completionProviders={completionProviders} />
+        </div>
+        {showHistory && (
+          <HistoryPanel
+            load={queryHistory}
+            remove={deleteHistory}
+            refreshToken={historyToken}
+            onClose={() => (setShowHistory(false), editorRef.current?.focus())}
+            onUse={(text, mode) => (mode === "insert" ? editorRef.current?.insertText(text) : (setSql(text), editorRef.current?.focus()))}
+            onRun={(text) => {
+              setSql(text);
+              execute({ sql: text, lineOffset: 1 });
+            }}
+          />
+        )}
       </div>
+      {pending && (
+        <SafeModeDialog
+          risks={pending.risks}
+          onCancel={() => (setPending(null), editorRef.current?.focus())}
+          onRun={() => {
+            const { runnable } = pending;
+            setPending(null);
+            execute(runnable, true);
+          }}
+          onDisable={() => {
+            const { runnable } = pending;
+            toggleSafeMode(false);
+            setPending(null);
+            execute(runnable, true);
+          }}
+        />
+      )}
     </div>
   );
 }

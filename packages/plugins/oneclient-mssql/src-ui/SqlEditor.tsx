@@ -11,6 +11,8 @@ export interface SqlEditorHandle {
   getRunnable(): { sql: string; lineOffset: number; isSelection: boolean };
   /** Move the caret to the start of a 1-based line and scroll it into view. */
   goToLine(line: number): void;
+  /** Type text at the caret (replacing the selection), undoable with Ctrl+Z. */
+  insertText(text: string): void;
   focus(): void;
 }
 
@@ -94,6 +96,13 @@ export const SqlEditor = forwardRef<
       el.setSelectionRange(offset, offset + (lines[target - 1]?.length ?? 0));
       el.scrollTop = Math.max(0, (target - 1) * LINE_HEIGHT - el.clientHeight / 3);
       setCursorLine(target);
+    },
+    insertText(text) {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      // execCommand keeps the browser's undo stack; fall back to a plain splice.
+      if (!document.execCommand("insertText", false, text)) onChange(el.value.slice(0, el.selectionStart) + text + el.value.slice(el.selectionEnd));
     },
     focus() {
       textareaRef.current?.focus();

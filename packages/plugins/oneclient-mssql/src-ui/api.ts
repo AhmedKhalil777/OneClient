@@ -43,6 +43,9 @@ const invoke = <T,>(commandId: string, arg: Record<string, unknown>) =>
 export const executeQuery = (opts: { queryId: string; sql: string; database?: string | undefined; lineOffset?: number }) =>
   invoke<QueryRun | { ok: false; error: string }>("mssql.executeQuery", { windowId, ...opts });
 export const cancelQuery = (queryId: string) => invoke<{ ok: boolean }>("mssql.cancelQuery", { queryId });
+export const queryHistory = (search: string) => invoke<import("@oneclient/editor-kit/sql").HistoryEntry[]>("mssql.history", { search, limit: 300 });
+export const deleteHistory = (id?: string) => invoke<{ ok: boolean }>("mssql.deleteHistory", id ? { id } : {});
+export const openHistory = params.get("history") === "1";
 export const listDatabases = () => invoke<string[]>("mssql.listDatabases", {});
 export const serverInfo = () => invoke<ServerInfo>("mssql.serverInfo", {});
 export const invokeCompletionCatalog = (database: string | undefined) =>

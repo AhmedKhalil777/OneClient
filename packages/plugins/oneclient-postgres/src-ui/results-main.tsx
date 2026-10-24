@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "@oneclient/editor-kit/theme.css";
+import "@oneclient/editor-kit/sql.css";
 import { ResultsPanel } from "./ResultsPanel.js";
 import "./styles.css";
 

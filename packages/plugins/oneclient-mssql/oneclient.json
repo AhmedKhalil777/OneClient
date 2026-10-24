@@ -195,6 +195,11 @@
         "when": "contextValue == 'connection' && connectionType == 'mssql' || contextValue == 'mssql.database'"
       },
       {
+        "id": "mssql.queryHistory",
+        "title": "SQL Server: Query History",
+        "when": "contextValue == 'connection' && connectionType == 'mssql' || contextValue == 'mssql.database'"
+      },
+      {
         "id": "mssql.diagram",
         "title": "SQL Server: Database Diagram",
         "icon": "$(diagram)",
@@ -224,6 +229,16 @@
         "id": "mssql.scriptExecute",
         "title": "SQL Server: Script as EXECUTE",
         "when": "contextValue == 'mssql.procedure'"
+      },
+      {
+        "id": "mssql.history",
+        "title": "SQL Server: List Query History",
+        "when": "view == 'mssql.query'"
+      },
+      {
+        "id": "mssql.deleteHistory",
+        "title": "SQL Server: Delete Query History",
+        "when": "view == 'mssql.query'"
       },
       {
         "id": "mssql.executeQuery",

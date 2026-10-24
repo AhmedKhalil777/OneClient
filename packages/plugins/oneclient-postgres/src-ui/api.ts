@@ -44,6 +44,9 @@ const invoke = <T,>(commandId: string, arg: Record<string, unknown>) =>
 export const executeQuery = (opts: { queryId: string; sql: string; database?: string | undefined; lineOffset?: number }) =>
   invoke<QueryRun | { ok: false; error: string }>("postgres.executeQuery", { windowId, ...opts });
 export const cancelQuery = (queryId: string) => invoke<{ ok: boolean }>("postgres.cancelQuery", { queryId });
+export const queryHistory = (search: string) => invoke<import("@oneclient/editor-kit/sql").HistoryEntry[]>("postgres.history", { search, limit: 300 });
+export const deleteHistory = (id?: string) => invoke<{ ok: boolean }>("postgres.deleteHistory", id ? { id } : {});
+export const openHistory = params.get("history") === "1";
 export const listDatabases = () => invoke<string[]>("postgres.listDatabases", {});
 export const serverInfo = () => invoke<ServerInfo>("postgres.serverInfo", {});
 export const invokeCompletionCatalog = (database: string | undefined) =>

@@ -5,6 +5,7 @@ import type { NodeData } from "./explorer-provider.js";
 import { type ObjectKind, completionCatalog, listColumns, listDatabases, listParameters, objectDefinition, scriptTable } from "./metadata.js";
 import { cancelQuery, executeQuery } from "./query-runner.js";
 import { erModel } from "./diagram.js";
+import { deleteHistory, listHistory } from "./history.js";
 import { searchObjects } from "./search.js";
 import { poolFor, requireSession } from "./sessions.js";
 
@@ -20,12 +21,13 @@ function arg<T>(args: unknown[]): T {
 let queryCounter = 0;
 
 /** A query window is opened by returning `openNode`; a fresh id each time = a fresh window (and session). */
-function queryWindow(opts: { database?: string | undefined; sql?: string; autorun?: boolean; title?: string }): TreeNode {
+function queryWindow(opts: { database?: string | undefined; sql?: string; autorun?: boolean; title?: string; history?: boolean }): TreeNode {
   queryCounter++;
   const params: Record<string, string> = { windowId: `q${Date.now()}-${queryCounter}` };
   if (opts.database) params.database = opts.database;
   if (opts.sql) params.sql = opts.sql;
   if (opts.autorun) params.autorun = "1";
+  if (opts.history) params.history = "1";
   const title = opts.title ?? `Query${queryCounter}.sql`;
   params.title = title;
   return { id: params.windowId!, label: title, nodeType: "postgres.query", collapsible: "none", openView: { viewId: "postgres.query", title, params } };
@@ -155,7 +157,30 @@ export function createCommandHandlers(): CommandHandler[] {
         }),
     },
 
+    {
+      commandId: "postgres.queryHistory",
+      execute: async (args) => {
+        const { database } = arg<Partial<NodeArg>>(args);
+        return { ok: true, openNode: queryWindow({ database, history: true, title: "Query History" }) };
+      },
+    },
+
     // ---- Used by the query window (view == 'postgres.query') ----
+    {
+      commandId: "postgres.history",
+      async execute(args) {
+        const { connectionId, search, limit } = arg<{ connectionId: string; search?: string; limit?: number }>(args);
+        return listHistory(connectionId, { ...(search ? { search } : {}), ...(limit ? { limit } : {}) });
+      },
+    },
+    {
+      commandId: "postgres.deleteHistory",
+      async execute(args) {
+        const { connectionId, id } = arg<{ connectionId: string; id?: string }>(args);
+        await deleteHistory(connectionId, id);
+        return { ok: true };
+      },
+    },
     {
       commandId: "postgres.executeQuery",
       async execute(args) {
