@@ -41,7 +41,24 @@ jobs:
       - name: Build site
         run: node scripts/build-site.mjs
 
+      # Pages must be enabled once (Settings → Pages → Source: GitHub Actions). The workflow token can't do that, but a
+      # PAGES_TOKEN secret (fine-grained PAT, this repo, "Administration: write" + "Pages: write") lets this step enable it.
+      - name: Check Pages is enabled
+        env:
+          GH_TOKEN: ${{ secrets.PAGES_TOKEN || github.token }}
+          HAS_ADMIN_TOKEN: ${{ secrets.PAGES_TOKEN != '' }}
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/pages")
+          if [ "$status" = "404" ] && [ "$HAS_ADMIN_TOKEN" != "true" ]; then
+            echo "::error title=GitHub Pages is not enabled::Open https://github.com/${{ github.repository }}/settings/pages, set Source to 'GitHub Actions', then re-run this workflow (or add a PAGES_TOKEN secret so it can enable Pages itself)."
+            exit 1
+          fi
+
       - uses: actions/configure-pages@v5
+        with:
+          enablement: ${{ secrets.PAGES_TOKEN != '' }}
+          token: ${{ secrets.PAGES_TOKEN || github.token }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
