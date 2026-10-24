@@ -14,7 +14,7 @@
     "@oneclient/plugin-api": "workspace:*",
     "highlight.js": "11.11.1",
     "jsonc-parser": "3.3.1",
-    "markdown-it": "14.1.0"
+    "markdown-it": "14.3.3"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
