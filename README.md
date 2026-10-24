@@ -79,6 +79,18 @@ model, and [`packages/plugin-api`](./packages/plugin-api) for the interfaces plu
 
 ### Development
 
+**You need:**
+
+| Tool | Version | Notes |
+|---|---|---|
+| Node.js | **22 LTS** (minimum 20) | `.nvmrc` pins 22 (`nvm use`); CI and releases build on 22. |
+| pnpm | **10** | `npm i -g pnpm@10` or `corepack enable`. Packaging uses `pnpm deploy --legacy`, which pnpm 9 doesn't have. |
+| Git | any recent | For the Source Control view. |
+
+On Windows and macOS you don't need Python or a C++ toolchain: the terminal's native module (`node-pty` 1.1) ships
+prebuilt binaries for them. **On Linux** it has no prebuilt binary and compiles during `pnpm install`, so install
+`python3`, `make` and `g++` first (Debian/Ubuntu: `sudo apt install build-essential python3`).
+
 ```sh
 pnpm install
 pnpm run build       # every package

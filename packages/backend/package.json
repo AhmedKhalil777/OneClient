@@ -1,0 +1,35 @@
+{
+  "name": "@oneclient/backend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "oneClient's backend, shared by the desktop app (Electron) and the self-hosted web server (plain Node): plugins and their extension hosts, connections, workspace, git, tasks, terminal, search, themes. No Electron dependency.",
+  "license": "MIT",
+  "main": "./dist/backend.js",
+  "types": "./dist/backend.d.ts",
+  "exports": {
+    "./*": "./dist/*"
+  },
+  "files": [
+    "dist",
+    "resources"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "icons": "node scripts/build-icons.cjs"
+  },
+  "dependencies": {
+    "@oneclient/plugin-api": "workspace:*",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "node-pty": "1.1.0",
+    "semver": "^7.6.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^20.14.0",
+    "@types/semver": "^7.5.8",
+    "vitest": "^2.1.0"
+  }
+}

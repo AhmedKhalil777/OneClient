@@ -32,7 +32,9 @@ export function onThemeChange(listener: (theme: ThemeState) => void): () => void
 
 /** URL of a registry icon (`$(id)` ids), in the active icon theme. */
 export function iconUrl(id: string, theme: ThemeState | null = getTheme()): string {
-  return `oneclient-asset://oneclient.icons/${encodeURIComponent(id)}.svg?v=${theme?.iconVersion ?? 0}`;
+  // The web shell serves assets over HTTP and tells views where (see plugin-api's assetBase()).
+  const base = (globalThis as { __ONECLIENT_ASSET_BASE__?: string }).__ONECLIENT_ASSET_BASE__ ?? "oneclient-asset://";
+  return `${base}oneclient.icons/${encodeURIComponent(id)}.svg?v=${theme?.iconVersion ?? 0}`;
 }
 
 /**

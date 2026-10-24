@@ -2,7 +2,9 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type BrowserWindow, WebContentsView, ipcMain } from "electron";
 import type { OpenViewRequest } from "@oneclient/plugin-api";
-import type { WorkbenchShortcut } from "../../shared/ipc-contract.js";
+import type { WorkbenchShortcut } from "@oneclient/backend/shared/ipc-contract.js";
+import { workbenchShortcut } from "@oneclient/backend/shared/shortcuts.js";
+import type { MessageFromViewFn, OpenFileHandler, OpenViewOptions, ViewHost, ViewInstanceInfo } from "@oneclient/backend/views/view-host.js";
 
 export interface ViewBounds {
   x: number;
@@ -19,7 +21,6 @@ interface ViewInstance {
   view: WebContentsView;
 }
 
-type MessageFromViewFn = (pluginId: string, viewId: string, connectionId: string | undefined, message: unknown) => void;
 
 /**
  * Owns the WebContentsViews backing open Tier 2 view instances, attached
@@ -34,7 +35,7 @@ type MessageFromViewFn = (pluginId: string, viewId: string, connectionId: string
  * so two connections of the same type can have their dashboards open in
  * separate tabs simultaneously.
  */
-export class ViewHostManager {
+export class ViewHostManager implements ViewHost {
   private readonly instances = new Map<string, ViewInstance>();
   private readonly viewPreloadPath: string;
 
@@ -42,6 +43,8 @@ export class ViewHostManager {
     private readonly window: BrowserWindow,
     preloadDir: string,
     private readonly onMessageFromView: MessageFromViewFn,
+    /** URL of a core view page ("views/editor/index.html"): the renderer build, or the dev server. */
+    private readonly coreViewUrl: (page: string) => string,
   ) {
     this.viewPreloadPath = join(preloadDir, "view.js");
 
@@ -93,9 +96,9 @@ export class ViewHostManager {
   private readonly refreshListeners = new Set<(connectionId: string) => void>();
 
   /** A view asked for its connection's explorer tree to be re-fetched. */
-  private openFileHandler: ((path: string, options: { line?: number | undefined; column?: number | undefined; length?: number | undefined }) => Promise<void>) | undefined;
+  private openFileHandler: OpenFileHandler | undefined;
   /** Serves `window.oneclientView.openFile` (core's workspace opens the file in the editor). */
-  setOpenFileHandler(handler: NonNullable<ViewHostManager["openFileHandler"]>): void {
+  setOpenFileHandler(handler: OpenFileHandler): void {
     this.openFileHandler = handler;
   }
 
@@ -141,18 +144,7 @@ export class ViewHostManager {
     return () => this.dirtyListeners.delete(listener);
   }
 
-  open(opts: {
-    instanceId: string;
-    pluginId: string;
-    viewId: string;
-    connectionId?: string;
-    params?: Record<string, string>;
-    /** A plugin view: its page inside the plugin's ui bundle. */
-    entryDir?: string;
-    entryFile?: string;
-    /** A core view: the page's URL (core's renderer build or dev server). */
-    url?: string;
-  }): void {
+  open(opts: OpenViewOptions): void {
     if (this.instances.has(opts.instanceId)) return;
 
     const view = new WebContentsView({
@@ -166,8 +158,8 @@ export class ViewHostManager {
     this.window.contentView.addChildView(view);
     view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
 
-    if (!opts.url && !(opts.entryDir && opts.entryFile)) throw new Error(`View "${opts.viewId}" has no page.`);
-    const url = new URL(opts.url ?? pathToFileURL(join(opts.entryDir!, opts.entryFile!)).href);
+    if (!opts.corePage && !(opts.entryDir && opts.entryFile)) throw new Error(`View "${opts.viewId}" has no page.`);
+    const url = new URL(opts.corePage ? this.coreViewUrl(opts.corePage) : pathToFileURL(join(opts.entryDir!, opts.entryFile!)).href);
     for (const [key, value] of Object.entries(opts.params ?? {})) {
       if (typeof value === "string") url.searchParams.set(key, value);
     }
@@ -179,23 +171,7 @@ export class ViewHostManager {
     // Catch them before the page sees them and hand them to the app shell instead.
     view.webContents.on("before-input-event", (event, input) => {
       if (input.type !== "keyDown") return;
-      const mod = input.control || input.meta;
-      let shortcut: WorkbenchShortcut | null = null;
-      if (mod && !input.shift && !input.alt && (input.key === "`" || input.code === "Backquote")) shortcut = "togglePanel";
-      else if (mod && input.shift && input.key.toLowerCase() === "p") shortcut = "commandPalette";
-      else if (mod && !input.shift && !input.alt && input.key.toLowerCase() === "p") shortcut = "quickSearch";
-      else if (mod && input.shift && !input.alt && input.key.toLowerCase() === "f") shortcut = "findInFiles";
-      else if (mod && input.shift && !input.alt && input.key.toLowerCase() === "e") shortcut = "showExplorer";
-      else if (mod && input.shift && !input.alt && input.key.toLowerCase() === "g") shortcut = "showScm";
-      else if (mod && input.shift && !input.alt && input.key.toLowerCase() === "b") shortcut = "runBuildTask";
-      else if (mod && !input.shift && !input.alt && input.key.toLowerCase() === "b") shortcut = "toggleSidebar";
-      else if (mod && !input.shift && !input.alt && input.key.toLowerCase() === "w") shortcut = "closeEditor";
-      else if (mod && !input.alt && input.key === "PageDown") shortcut = "nextEditor";
-      else if (mod && !input.alt && input.key === "PageUp") shortcut = "previousEditor";
-      else if (mod && !input.alt && (input.key === "=" || input.key === "+")) shortcut = "zoomIn";
-      else if (mod && !input.alt && input.key === "-") shortcut = "zoomOut";
-      else if (mod && !input.alt && input.key === "0") shortcut = "zoomReset";
-      else if (!mod && !input.alt && input.key === "F11") shortcut = "toggleFullScreen";
+      const shortcut = workbenchShortcut({ key: input.key, code: input.code, ctrl: input.control, meta: input.meta, shift: input.shift, alt: input.alt });
       if (!shortcut) return;
       event.preventDefault();
       for (const listener of this.shortcutListeners) listener(shortcut);
@@ -258,10 +234,17 @@ export class ViewHostManager {
     }
   }
 
+  private readonly closedListeners = new Set<(instance: ViewInstanceInfo) => void>();
+  onInstanceClosed(listener: (instance: ViewInstanceInfo) => void): () => void {
+    this.closedListeners.add(listener);
+    return () => this.closedListeners.delete(listener);
+  }
+
   close(instanceId: string): void {
     const instance = this.instances.get(instanceId);
     if (!instance) return;
     this.instances.delete(instanceId);
+    for (const listener of this.closedListeners) listener({ pluginId: instance.pluginId, viewId: instance.viewId, connectionId: instance.connectionId });
     // On quit the window (and with it the views) is often already destroyed by the time
     // before-quit cleanup runs — touching it then throws "Object has been destroyed".
     if (!this.window.isDestroyed()) this.window.contentView.removeChildView(instance.view);
@@ -270,6 +253,10 @@ export class ViewHostManager {
 
   closeAll(): void {
     for (const id of [...this.instances.keys()]) this.close(id);
+  }
+
+  hasInstance(viewId: string): boolean {
+    return [...this.instances.values()].some((i) => i.viewId === viewId);
   }
 
   getInstance(instanceId: string): { pluginId: string; viewId: string; connectionId?: string } | undefined {

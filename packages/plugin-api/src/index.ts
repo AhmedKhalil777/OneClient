@@ -41,7 +41,7 @@ export type {
   ThemeKind,
   ThemeState,
 } from "./theme.js";
-export { THEME_COLOR_KEYS, colorVarName, iconUrl, normalizeFolderName, parseIconRef, resolveFileIcon } from "./theme.js";
+export { THEME_COLOR_KEYS, assetBase, assetUrl, colorVarName, iconUrl, normalizeFolderName, parseIconRef, resolveFileIcon } from "./theme.js";
 
 export type { CommandContext, CommandHandler } from "./commands.js";
 

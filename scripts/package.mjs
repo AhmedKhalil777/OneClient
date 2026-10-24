@@ -20,7 +20,8 @@
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const args = new Set(process.argv.slice(2));
@@ -93,7 +94,8 @@ for (const dir of readdirSync(pluginsRoot)) {
 console.log(`\nStaged oneClient ${version} (Electron ${electronVersion}) with ${bundled.length} plugins: ${bundled.join(", ")}`);
 
 // ---- 3. package -------------------------------------------------------------------------------------------------------
-const { build } = await import("electron-builder");
+// electron-builder is a dev dependency of the desktop package (packages/core), so web-only installs never get it.
+const { build } = await import(pathToFileURL(createRequire(join(coreDir, "package.json")).resolve("electron-builder")).href);
 /** @type {import("electron-builder").Configuration} */
 const config = {
   appId: "dev.oneclient.app",

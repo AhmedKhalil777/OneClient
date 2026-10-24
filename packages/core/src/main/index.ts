@@ -9,29 +9,19 @@ import { registerPluginAssetProtocolHandler, registerPluginAssetSchemeAsPrivileg
 app.setName("oneClient");
 // Must run before app.whenReady() — see plugin-asset-protocol.ts.
 registerPluginAssetSchemeAsPrivileged();
-import { ConfigStore, ConfigVersionError } from "./config/config-store.js";
-import { PluginMetadataStore } from "./db/plugin-metadata-store.js";
-import { ConnectionManager } from "./connections/connection-manager.js";
-import { registerIpcHandlers } from "./ipc/handlers.js";
-import { SearchService } from "./search/search-service.js";
-import { OutputService } from "./output/output-service.js";
-import { ExtensionHostSupervisor } from "./plugins/extension-host-supervisor.js";
-import { PluginManager, type PluginRecord } from "./plugins/plugin-manager.js";
-import { ProviderDirectory } from "./plugins/provider-directory.js";
-import { ContributionRegistry } from "./plugins/registry.js";
-import { FileSecretStore } from "./secrets/secret-store.js";
-import { ThemeService } from "./themes/theme-service.js";
+import { ConfigVersionError, oneclientHome } from "@oneclient/backend/config/config-store.js";
+import { InstanceLockError, acquireInstanceLock } from "@oneclient/backend/config/instance-lock.js";
+import { type Backend, createBackend } from "@oneclient/backend/backend.js";
+import { electronDialogs, registerElectronHandlers } from "./ipc/electron-handlers.js";
+import { electronPlatform } from "./platform/electron-platform.js";
+import { electronRpc } from "./rpc/electron-rpc.js";
 import { ViewHostManager } from "./views/view-host-manager.js";
 import { createMainWindow } from "./windows.js";
-import { WorkspaceService } from "./workspace/workspace-service.js";
-import { SearchWorker } from "./workspace/search-client.js";
-import { EDITOR_VIEW } from "./workspace/files.js";
-import { TERMINAL_VIEW, TerminalService } from "./terminal/terminal-service.js";
-import { CORE_PLUGIN_ID } from "../shared/core.js";
-import { TaskService } from "./tasks/task-service.js";
-import { TaskRunner } from "./tasks/task-runner.js";
-import { GitService } from "./git/git-service.js";
-import { IpcChannel } from "../shared/ipc-contract.js";
+
+/**
+ * The desktop app: the shared backend (backend.ts) in Electron's main process, with native windows and views.
+ * The web runtime (server/main.ts) runs the same backend on plain Node instead.
+ */
 
 function pluginDirs(): string[] {
   const dirs = [join(app.getPath("userData"), "plugins")];
@@ -41,23 +31,10 @@ function pluginDirs(): string[] {
   return dirs;
 }
 
-/** Core's own views (the file editor tab, the Terminal panel): built with the renderer, hosted like plugin views. */
-const CORE_VIEWS: Record<string, string> = {
-  [EDITOR_VIEW]: "views/editor/index.html",
-  [TERMINAL_VIEW]: "views/terminal/index.html",
-  "git.diff": "views/diff/index.html",
-};
-function coreViewUrl(viewId: string): string | undefined {
-  const page = CORE_VIEWS[viewId];
-  if (!page) return undefined;
+/** A core view page (the file editor tab, the Terminal panel…): the renderer build, or the dev server. */
+function coreViewUrl(page: string): string {
   const devServer = process.env["ELECTRON_RENDERER_URL"];
   return !app.isPackaged && devServer ? `${devServer}/${page}` : pathToFileURL(join(__dirname, "../renderer", page)).href;
-}
-
-function log(pluginId: string, level: "debug" | "info" | "warn" | "error", message: string, meta?: unknown): void {
-  const prefix = `[plugin:${pluginId}]`;
-  // eslint-disable-next-line no-console
-  console[level === "debug" ? "log" : level](prefix, message, meta ?? "");
 }
 
 async function main(): Promise<void> {
@@ -79,12 +56,28 @@ async function main(): Promise<void> {
 
   await app.whenReady();
 
-  // All app metadata lives in ~/.oneclient/oneclient.json (see config-store.ts); secrets in ~/.oneclient/secrets.json.
-  let config: ConfigStore;
-  let secrets: FileSecretStore;
+  // The web server may be using the same config folder; two runtimes on one folder would overwrite each other's saves.
+  let releaseLock: () => void;
   try {
-    config = new ConfigStore(undefined, (message) => console.warn("[config]", message));
-    secrets = new FileSecretStore(config.secretsPath);
+    releaseLock = acquireInstanceLock(oneclientHome(), "desktop");
+  } catch (err) {
+    if (!(err instanceof InstanceLockError)) throw err;
+    dialog.showErrorBox("oneClient is already running as a web server", err.message);
+    app.quit();
+    return;
+  }
+  app.on("will-quit", () => releaseLock());
+
+  const mainWindow = createMainWindow();
+  let backend: Backend;
+  try {
+    backend = await createBackend({
+      platform: electronPlatform(pluginDirs()),
+      rpc: electronRpc(),
+      createViews: (onMessageFromView) => new ViewHostManager(mainWindow, join(__dirname, "../preload"), onMessageFromView, coreViewUrl),
+      dialogs: electronDialogs,
+      onAssetsReady: (pluginManager, themes) => registerPluginAssetProtocolHandler(pluginManager, (id) => themes.resolveIconFile(id)),
+    });
   } catch (err) {
     if (err instanceof ConfigVersionError) {
       // A newer oneClient wrote these files; opening them with this one could lose data, so stop here.
@@ -94,240 +87,14 @@ async function main(): Promise<void> {
     }
     throw err;
   }
-  const metadata = new PluginMetadataStore(config);
-  const registry = new ContributionRegistry();
-  const providers = new ProviderDirectory();
-  const pluginManager = new PluginManager(pluginDirs(), registry, metadata);
-  const themes = new ThemeService({
-    getRegistry: () => registry.snapshot(),
-    getPluginRoot: (pluginId) => pluginManager.getRecord(pluginId)?.rootDir,
-    // out/main → packages/core/resources/icons (built-in product icons)
-    builtinIconDir: join(__dirname, "../../resources/icons"),
-    settings: { load: () => config.getSettings(), save: (next) => config.setSettings(next) },
-    log: (message) => console.warn("[themes]", message),
-  });
-  registerPluginAssetProtocolHandler(pluginManager, (id) => themes.resolveIconFile(id));
-
-  const mainWindow = createMainWindow();
-
-  // ExtensionHostSupervisor and ViewHostManager each need to call into the
-  // other (a host pushes a view message -> ViewHostManager delivers it to
-  // the right WebContentsView; a view posts a message -> the supervisor
-  // forwards it to the owning host). Forward-declare one side; both
-  // closures below only ever fire after everything is constructed.
-  let supervisor!: ExtensionHostSupervisor;
-  const output = new OutputService();
-
-  // Core views talk to core services; plugin views to their plugin's extension host.
-  let workspace!: WorkspaceService;
-  let terminal!: TerminalService;
-  const views = new ViewHostManager(mainWindow, join(__dirname, "../preload"), (pluginId, viewId, connectionId, message) => {
-    if (pluginId !== CORE_PLUGIN_ID) return supervisor.sendViewMessage(pluginId, viewId, connectionId, message);
-    if (viewId === EDITOR_VIEW) workspace.onEditorMessage(connectionId, message);
-    else if (viewId === TERMINAL_VIEW) terminal.fromView(message);
-  });
-
-  supervisor = new ExtensionHostSupervisor(
-    secrets,
-    (pluginId, msg) => {
-      const c = msg.contribution;
-      if (c.kind === "connection") {
-        providers.registerConnection({ pluginId, typeId: c.typeId, configSchema: c.configSchema as never, uiSchema: c.uiSchema as never });
-      } else if (c.kind === "explorer") {
-        providers.registerExplorer(pluginId, c.nodeTypes);
-      } else if (c.kind === "command") {
-        providers.registerCommand(pluginId, c.commandId);
-      }
-    },
-    (pluginId, code) => {
-      providers.removeForPlugin(pluginId);
-      pluginManager.setState(pluginId, "crashed", `Extension host exited unexpectedly (code ${code}).`);
-    },
-    log,
-    (pluginId, viewId, connectionId, message) => views.push(viewId, connectionId, message),
-    output,
-  );
-
-  async function tryActivate(record: PluginRecord): Promise<void> {
-    // Declarative plugins (themes, icons) have no code to run: their contributions are
-    // already live from the manifest, so there's no extension-host process to start.
-    if (!record.manifest.main) {
-      pluginManager.setState(record.id, "active");
-      return;
-    }
-    pluginManager.setState(record.id, "activating");
-    try {
-      await supervisor.activate(record);
-      pluginManager.setState(record.id, "active");
-    } catch (err) {
-      pluginManager.setState(record.id, "crashed", err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function ensureActivated(pluginId: string): Promise<void> {
-    if (supervisor.isActive(pluginId)) return;
-    const record = pluginManager.getRecord(pluginId);
-    if (!record) throw new Error(`Unknown plugin "${pluginId}".`);
-    if (record.state === "disabled") throw new Error(`Plugin "${pluginId}" is disabled.`);
-    await tryActivate(record);
-  }
-
-  // Every enabled plugin is activated as soon as it loads, so its explorer is
-  // live in the activity bar right away. Activation never opens a connection —
-  // a plugin starts with zero connections until the user creates one.
-  pluginManager.on("loaded", (record: PluginRecord) => {
-    void tryActivate(record);
-  });
-
-  const connections = new ConnectionManager(
-    config,
-    registry,
-    providers,
-    secrets,
-    ensureActivated,
-    (pluginId, kind, target, method, args, connectionId) =>
-      supervisor.invoke(pluginId, kind, target, method, args, connectionId),
-    (pluginId) => pluginManager.getRecord(pluginId)?.manifest?.version,
-  );
-
-  // The workspace (core): the folders open in the Explorer — its tree, file commands, the editor's backend and
-  // text search on a worker thread. Shared with every plugin through context.workspace.
-  const searchWorker = new SearchWorker();
-  workspace = new WorkspaceService(config, searchWorker, (viewId, folderId, message) => views.push(viewId, folderId, message));
-  // The integrated terminal (core): shells in their own process; new terminals start in the first open folder.
-  terminal = new TerminalService(
-    (message) => views.push(TERMINAL_VIEW, undefined, message),
-    () => workspace.folders()[0]?.path,
-  );
-  // Background tasks (Git network operations, the Task Runner, plugins' context.tasks) and source control.
-  const tasks = new TaskService();
-  supervisor.setTasks(tasks, (pluginId) => pluginManager.getRecord(pluginId)?.manifest?.displayName ?? pluginId);
-  const taskRunner = new TaskRunner(tasks, () => workspace.folders());
-  const gitService = new GitService(tasks);
-  void gitService.setFolders(workspace.folders());
-  workspace.onChanged((folders) => void gitService.setFolders(folders));
-
-  /** Commands implemented by core itself (files.*, terminal.*, git.*): views, menus and context menus call them by id. */
-  const fileCommands = workspace.commands();
-  // Saving, creating, renaming or deleting a file changes what git sees.
-  for (const id of ["files.writeFile", "files.newFile", "files.newFolder", "files.rename", "files.delete", "files.replace"]) {
-    const run = fileCommands[id]!;
-    fileCommands[id] = async (args) => {
-      try {
-        return await run(args);
-      } finally {
-        gitService.scheduleRefresh();
-      }
-    };
-  }
-  const coreCommands: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {
-    ...fileCommands,
-    ...terminal.commands(),
-    // The diff view: both sides of a file.
-    "git.diffContents": async (a) => {
-      const path = String(a.path ?? "");
-      const [left, right] = await Promise.all([
-        gitService.fileVersion(a.root, String(a.origPath ?? path), String(a.left ?? "HEAD")),
-        gitService.fileVersion(a.root, path, String(a.right ?? "worktree")),
-      ]);
-      return { left, right };
-    },
-  };
-
-  async function openWorkspaceFile(path: string, options: { line?: number | undefined; column?: number | undefined; length?: number | undefined } = {}): Promise<void> {
-    const location = workspace.locate(path);
-    if (!location) throw new Error(`"${path}" isn't inside a folder open in the Explorer.`);
-    for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send(IpcChannel.WorkspaceOpenFile, { folderId: location.folder.id, relPath: location.relPath });
-    }
-    // The editor tab picks this up when it has loaded (or right away if it's open already).
-    if (options.line) workspace.reveal(location.folder.id, { path: location.relPath, line: options.line, col: options.column ?? 1, length: options.length ?? 0 });
-  }
-  supervisor.setWorkspace({ folders: () => workspace.folders().map(({ name, path }) => ({ name, path })), openFile: openWorkspaceFile });
-  // context.connections / context.contributions: what plugins may read and do across plugins.
-  supervisor.setApi(async (_pluginId, method, args) => {
-    switch (method) {
-      case "connections.list":
-        return connections.listWithConfig();
-      case "connections.create": {
-        const { typeId, name, config } = (args[0] ?? {}) as { typeId?: unknown; name?: unknown; config?: unknown };
-        if (typeof typeId !== "string" || typeof name !== "string" || !name.trim()) throw new Error("A connection needs a typeId and a name.");
-        const created = await connections.create(typeId, name.trim(), config && typeof config === "object" ? (config as Record<string, unknown>) : {});
-        return { id: created.id };
-      }
-      case "connections.test": {
-        const [typeId, config] = args as [unknown, unknown];
-        if (typeof typeId !== "string") throw new Error("connections.test needs a typeId.");
-        try {
-          return await connections.test(typeId, config && typeof config === "object" ? (config as Record<string, unknown>) : {});
-        } catch (err) {
-          return { success: false, message: err instanceof Error ? err.message : String(err) };
-        }
-      }
-      case "contributions.get":
-        return typeof args[0] === "string" ? registry.getExtensions(args[0]) : [];
-    }
-  });
-  views.setOpenFileHandler(openWorkspaceFile);
-  workspace.onChanged((folders) => {
-    supervisor.broadcastWorkspaceFolders(folders.map(({ name, path }) => ({ name, path })));
-    for (const win of BrowserWindow.getAllWindows()) win.webContents.send(IpcChannel.WorkspaceChanged, folders);
-  });
-
-  const search = new SearchService(
-    registry,
-    connections,
-    (pluginId, kind, target, method, args, connectionId) => supervisor.invoke(pluginId, kind, target, method, args, connectionId),
-    [
-      {
-        // File names in every open folder (nested, fuzzy — "pm" finds plugin-manager.ts).
-        id: "files",
-        label: "Files",
-        icon: "$(file)",
-        order: 10,
-        run: async (query, limit) =>
-          (await workspace.quickOpen(query, limit)).map(({ folderId, folderName, ...hit }) => ({ ...hit, providerId: "core:files", pluginId: CORE_PLUGIN_ID, connectionId: folderId, connectionName: folderName })),
-      },
-    ],
-  );
-
-  registerIpcHandlers({
-    themes,
-    registry,
-    pluginManager,
-    connections,
-    search,
-    config,
-    supervisor,
-    views,
-    output,
-    ensureActivated,
-    getWindows: () => BrowserWindow.getAllWindows(),
-    workspace,
-    openWorkspaceFile,
-    coreCommands,
-    coreViewUrl,
-    terminal,
-    tasks,
-    taskRunner,
-    gitService,
-  });
-
-  await pluginManager.scan();
+  registerElectronHandlers({ views: backend.views as ViewHostManager, config: backend.config, workspace: backend.workspace, gitService: backend.gitService });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
   });
 
   app.on("before-quit", () => {
-    views.closeAll();
-    terminal.dispose();
-    taskRunner.stopAll();
-    gitService.dispose();
-    void searchWorker.dispose();
-    for (const record of pluginManager.getRecords()) {
-      if (record.state === "active") void supervisor.deactivate(record.id);
-    }
+    void backend.dispose();
   });
 }
 

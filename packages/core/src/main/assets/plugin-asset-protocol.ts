@@ -1,9 +1,7 @@
-import { resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { net, protocol } from "electron";
-import type { PluginManager } from "../plugins/plugin-manager.js";
-
-const ICON_HOST = "oneclient.icons";
+import type { PluginManager } from "@oneclient/backend/plugins/plugin-manager.js";
+import { resolveAsset } from "@oneclient/backend/assets/resolve-asset.js";
 
 /**
  * Must run before `app.whenReady()` — Electron requires privileged scheme
@@ -27,7 +25,8 @@ export function registerPluginAssetSchemeAsPrivileged(): void {
  * This is the only way plugin-declared file paths (manifest `icon`,
  * contribution `icon` fields) ever reach the renderer; nothing in the
  * renderer is handed a real filesystem path. Call once, after the
- * PluginManager exists, from the main process.
+ * PluginManager exists, from the main process. (The web server serves the
+ * same files at `/asset/...` — see resolve-asset.ts.)
  */
 export function registerPluginAssetProtocolHandler(
   pluginManager: PluginManager,
@@ -35,36 +34,12 @@ export function registerPluginAssetProtocolHandler(
 ): void {
   protocol.handle("oneclient-asset", async (request) => {
     const url = new URL(request.url);
-
-    // Reserved host: the icon registry — `oneclient-asset://oneclient.icons/<id>.svg` serves that id
-    // from the active icon theme. Plugin ids can't contain dots, so this can't shadow a plugin.
-    if (url.hostname === ICON_HOST) {
-      const id = decodeURIComponent(url.pathname.replace(/^\/+/, "")).replace(/\.svg$/, "");
-      const file = resolveIcon(id);
-      if (!file) return new Response("Unknown icon", { status: 404 });
-      try {
-        const response = await net.fetch(pathToFileURL(file).href);
-        return new Response(response.body, { headers: { "content-type": "image/svg+xml", "cache-control": "max-age=31536000" } });
-      } catch {
-        return new Response("Not found", { status: 404 });
-      }
-    }
-
-    const pluginId = url.hostname;
-    const relativePath = decodeURIComponent(url.pathname.replace(/^\/+/, ""));
-    const record = pluginManager.getRecord(pluginId);
-    if (!record || !relativePath) {
-      return new Response("Not found", { status: 404 });
-    }
-
-    const root = resolve(record.rootDir);
-    const resolved = resolve(root, relativePath);
-    if (resolved !== root && !resolved.startsWith(root + sep)) {
-      return new Response("Forbidden", { status: 403 }); // path traversal guard
-    }
-
+    const found = resolveAsset(url.hostname, url.pathname, pluginManager, resolveIcon);
+    if ("status" in found) return new Response(found.status === 403 ? "Forbidden" : "Not found", { status: found.status });
     try {
-      return await net.fetch(pathToFileURL(resolved).href);
+      const response = await net.fetch(pathToFileURL(found.file).href);
+      if (!found.contentType) return response;
+      return new Response(response.body, { headers: { "content-type": found.contentType, "cache-control": "max-age=31536000" } });
     } catch {
       return new Response("Not found", { status: 404 });
     }

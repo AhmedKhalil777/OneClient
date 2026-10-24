@@ -160,9 +160,22 @@ export function colorVarName(key: string): string {
   return `--oc-${key.replace(/\./g, "-")}`;
 }
 
+/**
+ * Where assets (icons, plugin files) are served from: `oneclient-asset://` in the desktop app, `<origin>/asset/` in
+ * the browser (the web shell sets `globalThis.__ONECLIENT_ASSET_BASE__`, for its views too). Ends with "/".
+ */
+export function assetBase(): string {
+  return (globalThis as { __ONECLIENT_ASSET_BASE__?: string }).__ONECLIENT_ASSET_BASE__ ?? "oneclient-asset://";
+}
+
+/** URL of a file a plugin ships (`<pluginId>/<path inside it>`), e.g. its manifest icon. */
+export function assetUrl(host: string, path: string): string {
+  return `${assetBase()}${host}/${path}`;
+}
+
 /** URL of an icon id in the active icon theme. */
 export function iconUrl(id: string, version = 0): string {
-  return `oneclient-asset://oneclient.icons/${encodeURIComponent(id)}.svg?v=${version}`;
+  return `${assetBase()}oneclient.icons/${encodeURIComponent(id)}.svg?v=${version}`;
 }
 
 /** `"$(database)"` → `"database"`; anything else (a plugin-relative path) → undefined. */
