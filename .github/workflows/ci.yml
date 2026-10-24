@@ -48,6 +48,40 @@ jobs:
       - name: Test
         run: pnpm run test
 
+  # The web runtime installs, builds and runs without Electron: a fresh checkout with only the web packages.
+  web-runtime:
+    name: Web runtime without Electron (windows)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install (web packages only)
+        run: pnpm run web:install --frozen-lockfile
+
+      - name: No Electron installed
+        shell: bash
+        run: |
+          if ls node_modules/.pnpm | grep -E '^(electron|electron-vite|electron-builder)@'; then
+            echo "::error::The web runtime's install pulled in Electron."
+            exit 1
+          fi
+
+      - name: Build (web packages only)
+        run: pnpm run web:build
+
+      - name: Test the server
+        run: pnpm --filter @oneclient/server run test
+
   # Proves the app still packages (the unpacked app only — fast); the full installers are built by the release workflow.
   package-check:
     name: Package check (windows)

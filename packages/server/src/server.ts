@@ -1,4 +1,5 @@
 import { readdir, stat } from "node:fs/promises";
+import type { AddressInfo } from "node:net";
 import { type IncomingMessage, type ServerResponse, createServer } from "node:http";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -53,9 +54,8 @@ export async function startServer(opts: ServerOptions) {
   });
   registerServerHandlers(rpc);
 
-  const loopback = LOOPBACK.has(opts.host);
-  const allowedHosts = loopback ? new Set(["127.0.0.1", "localhost", "[::1]"].map((h) => `${h}:${opts.port}`)) : null;
-  const auth = new Auth(opts.token, allowedHosts);
+  // Set once listening (the port may be 0 = any free one, and loopback-only servers check the Host header against it).
+  let auth!: Auth;
 
   const server = createServer((req, res) => {
     void handle(req, res).catch((err) => {
@@ -124,11 +124,14 @@ export async function startServer(opts: ServerOptions) {
     server.once("error", reject);
     server.listen(opts.port, opts.host, () => resolveListen());
   });
+  const port = (server.address() as AddressInfo).port;
+  auth = new Auth(opts.token, LOOPBACK.has(opts.host) ? new Set(["127.0.0.1", "localhost", "[::1]"].map((h) => `${h}:${port}`)) : null);
 
   const shownHost = opts.host === "0.0.0.0" || opts.host === "::" ? "localhost" : opts.host.includes(":") ? `[${opts.host}]` : opts.host;
   return {
-    url: `http://${shownHost}:${opts.port}/`,
-    loginUrl: `http://${shownHost}:${opts.port}/?token=${encodeURIComponent(opts.token)}`,
+    port,
+    url: `http://${shownHost}:${port}/`,
+    loginUrl: `http://${shownHost}:${port}/?token=${encodeURIComponent(opts.token)}`,
     configDir: dirname(backend.config.filePath),
     async close(): Promise<void> {
       wss.close();

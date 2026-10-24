@@ -58,8 +58,8 @@ Git fetch / pull / push and long plugin jobs show up here too.
 
 Docker, Azure Blob Storage and Keycloak are included too. Docker's **Templates** start any of these servers in a
 container for local testing (PostgreSQL, SQL Server, Redis, Kafka, Azurite, Keycloak). Each one gets a ready connection
-in its plugin, and every container shows which plugin and connection it belongs to. and the Miscellaneous plugin adds JSON / XML / SQL /
-Markdown editor support and Material file icons. The Plugins view shows what is installed. You can enable or disable
+in its plugin, and every container shows which plugin and connection it belongs to. The Miscellaneous plugin adds
+JSON / XML / SQL / Markdown editor support and Material file icons. The Plugins view shows what is installed. You can enable or disable
 any plugin live.
 
 ![The Plugins view](docs/images/plugins.png)
@@ -71,11 +71,19 @@ model, and [`packages/plugin-api`](./packages/plugin-api) for the interfaces plu
 
 ### What's in the repo
 
-- **Core workbench** (`packages/core`): title bar menus, Explorer, Search, file editor, Source Control (git),
-  Terminal, background tasks / Task Runner, Output, themes, and the plugin host.
-- **Plugins** (`packages/plugins/*`): SQL Server, PostgreSQL, Redis, Kafka, Azure Blob Storage, Docker, Keycloak,
-  HTTP client, and Miscellaneous (JSON / XML / SQL / Markdown editor features, Material icons).
-- `packages/plugin-api` — the only package plugins depend on; `packages/editor-kit` — the shared editor.
+oneClient runs in two ways that share one backend and one UI. The desktop app runs on **Electron**. The web
+version is a self-hosted **plain Node** server that you use from a browser.
+
+| Package | What | Electron? |
+|---|---|---|
+| `packages/backend` | The backend: plugin hosts, connections, workspace, Git, tasks, terminal, search, themes | no |
+| `packages/workbench` | The UI (React + Vite): title bar menus, Explorer, Search, editor, Source Control, Terminal, Tasks, Output | no |
+| `packages/server` | **Web runtime:** an HTTP + WebSocket server for the backend, serving the workbench to a browser | no |
+| `packages/core` | **Desktop runtime:** the Electron shell (main process, preloads, native windows and views) | yes |
+| `packages/plugins/*` | SQL Server, PostgreSQL, Redis, Kafka, Azure Blob Storage, Docker, Keycloak, HTTP client, Miscellaneous | no |
+| `packages/plugin-api`, `packages/editor-kit` | What plugins depend on, and the shared editor | no |
+
+Plugins run unchanged in both runtimes.
 
 ### Development
 
@@ -99,6 +107,43 @@ pnpm run test
 cd packages/core && pnpm run dev   # the app, with hot reload
 ```
 
+### Run it in a browser (self-hosted, no Electron)
+
+The web runtime installs and builds only the web packages, so Electron is never downloaded:
+
+```sh
+pnpm run web:install   # server, backend, workbench, plugins — no Electron
+pnpm run web:build
+pnpm run web:start     # prints:  Open: http://127.0.0.1:4180/?token=…
+```
+
+Open the printed link. The token in it is swapped for a cookie, so later visits only need `http://127.0.0.1:4180/`.
+Run `node packages/server/dist/main.js --help` for every option. The main ones:
+
+| Option / env | |
+|---|---|
+| `--port` / `PORT` | default 4180 |
+| `--host` / `HOST` | default `127.0.0.1`, so only this machine can connect. Use `0.0.0.0` to serve your network, behind an HTTPS reverse proxy. |
+| `--home` / `ONECLIENT_HOME` | config folder, default `~/.oneclient` |
+| `--token` / `ONECLIENT_TOKEN` | access token; by default one is generated and kept in `<home>/server-token` |
+| `--plugins` / `ONECLIENT_PLUGINS` | extra plugin folders. The bundled `packages/plugins` and `<home>/plugins` are always loaded. |
+| `ONECLIENT_SECRET_KEY` | 32-byte key for saved passwords; by default one is generated in `<home>/server.key` |
+
+**How the web version differs:**
+- **Folders, Git and the terminal are on the server.** "Open Folder…" browses the server's disk, and the terminal opens
+  a shell there.
+- **Passwords are separate.** The server encrypts them with its own key, in `secrets-server.json`. The desktop app
+  uses the OS keychain, so connections shared between the two need their passwords entered once in each.
+- **One runtime per config folder.** The desktop app and the server refuse to run on the same config folder at the
+  same time. Give each its own `ONECLIENT_HOME` to run both.
+- **Some shortcuts belong to the browser,** such as Ctrl+W and Ctrl+N.
+
+**Security:**
+- Every request and the WebSocket need the token cookie (`HttpOnly`, `SameSite=Strict`).
+- The WebSocket must come from the page's own origin.
+- A server bound to localhost also rejects requests whose `Host` header is a foreign name (DNS rebinding).
+- Whoever has the token has your connections and a terminal, so treat it like a password.
+
 ### Packaging & releases
 
 ```sh
@@ -112,7 +157,8 @@ pnpm run package:dir   # just the unpacked app (quick check)
 GitHub Actions:
 
 - **CI** (`.github/workflows/ci.yml`) — every push to `main` and every pull request: install, build, typecheck and
-  test on Windows, then check that the app still packages.
+  test on Windows; check that the app still packages; and check that the web runtime installs, builds and passes its
+  tests with no Electron installed.
 - **Release** (`.github/workflows/release.yml`) — push a version tag (`git tag v0.2.0 && git push origin v0.2.0`) or run
   it from the Actions tab with a version: tests, builds the installers on all three OSes, and publishes a GitHub
   Release with them, `SHA256SUMS.txt` and generated release notes. Tags with a `-` (`v0.2.0-beta.1`) become

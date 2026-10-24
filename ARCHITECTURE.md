@@ -24,6 +24,34 @@ described here.
 - A plugin marketplace/registry backend. Phase 5 only needs install-from-URL
   and install-from-`.tgz`; a real registry service is out of scope here.
 
+## Two runtimes, one backend
+
+oneClient runs in two ways that share the same backend (`@oneclient/backend`) and UI (`@oneclient/workbench`):
+
+| | Desktop (`@oneclient/core`) | Web (`@oneclient/server`) |
+|---|---|---|
+| Backend runs in | Electron's main process | a plain Node process |
+| Plugin and terminal hosts | `utilityProcess` | `child_process.fork` (structured-clone IPC) |
+| Shell ↔ backend | Electron IPC (preload) | one WebSocket per browser tab (token cookie, same-origin) |
+| Tier 2 views | native `WebContentsView`s with the view preload | same-origin iframes; the server injects a script that gets `window.oneclientView` from the shell |
+| Secrets | `safeStorage` (OS keychain / DPAPI), `secrets.json` | AES-256-GCM with `server.key`, `secrets-server.json` |
+| Assets | `oneclient-asset://` protocol | `/asset/` HTTP route (same lookup: `resolve-asset.ts`) |
+| Dialogs | native | in the page (folder browser on the server's disk; file download / upload) |
+
+The backend only sees four interfaces:
+- `Platform` — fork a helper process, encrypt a secret;
+- `RpcHost` — handle calls, broadcast events;
+- `ViewHost` — open, close and push to views;
+- `FileDialogs`.
+
+Each runtime implements them; `createBackend()` wires the rest. The shell's API object is built from one factory
+(`createClientApi`) over either transport, so the two can't drift apart.
+
+The web packages never depend on Electron: CI installs them alone and fails if Electron shows up.
+
+The diagram below is the desktop runtime; in the web runtime, "Main process" is the Node server and the renderer is
+a browser tab.
+
 ## Process topology
 
 ```mermaid
@@ -286,8 +314,13 @@ oneClient/
 │   │   ├── schema/
 │   │   │   └── oneclient-manifest.schema.json
 │   │   └── test/                 manifest-schema.test.ts + fixtures/
-│   ├── core/                     @oneclient/core — Phase 2 (placeholder for now)
-│   │   └── (src/main, src/preload, src/renderer, src/extension-host — not yet implemented)
+│   ├── backend/                  @oneclient/backend — the shared backend (plain Node, no Electron):
+│   │                             createBackend(), plugins + extension host, connections, workspace,
+│   │                             git, tasks, terminal host, search, themes, shared IPC contract
+│   ├── workbench/                @oneclient/workbench — the UI (React + Vite) and core views; web bridge
+│   ├── server/                   @oneclient/server — web runtime: HTTP + WebSocket server (no Electron)
+│   ├── core/                     @oneclient/core — desktop runtime: Electron main, preloads, native views
+│   ├── editor-kit/               the shared editor used by core views and plugin views
 │   └── plugins/
 │       ├── oneclient-docker/     Phase 3 reference plugin (Tier 1, + likely Tier 2 log view)
 │       ├── oneclient-postgres/   Phase 4 reference plugin (Tier 1 only)

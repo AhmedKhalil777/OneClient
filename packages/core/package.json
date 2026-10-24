@@ -5,8 +5,8 @@
   "description": "oneClient desktop app: the Electron shell around @oneclient/backend (main process, preloads, native windows and views) with the @oneclient/workbench UI. The web runtime is @oneclient/server.",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "dev": "pnpm --filter @oneclient/backend run build && electron-vite dev",
+    "build": "pnpm --filter @oneclient/backend run build && electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json --noEmit",
     "icons": "electron scripts/render-icons.cjs"

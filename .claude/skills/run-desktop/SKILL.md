@@ -15,8 +15,9 @@ All paths below are relative to the repo root.
 
 ```sh
 pnpm install
-pnpm --filter @oneclient/plugin-api run build   # core depends on this
-pnpm --filter @oneclient/core run build         # electron-vite build -> packages/core/out/
+pnpm --filter @oneclient/plugin-api run build   # the backend depends on this
+pnpm --filter @oneclient/core run build         # builds @oneclient/backend (tsc), then electron-vite -> packages/core/out/
+                                                # (the UI comes from packages/workbench)
 ```
 
 ## Run (agent path)
