@@ -8,6 +8,9 @@ import { fakerTool } from "./faker/api.js";
 import { folders } from "./folders.js";
 import { cancelQuery, executeQuery } from "./query-runner.js";
 import { closeAll, requireSession } from "./sessions.js";
+import { createDatabase } from "./databases.js";
+import { mssqlPlanAccess } from "./plan.js";
+import { mssqlTableAccess } from "./table-access.js";
 
 export function activate(context: PluginContext): void {
   context.logger.info("oneclient-mssql activated");
@@ -19,6 +22,9 @@ export function activate(context: PluginContext): void {
     cancelQuery,
     ensureConnected: (connectionId) => void requireSession(connectionId),
     describeError,
+    tableAccess: mssqlTableAccess,
+    planAccess: mssqlPlanAccess,
+    createDatabase,
     folders,
     tools: [fakerTool],
   });

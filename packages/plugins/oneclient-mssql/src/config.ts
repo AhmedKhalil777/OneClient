@@ -1,6 +1,7 @@
+import type { SshConfig, Tunnel, TunnelTarget } from "@oneclient/sql-core";
 import type sql from "mssql";
 
-export interface MssqlConnectionConfig {
+export interface MssqlConnectionConfig extends SshConfig {
   server?: string;
   port?: number;
   authentication?: string;
@@ -11,6 +12,8 @@ export interface MssqlConnectionConfig {
   encrypt?: boolean;
   trustServerCertificate?: boolean;
   connectTimeoutSeconds?: number;
+  /** Set by viaTunnel(): the real server name, so certificate checks still use it when connecting to 127.0.0.1. */
+  tlsServerName?: string;
 }
 
 export const AUTH_SQL = "SQL Server Authentication";
@@ -22,23 +25,8 @@ export const AUTH_NTLM = "Windows Authentication (NTLM)";
  * `default`, they don't submit it.
  */
 export function toPoolConfig(config: MssqlConnectionConfig, overrides: Partial<sql.config> = {}): sql.config {
-  const server = config.server?.trim();
-  if (!server) throw new Error("Server name is required.");
-
-  // Accept SSMS-style "host,port" and "host\instance" in the server box.
-  let host = server;
-  let port = config.port;
-  let instanceName: string | undefined;
-  const comma = /^(.*),\s*(\d+)$/.exec(host);
-  if (comma) {
-    host = comma[1]!;
-    port = Number(comma[2]);
-  }
-  const backslash = host.indexOf("\\");
-  if (backslash !== -1) {
-    instanceName = host.slice(backslash + 1);
-    host = host.slice(0, backslash);
-  }
+  const { host: parsed, port, instanceName } = parseServer(config);
+  let host = parsed;
   // "localhost" can resolve to ::1 first; Docker Desktop (and some proxies) accept the IPv6 connection
   // and then reset it, and tedious doesn't fall back to IPv4 after a reset. SSMS's driver does, so
   // match it by going straight to IPv4 — local SQL Server always listens there.
@@ -55,6 +43,7 @@ export function toPoolConfig(config: MssqlConnectionConfig, overrides: Partial<s
       encrypt: config.encrypt ?? true,
       trustServerCertificate: config.trustServerCertificate ?? false,
       instanceName,
+      ...(config.tlsServerName ? { serverName: config.tlsServerName } : {}),
       appName: "oneClient",
       enableArithAbort: true,
     },
@@ -71,6 +60,38 @@ export function toPoolConfig(config: MssqlConnectionConfig, overrides: Partial<s
     };
   }
   return { ...base, user: config.user ?? "", password: config.password ?? "" };
+}
+
+/** Accepts SSMS-style "host", "host,port" and "host\instance" in the server box. */
+export function parseServer(config: MssqlConnectionConfig): { host: string; port: number | undefined; instanceName: string | undefined } {
+  const server = config.server?.trim();
+  if (!server) throw new Error("Server name is required.");
+  let host = server;
+  let port = config.port;
+  let instanceName: string | undefined;
+  const comma = /^(.*),\s*(\d+)$/.exec(host);
+  if (comma) {
+    host = comma[1]!;
+    port = Number(comma[2]);
+  }
+  const backslash = host.indexOf("\\");
+  if (backslash !== -1) {
+    instanceName = host.slice(backslash + 1);
+    host = host.slice(0, backslash);
+  }
+  return { host, port, instanceName };
+}
+
+/** Where the SSH server should connect to (as seen from the SSH server). A named instance needs SQL Browser (UDP), which a tunnel can't carry. */
+export function tunnelTarget(config: MssqlConnectionConfig): TunnelTarget {
+  const { host, port, instanceName } = parseServer(config);
+  if (instanceName) throw new Error('SSH tunnel: a named instance can\'t be reached through a tunnel — use "host,port" as the server name.');
+  return { host, port: port ?? 1433 };
+}
+
+/** The config the driver connects with when a tunnel is open: the local end of the tunnel, with the real name kept for TLS. */
+export function viaTunnel(config: MssqlConnectionConfig, tunnel: Tunnel): MssqlConnectionConfig {
+  return { ...config, server: `${tunnel.host},${tunnel.port}`, tlsServerName: parseServer(config).host };
 }
 
 /** What a query window shows as its connection: "server (login)". */

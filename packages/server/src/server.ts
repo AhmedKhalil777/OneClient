@@ -154,12 +154,22 @@ function unauthorized(res: ServerResponse): void {
 /** Web-only calls: browsing the server's folders for "Open Folder…" (the desktop uses a native dialog). */
 function registerServerHandlers(rpc: WsRpc): void {
   rpc.handle("oneclient-web:list-dirs", async (_caller, requested: unknown) => {
-    const dir = resolve(typeof requested === "string" && requested.trim() ? requested : homedir());
+    // A path (folders only), or { path, files: [extensions] } to list files too ([] = every file).
+    const asked = typeof requested === "object" && requested !== null ? (requested as { path?: unknown; files?: unknown }) : { path: requested };
+    const wantFiles = Array.isArray(asked.files);
+    const extensions = wantFiles ? (asked.files as unknown[]).filter((e): e is string => typeof e === "string").map((e) => e.toLowerCase().replace(/^\./, "")) : [];
+    const dir = resolve(typeof asked.path === "string" && asked.path.trim() ? asked.path : homedir());
     const entries = await readdir(dir, { withFileTypes: true });
     const dirs = entries
       .filter((e) => e.isDirectory() || e.isSymbolicLink())
       .map((e) => ({ name: e.name, path: join(dir, e.name) }))
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    const files = wantFiles
+      ? entries
+          .filter((e) => e.isFile() && (!extensions.length || extensions.includes(e.name.slice(e.name.lastIndexOf(".") + 1).toLowerCase())))
+          .map((e) => ({ name: e.name, path: join(dir, e.name) }))
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+      : [];
     const parent = dirname(dir) !== dir ? dirname(dir) : null;
     let roots: string[] = [];
     if (process.platform === "win32") {
@@ -167,6 +177,6 @@ function registerServerHandlers(rpc: WsRpc): void {
       const found = await Promise.all(letters.map((l) => stat(`${l}:\\`).then(() => `${l}:\\`, () => null)));
       roots = found.filter((r): r is string => r !== null);
     } else roots = ["/"];
-    return { path: dir, parent, dirs, roots, home: homedir(), separator: process.platform === "win32" ? "\\" : "/" };
+    return { path: dir, parent, dirs, files, roots, home: homedir(), separator: process.platform === "win32" ? "\\" : "/" };
   });
 }

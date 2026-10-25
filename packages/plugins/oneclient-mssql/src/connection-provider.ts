@@ -1,6 +1,7 @@
 import sql from "mssql";
 import type { ConnectionProvider } from "@oneclient/plugin-api";
-import { AUTH_NTLM, AUTH_SQL, type MssqlConnectionConfig, toPoolConfig } from "./config.js";
+import { closeTunnel, sshEnabled, sshSchemaProperties, tunnelFor } from "@oneclient/sql-core";
+import { AUTH_NTLM, AUTH_SQL, type MssqlConnectionConfig, toPoolConfig, tunnelTarget, viaTunnel } from "./config.js";
 import { describeError } from "./errors.js";
 import { closeSession, openSession } from "./sessions.js";
 
@@ -29,6 +30,7 @@ export function createConnectionProvider(): ConnectionProvider<MssqlConnectionCo
           default: false,
           description: "Needed for local/dev servers with a self-signed certificate (e.g. SQL Server in Docker).",
         },
+        ...sshSchemaProperties,
       },
     },
 
@@ -44,8 +46,11 @@ export function createConnectionProvider(): ConnectionProvider<MssqlConnectionCo
 
     async test(config) {
       const started = Date.now();
-      const pool = new sql.ConnectionPool(toPoolConfig(config, { pool: { max: 1, min: 0 } }));
+      const testId = `test:${started}`;
+      let pool: sql.ConnectionPool | undefined;
       try {
+        const tunnel = sshEnabled(config) ? await tunnelFor(testId, config, tunnelTarget(config)) : undefined;
+        pool = new sql.ConnectionPool(toPoolConfig(tunnel ? viaTunnel(config, tunnel) : config, { pool: { max: 1, min: 0 } }));
         await pool.connect();
         const result = await pool
           .request()
@@ -61,7 +66,7 @@ export function createConnectionProvider(): ConnectionProvider<MssqlConnectionCo
       } catch (err) {
         return { success: false, message: describeError(err) };
       } finally {
-        await pool.close().catch(() => undefined);
+        await Promise.allSettled([pool?.close(), closeTunnel(testId)]);
       }
     },
 

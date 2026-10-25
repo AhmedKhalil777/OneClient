@@ -50,6 +50,12 @@ export interface PluginContext {
   /** The user's saved connections of every plugin: list, create, test — see connections.ts. */
   readonly connections: Connections;
 
+  /**
+   * Re-fetches a connection's explorer trees (every section of it) in the sidebar — for something that changed in the
+   * background, like a long query finishing. `ViewHostApi.refreshExplorer()` is the same for a view.
+   */
+  refreshExplorer(connectionId: string): void;
+
   /** Other plugins' `contributes.extensions` entries — see connections.ts. */
   readonly contributions: Contributions;
 

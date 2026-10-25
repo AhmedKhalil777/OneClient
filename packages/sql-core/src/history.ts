@@ -26,6 +26,7 @@ export interface HistoryStore {
   record(connectionId: string, entry: Omit<HistoryEntry, "id" | "at">): Promise<void>;
   /** Newest first; `search` matches the SQL or database (case-insensitive, all words). */
   list(connectionId: string, opts?: { search?: string; limit?: number }): Promise<HistoryEntry[]>;
+  get(connectionId: string, id: string): Promise<HistoryEntry | undefined>;
   /** One entry, or (without `id`) the connection's whole history. */
   remove(connectionId: string, id?: string): Promise<void>;
 }
@@ -76,6 +77,10 @@ export function createHistoryStore(dataDir: string): HistoryStore {
       const all = (await load(connectionId)).reverse();
       const hits = words.length ? all.filter((e) => words.every((w) => e.sql.toLowerCase().includes(w) || (e.database ?? "").toLowerCase().includes(w))) : all;
       return hits.slice(0, opts.limit ?? 200);
+    },
+
+    async get(connectionId, id) {
+      return (await load(connectionId)).find((e) => e.id === id);
     },
 
     async remove(connectionId, id) {

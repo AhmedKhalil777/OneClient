@@ -52,6 +52,18 @@ export function registerElectronHandlers(deps: { views: ViewHostManager; config:
     return result.canceled ? null : (result.filePaths[0] ?? null);
   });
 
+  ipcMain.handle(IpcChannel.DialogPickFile, async (event, opts?: { defaultPath?: string; extensions?: string[] }): Promise<string | null> => {
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    const extensions = Array.isArray(opts?.extensions) ? opts.extensions.filter((e) => /^[\w-]+$/.test(e)) : [];
+    const options: OpenDialogOptions = {
+      properties: ["openFile"],
+      ...(typeof opts?.defaultPath === "string" && opts.defaultPath ? { defaultPath: opts.defaultPath } : {}),
+      filters: [...(extensions.length ? [{ name: extensions.map((e) => `*.${e}`).join(", "), extensions }] : []), { name: "All files", extensions: ["*"] }],
+    };
+    const result = owner ? await dialog.showOpenDialog(owner, options) : await dialog.showOpenDialog(options);
+    return result.canceled ? null : (result.filePaths[0] ?? null);
+  });
+
   // Title bar menus.
   const windowOf = (event: Electron.IpcMainInvokeEvent) => BrowserWindow.fromWebContents(event.sender) ?? dialogParent();
   ipcMain.handle(IpcChannel.WindowAction, (event, action: WindowAction) => {

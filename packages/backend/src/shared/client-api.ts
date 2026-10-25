@@ -91,6 +91,7 @@ export function createClientApi(t: ClientTransport): OneClientApi {
     onFullScreenChanged: on(IpcChannel.FullScreenChanged),
 
     pickDirectory: (defaultPath) => call(IpcChannel.DialogPickDirectory, defaultPath),
+    pickFile: (options) => call(IpcChannel.DialogPickFile, options),
 
     getThemeState: () => call(IpcChannel.ThemeGetState),
     onThemeChanged: on(IpcChannel.ThemeChanged),

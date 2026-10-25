@@ -1,6 +1,7 @@
+import type { SshConfig, Tunnel, TunnelTarget } from "@oneclient/sql-core";
 import type { ClientConfig } from "pg";
 
-export interface PgConnectionConfig {
+export interface PgConnectionConfig extends SshConfig {
   host?: string;
   port?: number;
   user?: string;
@@ -10,6 +11,8 @@ export interface PgConnectionConfig {
   /** postgres://user:pass@host:port/db?sslmode=… — overrides the other fields when set. */
   connectionString?: string;
   showSystemObjects?: boolean;
+  /** Set by viaTunnel(): the real host name, so certificate checks still use it when connecting to 127.0.0.1. */
+  tlsServerName?: string;
 }
 
 export const SSL_DISABLE = "Disable";
@@ -48,7 +51,8 @@ export function toClientConfig(config: PgConnectionConfig, database?: string): C
     url.searchParams.delete("sslmode");
     if (database) url.pathname = `/${encodeURIComponent(database)}`;
     if (url.hostname.toLowerCase() === "localhost") url.hostname = "127.0.0.1";
-    const ssl = !mode || mode === "disable" || mode === "prefer" || mode === "allow" ? false : mode === "verify-full" || mode === "verify-ca" ? true : { rejectUnauthorized: false };
+    const verify = config.tlsServerName ? { servername: config.tlsServerName } : true;
+    const ssl = !mode || mode === "disable" || mode === "prefer" || mode === "allow" ? false : mode === "verify-full" || mode === "verify-ca" ? verify : { rejectUnauthorized: false };
     return { ...base, connectionString: url.toString(), ssl };
   }
   const host = config.host?.trim();
@@ -61,8 +65,33 @@ export function toClientConfig(config: PgConnectionConfig, database?: string): C
     user: config.user?.trim() || "postgres",
     password: config.password ?? "",
     database: database ?? (config.database?.trim() || "postgres"),
-    ssl: !config.ssl || config.ssl === SSL_DISABLE ? false : config.ssl === SSL_VERIFY ? true : { rejectUnauthorized: false },
+    ssl: !config.ssl || config.ssl === SSL_DISABLE ? false : config.ssl === SSL_VERIFY ? (config.tlsServerName ? { servername: config.tlsServerName } : true) : { rejectUnauthorized: false },
   };
+}
+
+/** Where the SSH server should connect to (as seen from the SSH server). */
+export function tunnelTarget(config: PgConnectionConfig): TunnelTarget {
+  const conn = config.connectionString?.trim();
+  if (conn) {
+    const u = new URL(conn);
+    return { host: u.hostname, port: Number(u.port) || 5432 };
+  }
+  const host = config.host?.trim();
+  if (!host) throw new Error("Host is required.");
+  return { host, port: Number(config.port) || 5432 };
+}
+
+/** The config the driver connects with when a tunnel is open: the local end of the tunnel, with the real name kept for TLS. */
+export function viaTunnel(config: PgConnectionConfig, tunnel: Tunnel): PgConnectionConfig {
+  const conn = config.connectionString?.trim();
+  const { host } = tunnelTarget(config);
+  if (conn) {
+    const u = new URL(conn);
+    u.hostname = tunnel.host;
+    u.port = String(tunnel.port);
+    return { ...config, connectionString: u.toString(), tlsServerName: host };
+  }
+  return { ...config, host: tunnel.host, port: tunnel.port, tlsServerName: host };
 }
 
 /** The database a connection opens by default. */

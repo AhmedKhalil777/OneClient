@@ -6,6 +6,9 @@ import { describeError } from "./errors.js";
 import { createExplorerProvider } from "./explorer-provider.js";
 import { cancelQuery, executeQuery } from "./query-runner.js";
 import { closeAll, requireSession } from "./sessions.js";
+import { createDatabase } from "./databases.js";
+import { postgresPlanAccess } from "./plan.js";
+import { postgresTableAccess } from "./table-access.js";
 
 export function activate(context: PluginContext): void {
   context.logger.info("oneclient-postgres activated");
@@ -18,6 +21,9 @@ export function activate(context: PluginContext): void {
     cancelQuery,
     ensureConnected: (connectionId) => void requireSession(connectionId),
     describeError,
+    tableAccess: postgresTableAccess,
+    planAccess: postgresPlanAccess,
+    createDatabase,
   });
 
   context.subscriptions.push(context.registerConnectionProvider(createConnectionProvider()));

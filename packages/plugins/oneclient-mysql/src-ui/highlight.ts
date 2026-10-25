@@ -1,0 +1,73 @@
+/**
+ * Tiny MySQL highlighter for the editor overlay: one regex pass, HTML out. Knows 'strings' and "strings" with backslash
+ * escapes, `quoted identifiers`, -- / # / block comments, @user and @@system variables.
+ */
+
+export const KEYWORDS = new Set(
+  `ACCESSIBLE ADD ALL ALTER ANALYZE AS ASC AUTO_INCREMENT BEFORE BEGIN BETWEEN BY CALL CASCADE CASE CHANGE CHARACTER CHECK COLLATE
+  COLUMN COLUMNS COMMENT COMMIT CONDITION CONSTRAINT CONTINUE CONVERT CREATE CROSS CURRENT_DATE CURRENT_TIME CURRENT_TIMESTAMP CURSOR
+  DATABASE DATABASES DECLARE DEFAULT DEFINER DELAYED DELETE DELIMITER DESC DESCRIBE DETERMINISTIC DISTINCT DIV DROP DUAL EACH ELSE
+  ELSEIF ENGINE ENUM ESCAPE EXCEPT EXISTS EXIT EXPLAIN FALSE FETCH FOR FORCE FOREIGN FROM FULLTEXT FUNCTION GENERATED GRANT GROUP
+  HAVING IF IGNORE INDEX INFILE INNER INOUT INSERT INTERSECT INTO ITERATE JOIN KEY KEYS KILL LEAVE LEFT LIMIT LOAD LOCK LOOP MATCH
+  MODIFIES NATURAL NO_WRITE_TO_BINLOG NOT NULL OFFSET ON OPTIMIZE OPTION ORDER OUT OUTER OUTFILE OVER PARTITION PRIMARY PROCEDURE
+  PURGE READ READS RECURSIVE REFERENCES REGEXP RELEASE RENAME REPEAT REPLACE REQUIRE RESIGNAL RESTRICT RETURN REVOKE RIGHT RLIKE
+  ROLLBACK ROW ROWS SAVEPOINT SCHEMA SELECT SET SHOW SIGNAL SPATIAL SQL SQLEXCEPTION SQLSTATE SQLWARNING START STARTING STORED
+  STRAIGHT_JOIN TABLE TABLES TEMPORARY TERMINATED THEN TO TRANSACTION TRIGGER TRUE TRUNCATE UNDO UNION UNIQUE UNLOCK UNSIGNED UPDATE
+  USAGE USE USING VALUES VIEW VIRTUAL WHEN WHERE WHILE WINDOW WITH WRITE XOR ZEROFILL ANALYZE FORMAT TREE`.split(/\s+/),
+);
+
+export const OPERATORS = new Set("AND OR NOT IN IS NULL LIKE BETWEEN EXISTS ANY ALL SOME XOR DIV MOD REGEXP RLIKE ESCAPE".split(" "));
+
+export const TYPES = new Set(
+  `BIGINT BINARY BIT BLOB BOOL BOOLEAN CHAR DATE DATETIME DECIMAL DOUBLE ENUM FLOAT GEOMETRY INT INTEGER JSON LONGBLOB LONGTEXT
+  MEDIUMBLOB MEDIUMINT MEDIUMTEXT NUMERIC POINT POLYGON REAL SERIAL SET SMALLINT TEXT TIME TIMESTAMP TINYBLOB TINYINT TINYTEXT
+  VARBINARY VARCHAR YEAR SIGNED UNSIGNED`.split(/\s+/),
+);
+
+export const FUNCTIONS = new Set(
+  `COUNT SUM AVG MIN MAX GROUP_CONCAT JSON_ARRAYAGG JSON_OBJECTAGG BIT_AND BIT_OR BIT_XOR STD STDDEV VARIANCE ROW_NUMBER RANK
+  DENSE_RANK PERCENT_RANK CUME_DIST NTILE LAG LEAD FIRST_VALUE LAST_VALUE NTH_VALUE CAST COALESCE NULLIF IFNULL IF GREATEST LEAST
+  NOW CURDATE CURTIME CURRENT_DATE CURRENT_TIME CURRENT_TIMESTAMP UTC_TIMESTAMP SYSDATE DATE_ADD DATE_SUB DATE_FORMAT STR_TO_DATE
+  DATEDIFF TIMESTAMPDIFF TIMESTAMPADD DATE EXTRACT YEAR MONTH DAY HOUR MINUTE SECOND DAYOFWEEK DAYNAME MONTHNAME LAST_DAY FROM_UNIXTIME
+  UNIX_TIMESTAMP LENGTH CHAR_LENGTH LOWER UPPER TRIM LTRIM RTRIM SUBSTRING SUBSTR LOCATE INSTR REPLACE REGEXP_REPLACE REGEXP_LIKE
+  REGEXP_SUBSTR CONCAT CONCAT_WS FORMAT LEFT RIGHT LPAD RPAD REPEAT REVERSE MD5 SHA1 SHA2 UUID UUID_SHORT HEX UNHEX TO_BASE64
+  FROM_BASE64 ABS CEIL CEILING FLOOR ROUND TRUNCATE POWER POW SQRT MOD RAND SIGN JSON_EXTRACT JSON_UNQUOTE JSON_SET JSON_INSERT
+  JSON_REPLACE JSON_REMOVE JSON_OBJECT JSON_ARRAY JSON_CONTAINS JSON_LENGTH JSON_KEYS JSON_TABLE JSON_VALID JSON_PRETTY
+  LAST_INSERT_ID ROW_COUNT FOUND_ROWS DATABASE SCHEMA USER CURRENT_USER VERSION CONNECTION_ID SLEEP BENCHMARK FIND_IN_SET FIELD ELT`.split(/\s+/),
+);
+
+const TOKEN =
+  /(-- [^\n]*|--$|#[^\n]*)|(\/\*[\s\S]*?(?:\*\/|$))|('(?:[^'\\]|\\.|'')*'?|"(?:[^"\\]|\\.|"")*"?)|(`(?:[^`]|``)*`?)|(@@?[A-Za-z_][\w.$]*|@`[^`]*`)|(\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b|\b0x[0-9a-fA-F]+\b)|([A-Za-z_][\w$]*)/g;
+
+function escape(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function highlightSql(text: string): string {
+  let out = "";
+  let last = 0;
+  for (const m of text.matchAll(TOKEN)) {
+    const index = m.index ?? 0;
+    out += escape(text.slice(last, index));
+    last = index + m[0].length;
+    const tok = escape(m[0]);
+    if (m[1] || m[2]) out += `<span class="t-comment">${tok}</span>`;
+    else if (m[3]) out += `<span class="t-string">${tok}</span>`;
+    else if (m[4]) out += tok; // `quoted identifier`
+    else if (m[5]) out += `<span class="t-var">${tok}</span>`;
+    else if (m[6]) out += `<span class="t-number">${tok}</span>`;
+    else {
+      const upper = m[0].toUpperCase();
+      const isCall = text[last] === "(";
+      if (isCall && FUNCTIONS.has(upper)) out += `<span class="t-func">${tok}</span>`;
+      else if (TYPES.has(upper)) out += `<span class="t-type">${tok}</span>`;
+      else if (OPERATORS.has(upper)) out += `<span class="t-op">${tok}</span>`;
+      else if (KEYWORDS.has(upper)) out += `<span class="t-keyword">${tok}</span>`;
+      else if (FUNCTIONS.has(upper)) out += `<span class="t-func">${tok}</span>`;
+      else out += tok;
+    }
+  }
+  out += escape(text.slice(last));
+  // A trailing newline needs content after it or the overlay is one line shorter than the textarea.
+  return `${out}\n `;
+}

@@ -25,8 +25,10 @@ export interface JsonSchemaObject {
   examples?: unknown[];
   enum?: unknown[];
   const?: unknown;
-  /** Standard formats pass through; oneClient also understands `"directory"` (Tier 1 forms add a native folder picker). */
+  /** Standard formats pass through; oneClient also understands `"directory"` and `"file"` (Tier 1 forms add a native folder / file picker). */
   format?: string;
+  /** With `format: "file"`: file extensions (no dot) the picker offers first, e.g. ["csv", "tsv"]. */
+  "x-file-extensions"?: string[];
   /** oneClient-specific hint, not standard JSON Schema: render as a secret/password input and route through SecretStore. */
   "x-secret"?: boolean;
   minimum?: number;

@@ -105,6 +105,7 @@ export function registerIpcHandlers(deps: IpcDeps): void {
   output.onReveal((channelId) => broadcast(IpcChannel.OutputReveal, channelId));
 
   views.onRefreshExplorer((connectionId) => broadcast(IpcChannel.ExplorerRefresh, connectionId));
+  supervisor.onExplorerRefresh((connectionId) => broadcast(IpcChannel.ExplorerRefresh, connectionId));
   views.onOpenView((pluginId, connectionId, request) => broadcast(IpcChannel.OpenViewRequest, { pluginId, connectionId, ...request }));
 
   rpc.handle(IpcChannel.RegistryGet, () => registry.snapshot());

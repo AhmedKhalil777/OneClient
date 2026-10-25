@@ -58,6 +58,7 @@ export type HostOutboundMessage =
   | { type: "deactivated" }
   | { type: "view:push"; viewId: string; connectionId?: string; message: unknown }
   | { type: "workspace:folders"; requestId: string }
+  | { type: "explorer:refresh"; connectionId: string }
   | { type: "task:start"; taskId: string; title: string; cancellable: boolean }
   | { type: "task:update"; taskId: string; log?: string; detail?: string; progress?: number }
   | { type: "task:end"; taskId: string; ok: boolean; error?: string }

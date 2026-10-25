@@ -1,6 +1,7 @@
 import pg from "pg";
 import type { ConnectionProvider } from "@oneclient/plugin-api";
-import { type PgConnectionConfig, SSL_DISABLE, SSL_OPTIONS, toClientConfig } from "./config.js";
+import { closeTunnel, sshEnabled, sshSchemaProperties, tunnelFor } from "@oneclient/sql-core";
+import { type PgConnectionConfig, SSL_DISABLE, SSL_OPTIONS, toClientConfig, tunnelTarget, viaTunnel } from "./config.js";
 import { describeError } from "./errors.js";
 import { closeSession, openSession } from "./sessions.js";
 
@@ -23,6 +24,7 @@ export function createConnectionProvider(): ConnectionProvider<PgConnectionConfi
           description: "postgres://user:password@host:5432/db?sslmode=require — replaces the fields above.",
         },
         showSystemObjects: { type: "boolean", title: "Show system schemas and template databases", default: false },
+        ...sshSchemaProperties,
       },
     },
 
@@ -39,8 +41,10 @@ export function createConnectionProvider(): ConnectionProvider<PgConnectionConfi
     async test(config) {
       const started = Date.now();
       let client: pg.Client | undefined;
+      const testId = `test:${started}`;
       try {
-        client = new pg.Client(toClientConfig(config));
+        const tunnel = sshEnabled(config) ? await tunnelFor(testId, config, tunnelTarget(config)) : undefined;
+        client = new pg.Client(toClientConfig(tunnel ? viaTunnel(config, tunnel) : config));
         await client.connect();
         const r = await client.query<{ version: string; db: string }>("SELECT current_setting('server_version') AS version, current_database() AS db");
         const row = r.rows[0];
@@ -48,7 +52,7 @@ export function createConnectionProvider(): ConnectionProvider<PgConnectionConfi
       } catch (err) {
         return { success: false, message: describeError(err) };
       } finally {
-        await client?.end().catch(() => undefined);
+        await Promise.allSettled([client?.end(), closeTunnel(testId)]);
       }
     },
 

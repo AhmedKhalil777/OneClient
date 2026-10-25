@@ -51,6 +51,21 @@ function blank(sql: string): string {
   return out;
 }
 
+/** True when the statement filters its rows: a WHERE outside any parentheses (a subquery's WHERE doesn't count) that isn't a tautology like 1=1. */
+function hasRealWhere(statement: string): boolean {
+  let depth = 0;
+  for (let i = 0; i < statement.length; i++) {
+    const ch = statement[i];
+    if (ch === "(") depth++;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    else if (depth === 0 && /^WHERE\b/i.test(statement.slice(i)) && (i === 0 || /\W/.test(statement[i - 1]!))) {
+      const condition = statement.slice(i + 5).replace(/\s+/g, " ").trim();
+      return !/^\(*\s*(1 ?= ?1|0 ?= ?0|true|'1' ?= ?'1')\s*\)*$/i.test(condition);
+    }
+  }
+  return false;
+}
+
 const short = (s: string) => {
   const one = s.replace(/\s+/g, " ").trim();
   return one.length > 120 ? `${one.slice(0, 117)}…` : one;
@@ -75,8 +90,8 @@ export function findRiskyStatements(sql: string): RiskyStatement[] {
     if (!s) continue;
     // Skip the CTE prefix: WITH x AS (…) DELETE …
     const body = s.replace(/^WITH\b[\s\S]*?\)\s*(?=(DELETE|UPDATE|INSERT|SELECT|MERGE)\b)/i, "");
-    if (/^DELETE\b/i.test(body) && !/\bWHERE\b/i.test(body)) out.push({ kind: "delete-all", reason: "DELETE without WHERE removes every row", text: short(raw) });
-    else if (/^UPDATE\b/i.test(body) && !/\bWHERE\b/i.test(body)) out.push({ kind: "update-all", reason: "UPDATE without WHERE changes every row", text: short(raw) });
+    if (/^DELETE\b/i.test(body) && !hasRealWhere(body)) out.push({ kind: "delete-all", reason: "DELETE without WHERE removes every row", text: short(raw) });
+    else if (/^UPDATE\b/i.test(body) && !hasRealWhere(body)) out.push({ kind: "update-all", reason: "UPDATE without WHERE changes every row", text: short(raw) });
     else if (/^TRUNCATE\b/i.test(body)) out.push({ kind: "truncate", reason: "TRUNCATE removes every row", text: short(raw) });
     else if (/^DROP\s+(TABLE|DATABASE|SCHEMA|VIEW|MATERIALIZED\s+VIEW|INDEX|FUNCTION|PROCEDURE|PROC|SEQUENCE|TYPE|TRIGGER|USER|ROLE|LOGIN)\b/i.test(body)) {
       out.push({ kind: "drop", reason: `DROP ${/^DROP\s+(MATERIALIZED\s+VIEW|\w+)/i.exec(body)![1]!.toUpperCase()} deletes the object and its data`, text: short(raw) });

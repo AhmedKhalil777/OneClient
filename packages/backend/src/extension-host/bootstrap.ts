@@ -192,6 +192,7 @@ function makeContext(extensionPath: string): PluginContext {
     createOutputChannel: makeOutputChannel,
     workspace: makeWorkspace(),
     tasks: makeTasks(),
+    refreshExplorer: (connectionId) => post({ type: "explorer:refresh", connectionId: String(connectionId) }),
     connections: makeConnections(),
     contributions: makeContributions(),
     subscriptions,

@@ -2,6 +2,7 @@ interface Listing {
   path: string;
   parent: string | null;
   dirs: Array<{ name: string; path: string }>;
+  files?: Array<{ name: string; path: string }>;
   roots: string[];
   home: string;
 }
@@ -10,13 +11,15 @@ interface Listing {
  * "Open Folder…" in the browser: browses folders on the server machine (where the Explorer, Git and the terminal
  * work), since a browser can't hand a real path over. Resolves to the chosen absolute path, or null.
  */
-export function pickFolder(list: (path?: string) => Promise<Listing>, defaultPath?: string): Promise<string | null> {
+export function pickFolder(list: (path?: string) => Promise<Listing>, defaultPath?: string, options: { files?: boolean } = {}): Promise<string | null> {
+  const files = options.files === true;
+  const what = files ? "Choose File" : "Open Folder";
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "folder-picker-overlay";
     overlay.innerHTML = `
-      <div class="folder-picker" role="dialog" aria-modal="true" aria-label="Open Folder">
-        <div class="folder-picker-title">Open Folder <span class="folder-picker-hint">on the server</span></div>
+      <div class="folder-picker" role="dialog" aria-modal="true" aria-label="${what}">
+        <div class="folder-picker-title">${what} <span class="folder-picker-hint">on the server</span></div>
         <div class="folder-picker-bar">
           <select class="folder-picker-roots" title="Drive"></select>
           <input class="folder-picker-path" spellcheck="false" />
@@ -25,7 +28,7 @@ export function pickFolder(list: (path?: string) => Promise<Listing>, defaultPat
         <div class="folder-picker-error"></div>
         <div class="folder-picker-actions">
           <button type="button" class="folder-picker-cancel">Cancel</button>
-          <button type="button" class="folder-picker-open primary">Open</button>
+          <button type="button" class="folder-picker-open primary">${files ? "Choose" : "Open"}</button>
         </div>
       </div>`;
     const $ = <T extends HTMLElement>(sel: string) => overlay.querySelector<T>(sel)!;
@@ -34,6 +37,7 @@ export function pickFolder(list: (path?: string) => Promise<Listing>, defaultPat
     const roots = $<HTMLSelectElement>(".folder-picker-roots");
     const errorEl = $<HTMLDivElement>(".folder-picker-error");
     let current = "";
+    let chosen = "";
 
     const done = (value: string | null) => {
       overlay.remove();
@@ -59,7 +63,22 @@ export function pickFolder(list: (path?: string) => Promise<Listing>, defaultPat
           row.addEventListener("click", () => void go(d.path));
           listEl.appendChild(row);
         }
-        if (rows.length === 0) listEl.innerHTML = `<div class="folder-picker-empty">No sub-folders</div>`;
+        // Files: a click selects (and fills the path box), a double-click chooses.
+        for (const f of files ? (listing.files ?? []) : []) {
+          const row = document.createElement("div");
+          row.className = "folder-picker-row";
+          row.textContent = `📄 ${f.name}`;
+          row.title = f.path;
+          row.addEventListener("click", () => {
+            chosen = f.path;
+            pathInput.value = f.path;
+            listEl.querySelectorAll(".folder-picker-row.selected").forEach((r) => r.classList.remove("selected"));
+            row.classList.add("selected");
+          });
+          row.addEventListener("dblclick", () => done(f.path));
+          listEl.appendChild(row);
+        }
+        if (rows.length === 0 && !(files && listing.files?.length)) listEl.innerHTML = `<div class="folder-picker-empty">${files ? "Nothing here" : "No sub-folders"}</div>`;
       } catch (err) {
         errorEl.textContent = err instanceof Error ? err.message.replace(/^.*?: /, "") : String(err);
       }
@@ -75,7 +94,7 @@ export function pickFolder(list: (path?: string) => Promise<Listing>, defaultPat
     };
 
     $(".folder-picker-cancel").addEventListener("click", () => done(null));
-    $(".folder-picker-open").addEventListener("click", () => done(pathInput.value.trim() || current || null));
+    $(".folder-picker-open").addEventListener("click", () => done(files ? chosen || pathInput.value.trim() || null : pathInput.value.trim() || current || null));
     roots.addEventListener("change", () => void go(roots.value));
     overlay.addEventListener("mousedown", (e) => {
       if (e.target === overlay) done(null);

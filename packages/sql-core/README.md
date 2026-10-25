@@ -6,13 +6,18 @@ same for every SQL database:
 
 | Feature        | Backend (`@oneclient/sql-core`)                         | View (`@oneclient/sql-core/ui`)               |
 | -------------- | ------------------------------------------------------- | --------------------------------------------- |
+| Results grid   | —                                                       | sort (click a header), filter (`column:value`), range selection, Ctrl+C; `resultExport`: Export ▾ / copy as CSV, TSV, JSON, Markdown, SQL INSERTs; `cellViewer`: pretty JSON, long text |
+| Safe mode      | —                                                       | `safeMode`: confirm UPDATE / DELETE without a real WHERE, DROP, TRUNCATE, ALTER … DROP before a script runs |
 | Query windows  | `<prefix>.executeQuery` / `.cancelQuery`, the view hub  | `QueryWindow` (editor, toolbar, safe mode)    |
 | Results        | streams runs to the panel, caches the latest per window | `ResultsPanel` (grids, messages, exports)     |
 | History        | `<prefix>.history` / `.deleteHistory` / `.queryHistory` | the History side panel                        |
 | FAST TOOLS     | the section's tree, `<prefix>.attach/detachFastToolsFolder` | —                                         |
+| Create Database | `<prefix>.createDatabase` (name checked by the core; the dialect supplies `createDatabase(connectionId, name, options)`) | form on the Databases folder (from the manifest's `inputSchema`) |
 | Fast Queries   | `<prefix>.newFastQuery` / `.runFastQuery` / `.runFastQueryOn` / `.saveFastQuery` / `.renameFastQuery` / `.deleteFastQuery` | ★ Save as Fast Query (Ctrl+S) |
 
-Every feature is on by default and can be turned off. A plugin can also add its own Fast Tools (SQL Server adds
+Every feature is on by default and can be turned off: on the backend with `createSqlCore({ features: { history, fastTools, fastQueries } })`,
+in the views with `SqlDialectUi.features` (`history`, `fastQueries`, `safeMode`, `resultExport`, `cellViewer`). The grid, export,
+cell viewer, history panel and safe-mode guard themselves live in `@oneclient/editor-kit/sql`. A plugin can also add its own Fast Tools (SQL Server adds
 Fakers). User-facing docs: [docs/FAST-TOOLS.md](../../docs/FAST-TOOLS.md).
 
 ## Using it in a plugin

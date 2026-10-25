@@ -1,8 +1,12 @@
+import { closeTunnel, sshEnabled, tunnelFor } from "@oneclient/sql-core";
 import sql from "mssql";
-import { type MssqlConnectionConfig, toPoolConfig } from "./config.js";
+import { type MssqlConnectionConfig, toPoolConfig, tunnelTarget, viaTunnel } from "./config.js";
 
 interface ServerSession {
+  /** As the user saved it (shown in the UI). */
   config: MssqlConnectionConfig;
+  /** What the driver connects with: the same, or the local end of the SSH tunnel. */
+  clientConfig: MssqlConnectionConfig;
   /** Shared pool for Object Explorer and metadata queries. */
   pool: sql.ConnectionPool;
   /** One single-connection pool per query window, so each window is its own SQL session (temp tables, USE, SET options persist). */
@@ -22,16 +26,24 @@ const WINDOW_IDLE_MS = 30 * 60 * 1000;
 
 export async function openSession(connectionId: string, config: MssqlConnectionConfig): Promise<void> {
   await closeSession(connectionId);
-  const pool = new sql.ConnectionPool(toPoolConfig(config, { pool: { max: 10, min: 0, idleTimeoutMillis: 60_000 } }));
-  await pool.connect();
-  sessions.set(connectionId, { config, pool, windows: new Map() });
+  const tunnel = sshEnabled(config) ? await tunnelFor(connectionId, config, tunnelTarget(config)) : undefined;
+  const clientConfig = tunnel ? viaTunnel(config, tunnel) : config;
+  const pool = new sql.ConnectionPool(toPoolConfig(clientConfig, { pool: { max: 10, min: 0, idleTimeoutMillis: 60_000 } }));
+  try {
+    await pool.connect();
+  } catch (err) {
+    await Promise.allSettled([pool.close(), closeTunnel(connectionId)]);
+    throw err;
+  }
+  sessions.set(connectionId, { config, clientConfig, pool, windows: new Map() });
 }
 
 export async function closeSession(connectionId: string): Promise<void> {
   const session = sessions.get(connectionId);
-  if (!session) return;
+  if (!session) return closeTunnel(connectionId);
   sessions.delete(connectionId);
   await Promise.allSettled([session.pool.close(), ...[...session.windows.values()].map((w) => w.pool.close())]);
+  await closeTunnel(connectionId);
 }
 
 export async function closeAll(): Promise<void> {
@@ -53,7 +65,7 @@ export async function windowPool(connectionId: string, windowId: string): Promis
   let window = session.windows.get(windowId);
   if (!window || (!window.pool.connected && !window.pool.connecting)) {
     const pool = new sql.ConnectionPool(
-      toPoolConfig(session.config, { pool: { max: 1, min: 0, idleTimeoutMillis: WINDOW_IDLE_MS } }),
+      toPoolConfig(session.clientConfig, { pool: { max: 1, min: 0, idleTimeoutMillis: WINDOW_IDLE_MS } }),
     );
     window = { pool, lastUsed: Date.now() };
     session.windows.set(windowId, window);

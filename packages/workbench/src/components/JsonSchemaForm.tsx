@@ -72,6 +72,26 @@ export function JsonSchemaForm({
                   </option>
                 ))}
               </select>
+            ) : prop.format === "file" ? (
+              <div className="input-with-button">
+                <input
+                  ref={inputRef}
+                  id={`field-${key}`}
+                  value={(value[key] as string) ?? (prop.default as string) ?? ""}
+                  onChange={(e) => onChange({ ...value, [key]: e.target.value })}
+                  placeholder="Choose a file…"
+                />
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={async () => {
+                    const picked = await window.oneclient.pickFile({ ...(value[key] ? { defaultPath: String(value[key]) } : {}), ...(prop["x-file-extensions"] ? { extensions: prop["x-file-extensions"] } : {}) });
+                    if (picked) onChange({ ...value, [key]: picked });
+                  }}
+                >
+                  Browse…
+                </button>
+              </div>
             ) : prop.format === "directory" ? (
               <div className="input-with-button">
                 <input

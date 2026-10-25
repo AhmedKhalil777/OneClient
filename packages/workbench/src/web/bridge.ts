@@ -214,6 +214,7 @@ export async function installWebBridge(): Promise<void> {
 
   // ---- dialogs: in the page instead of native ones ----
   api.pickDirectory = (defaultPath) => pickFolder((path) => invoke("oneclient-web:list-dirs", path) as never, defaultPath);
+  api.pickFile = (options) => pickFolder((path) => invoke("oneclient-web:list-dirs", { path, files: options?.extensions ?? [] }) as never, options?.defaultPath, { files: true });
   api.exportConnections = async (includeSecrets) => {
     const result = (await invoke(IpcChannel.ConnectionExport, includeSecrets)) as { path: string; count: number; includesSecrets: boolean; document?: unknown } | null;
     if (!result?.document) return result;

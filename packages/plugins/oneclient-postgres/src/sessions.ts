@@ -1,8 +1,12 @@
+import { closeTunnel, sshEnabled, tunnelFor } from "@oneclient/sql-core";
 import pg from "pg";
-import { type PgConnectionConfig, defaultDatabase, toClientConfig } from "./config.js";
+import { type PgConnectionConfig, defaultDatabase, toClientConfig, tunnelTarget, viaTunnel } from "./config.js";
 
 interface ServerSession {
+  /** As the user saved it (shown in the UI). */
   config: PgConnectionConfig;
+  /** What the driver connects with: the same, or the local end of the SSH tunnel. */
+  clientConfig: PgConnectionConfig;
   /** A PostgreSQL connection is bound to one database, so the explorer keeps a small pool per database. */
   pools: Map<string, pg.Pool>;
   /** One dedicated connection per query window, so each window is its own session (temp tables, SET, transactions persist). */
@@ -29,7 +33,8 @@ const WINDOW_IDLE_MS = 30 * 60 * 1000;
 
 export async function openSession(connectionId: string, config: PgConnectionConfig): Promise<void> {
   await closeSession(connectionId);
-  const session: ServerSession = { config, pools: new Map(), windows: new Map() };
+  const tunnel = sshEnabled(config) ? await tunnelFor(connectionId, config, tunnelTarget(config)) : undefined;
+  const session: ServerSession = { config, clientConfig: tunnel ? viaTunnel(config, tunnel) : config, pools: new Map(), windows: new Map() };
   sessions.set(connectionId, session);
   try {
     // Connect to the default database right away so a bad password surfaces when the connection is expanded.
@@ -42,9 +47,10 @@ export async function openSession(connectionId: string, config: PgConnectionConf
 
 export async function closeSession(connectionId: string): Promise<void> {
   const session = sessions.get(connectionId);
-  if (!session) return;
+  if (!session) return closeTunnel(connectionId);
   sessions.delete(connectionId);
   await Promise.allSettled([...[...session.pools.values()].map((p) => p.end()), ...[...session.windows.values()].map((w) => w.client.end())]);
+  await closeTunnel(connectionId);
 }
 
 export async function closeAll(): Promise<void> {
@@ -64,7 +70,7 @@ export function poolFor(connectionId: string | undefined, database?: string): pg
   const db = database || defaultDatabase(session.config);
   let pool = session.pools.get(db);
   if (!pool) {
-    pool = new pg.Pool({ ...toClientConfig(session.config, db), max: 4, idleTimeoutMillis: 60_000 });
+    pool = new pg.Pool({ ...toClientConfig(session.clientConfig, db), max: 4, idleTimeoutMillis: 60_000 });
     pool.on("error", () => undefined); // an idle client dying (server restart) must not crash the host
     session.pools.set(db, pool);
   }
@@ -84,7 +90,7 @@ export async function windowSession(connectionId: string, windowId: string, data
     w = undefined;
   }
   if (!w) {
-    const client = new pg.Client(toClientConfig(session.config, db));
+    const client = new pg.Client(toClientConfig(session.clientConfig, db));
     const created: WindowSession = { client, database: db, lastUsed: Date.now(), onNotice: null, broken: false, txStatus: "I" };
     client.on("notice", (n) => created.onNotice?.(`${n.severity ?? "NOTICE"}:  ${n.message}`));
     (client as unknown as { connection: { on(e: string, fn: (m: { status?: string }) => void): void } }).connection.on("readyForQuery", (m) => (created.txStatus = m.status ?? "I"));

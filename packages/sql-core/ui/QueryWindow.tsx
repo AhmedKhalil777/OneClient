@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HistoryPanel, type RiskyStatement, SafeModeDialog, findRiskyStatements } from "@oneclient/editor-kit/sql";
 import { type ServerInfo, autorun, createSqlApi, initialDatabase, initialFastQuery, initialSql, openHistory, windowId } from "./api.js";
-import type { SqlDialectUi } from "./dialect.js";
+import { type SqlDialectUi, resolveFeatures } from "./dialect.js";
 import { formatElapsed } from "./format.js";
 import type { ToQueryWindow } from "./protocol.js";
 import { SqlEditor, type SqlEditorHandle } from "./SqlEditor.js";
@@ -38,7 +38,7 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
   const [info, setInfo] = useState<ServerInfo | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [now, setNow] = useState(Date.now());
-  const [showHistory, setShowHistory] = useState(openHistory);
+  const [showHistory, setShowHistory] = useState(openHistory && resolveFeatures(dialect).history);
   const [historyToken, setHistoryToken] = useState(0);
   const [safeMode, setSafeMode] = useState(initialSafeMode);
   const [pending, setPending] = useState<{ risks: RiskyStatement[]; runnable: { sql: string; lineOffset: number } } | null>(null);
@@ -56,14 +56,15 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
   const completionProviders = useMemo(() => [completion.provider], [completion]);
 
   const running = status.kind === "running";
-  const fastQueries = dialect.fastQueries !== false;
+  const features = resolveFeatures(dialect);
+  const fastQueries = features.fastQueries;
 
   const execute = useCallback(
     (override?: { sql: string; lineOffset: number }, confirmed = false) => {
       if (status.kind === "running") return;
       const runnable = override ?? editorRef.current?.getRunnable() ?? { sql, lineOffset: 1 };
       if (!runnable.sql.trim()) return;
-      if (safeMode && !confirmed) {
+      if (features.safeMode && safeMode && !confirmed) {
         const risks = findRiskyStatements(runnable.sql);
         if (risks.length) {
           setPending({ risks, runnable: { sql: runnable.sql, lineOffset: runnable.lineOffset } });
@@ -86,8 +87,14 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
       // The script may create/alter/drop objects — refresh IntelliSense lazily.
       if (dialect.schemaChange.test(runnable.sql)) completion.invalidate();
     },
-    [status.kind, sql, completion, safeMode, dialect, resultsView],
+    [status.kind, sql, completion, safeMode, features.safeMode, dialect, resultsView],
   );
+
+  const openPlan = useCallback(() => {
+    const runnable = editorRef.current?.getRunnable() ?? { sql, lineOffset: 1 };
+    if (!runnable.sql.trim()) return;
+    window.oneclientView.openView({ viewId: `${dialect.prefix}.plan`, title: "Execution Plan", icon: "$(diagram)", params: { sql: runnable.sql.slice(0, 20000), ...(databaseRef.current ? { database: databaseRef.current } : {}), mode: "estimated" } });
+  }, [dialect.prefix, sql]);
 
   const cancel = useCallback(() => {
     if (status.kind === "running") void api.cancelQuery(status.queryId);
@@ -190,9 +197,12 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
       } else if ((e.altKey && (e.key === "Pause" || e.key === "Cancel")) || (e.key === "Escape" && running)) {
         e.preventDefault();
         cancel();
-      } else if (mod && e.shiftKey && e.key.toLowerCase() === "h") {
+      } else if (features.history && mod && e.shiftKey && e.key.toLowerCase() === "h") {
         e.preventDefault();
         setShowHistory((v) => !v);
+      } else if (features.plan && mod && !e.shiftKey && e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        openPlan();
       } else if (mod && !e.shiftKey && e.key.toLowerCase() === "s") {
         e.preventDefault();
         save();
@@ -203,7 +213,7 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [execute, cancel, save, running, dialect, resultsView]);
+  }, [execute, cancel, save, openPlan, running, dialect, resultsView, features.history, features.plan]);
 
   function toggleSafeMode(on: boolean) {
     setSafeMode(on);
@@ -238,9 +248,16 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
         <button className="btn" onClick={() => window.oneclientView.revealView(resultsView)} title="Show results (Ctrl+R)">
           ▦ Results
         </button>
-        <button className={`btn ${showHistory ? "btn-on" : ""}`} onClick={() => setShowHistory((v) => !v)} title="Query history of this connection (Ctrl+Shift+H)">
-          ⟲ History
-        </button>
+        {features.history && (
+          <button className={`btn ${showHistory ? "btn-on" : ""}`} onClick={() => setShowHistory((v) => !v)} title="Query history of this connection (Ctrl+Shift+H)">
+            ⟲ History
+          </button>
+        )}
+        {features.plan && (
+          <button className="btn" onClick={openPlan} title="Show the execution plan of the selection (or the script) — Ctrl+L. Nothing runs; the Actual plan can be chosen in the plan tab.">
+            ▤ Plan
+          </button>
+        )}
         {fastQueries && (
           <button
             className="btn"
@@ -251,10 +268,12 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
             ★ {fastQuery ? "Save Fast Query" : "Save as Fast Query"}
           </button>
         )}
-        <label className="safe-toggle" title="Safe mode: ask before UPDATE/DELETE without WHERE, DROP, TRUNCATE">
-          <input type="checkbox" checked={safeMode} onChange={(e) => toggleSafeMode(e.target.checked)} />
-          Safe mode
-        </label>
+        {features.safeMode && (
+          <label className="safe-toggle" title="Safe mode: ask before UPDATE/DELETE without WHERE, DROP, TRUNCATE">
+            <input type="checkbox" checked={safeMode} onChange={(e) => toggleSafeMode(e.target.checked)} />
+            Safe mode
+          </label>
+        )}
         <span className="spacer" />
         {notice && (
           <span className={`toolbar-notice ${notice.tone}`} title={notice.text} onClick={() => setNotice(null)}>
@@ -274,7 +293,7 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
         <div className="editor-pane">
           <SqlEditor ref={editorRef} value={sql} onChange={setSql} highlight={dialect.highlight} completionProviders={completionProviders} />
         </div>
-        {showHistory && (
+        {features.history && showHistory && (
           <HistoryPanel
             load={api.queryHistory}
             remove={api.deleteHistory}

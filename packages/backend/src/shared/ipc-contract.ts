@@ -93,6 +93,7 @@ export const IpcChannel = {
   ConfigReveal: "oneclient:config:reveal",
 
   DialogPickDirectory: "oneclient:dialog:pickDirectory",
+  DialogPickFile: "oneclient:dialog:pickFile",
 
   ThemeGetState: "oneclient:theme:getState",
   ThemeChanged: "oneclient:theme:changed",
@@ -334,6 +335,8 @@ export interface OneClientApi {
 
   /** Native "select folder" dialog; resolves to the chosen absolute path, or null if cancelled. */
   pickDirectory(defaultPath?: string): Promise<string | null>;
+  /** Native "open file" dialog (a listing of the server's files in the web app); `extensions` are without the dot, e.g. ["csv", "tsv"]. Resolves to the chosen absolute path, or null. */
+  pickFile(options?: { defaultPath?: string; extensions?: string[] }): Promise<string | null>;
 
   getThemeState(): Promise<ThemeState>;
   onThemeChanged(listener: (state: ThemeState) => void): () => void;

@@ -46,6 +46,7 @@ export class ExtensionHostSupervisor {
   private readonly hostEntryPath = join(__dirname, "../extension-host/bootstrap.js");
   private workspace: WorkspaceBridge | undefined;
   private taskService: TaskService | undefined;
+  private readonly explorerRefreshListeners = new Set<(connectionId: string) => void>();
   /** Plugin tasks by the host's task id. */
   private readonly pluginTasks = new Map<string, TaskHandle>();
 
@@ -65,6 +66,12 @@ export class ExtensionHostSupervisor {
   setTasks(service: TaskService, pluginName: (pluginId: string) => string): void {
     this.taskService = service;
     this.pluginName = pluginName;
+  }
+
+  /** A plugin asked for a connection's explorer to be re-fetched (`context.refreshExplorer`). */
+  onExplorerRefresh(listener: (connectionId: string) => void): () => void {
+    this.explorerRefreshListeners.add(listener);
+    return () => this.explorerRefreshListeners.delete(listener);
   }
 
   setWorkspace(bridge: WorkspaceBridge): void {
@@ -224,6 +231,9 @@ export class ExtensionHostSupervisor {
         break;
       case "view:push":
         this.onViewPush(handle.pluginId, msg.viewId, msg.connectionId, msg.message);
+        break;
+      case "explorer:refresh":
+        for (const listener of this.explorerRefreshListeners) listener(msg.connectionId);
         break;
       case "task:start": {
         if (!this.taskService) break;

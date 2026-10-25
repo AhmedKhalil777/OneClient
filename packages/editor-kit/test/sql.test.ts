@@ -84,6 +84,14 @@ describe("safe mode", () => {
     expect(kinds("WITH x AS (SELECT 1) DELETE FROM t")).toEqual(["delete-all"]);
   });
 
+  it("a WHERE inside a subquery, or one that is always true, is not a filter", () => {
+    expect(kinds("UPDATE t SET a = (SELECT max(x) FROM u WHERE u.id = 1)")).toEqual(["update-all"]);
+    expect(kinds("DELETE FROM t WHERE 1=1")).toEqual(["delete-all"]);
+    expect(kinds("delete from t where (true)")).toEqual(["delete-all"]);
+    expect(kinds("UPDATE t SET a = 1 WHERE id IN (SELECT id FROM u)")).toEqual([]);
+    expect(kinds("DELETE FROM t WHERE 1=1 AND id = 5")).toEqual([]);
+  });
+
   it("lets targeted statements through", () => {
     expect(kinds("DELETE FROM orders WHERE id = 1")).toEqual([]);
     expect(kinds("UPDATE t SET a = 1 WHERE b = 2")).toEqual([]);

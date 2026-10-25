@@ -212,6 +212,30 @@
         "location": "panel",
         "entry": "results.html",
         "icon": "$(results)"
+      },
+      {
+        "id": "postgres.tableEditor",
+        "title": "Table Data",
+        "tier": 2,
+        "location": "editor",
+        "entry": "table-editor.html",
+        "icon": "$(table)"
+      },
+      {
+        "id": "postgres.importCsv",
+        "title": "Import CSV",
+        "tier": 2,
+        "location": "editor",
+        "entry": "import-csv.html",
+        "icon": "$(add)"
+      },
+      {
+        "id": "postgres.plan",
+        "title": "Execution Plan",
+        "tier": 2,
+        "location": "editor",
+        "entry": "plan.html",
+        "icon": "$(diagram)"
       }
     ],
     "commands": [
@@ -219,6 +243,31 @@
         "id": "postgres.newQuery",
         "title": "PostgreSQL: New Query",
         "when": "contextValue == 'connection' && connectionType == 'postgres' || contextValue == 'postgres.database' || contextValue == 'postgres.schema'"
+      },
+      {
+        "id": "postgres.createDatabase",
+        "title": "PostgreSQL: Create Database…",
+        "when": "contextValue == 'postgres.databases'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Database name"
+            },
+            "encoding": {
+              "type": "string",
+              "title": "Encoding (optional)",
+              "description": "e.g. UTF8 or LATIN1 — empty uses the server default.",
+              "examples": [
+                "UTF8"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "postgres.queryHistory",
@@ -346,6 +395,49 @@
         "title": "PostgreSQL: Detach Fast Tools Folder",
         "when": "contextValue == 'postgres.fastToolsFolder'",
         "confirm": "Detach this folder? Its fast queries stay on disk."
+      },
+      {
+        "id": "postgres.editData",
+        "title": "PostgreSQL: Edit Data",
+        "when": "contextValue == 'postgres.table'"
+      },
+      {
+        "id": "postgres.tableData",
+        "title": "PostgreSQL: Table Data API",
+        "hidden": true
+      },
+      {
+        "id": "postgres.importCsv",
+        "title": "PostgreSQL: Import CSV…",
+        "when": "contextValue == 'postgres.table'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "file"
+          ],
+          "properties": {
+            "file": {
+              "type": "string",
+              "title": "CSV file",
+              "format": "file",
+              "x-file-extensions": [
+                "csv",
+                "tsv",
+                "txt"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "postgres.importData",
+        "title": "PostgreSQL: Import API",
+        "hidden": true
+      },
+      {
+        "id": "postgres.explain",
+        "title": "PostgreSQL: Execution Plan API",
+        "hidden": true
       },
       {
         "id": "postgres.history",

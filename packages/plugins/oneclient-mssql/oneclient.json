@@ -202,6 +202,30 @@
         "location": "editor",
         "entry": "faker.html",
         "icon": "$(wrench)"
+      },
+      {
+        "id": "mssql.tableEditor",
+        "title": "Table Data",
+        "tier": 2,
+        "location": "editor",
+        "entry": "table-editor.html",
+        "icon": "$(table)"
+      },
+      {
+        "id": "mssql.importCsv",
+        "title": "Import CSV",
+        "tier": 2,
+        "location": "editor",
+        "entry": "import-csv.html",
+        "icon": "$(add)"
+      },
+      {
+        "id": "mssql.plan",
+        "title": "Execution Plan",
+        "tier": 2,
+        "location": "editor",
+        "entry": "plan.html",
+        "icon": "$(diagram)"
       }
     ],
     "commands": [
@@ -209,6 +233,31 @@
         "id": "mssql.newQuery",
         "title": "SQL Server: New Query",
         "when": "contextValue == 'connection' && connectionType == 'mssql' || contextValue == 'mssql.database'"
+      },
+      {
+        "id": "mssql.createDatabase",
+        "title": "SQL Server: Create Database…",
+        "when": "contextValue == 'mssql.databases'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Database name"
+            },
+            "collation": {
+              "type": "string",
+              "title": "Collation (optional)",
+              "description": "e.g. Latin1_General_100_CI_AS — empty uses the server default.",
+              "examples": [
+                "Latin1_General_100_CI_AS"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "mssql.queryHistory",
@@ -245,6 +294,49 @@
         "id": "mssql.scriptExecute",
         "title": "SQL Server: Script as EXECUTE",
         "when": "contextValue == 'mssql.procedure'"
+      },
+      {
+        "id": "mssql.editData",
+        "title": "SQL Server: Edit Data",
+        "when": "contextValue == 'mssql.table'"
+      },
+      {
+        "id": "mssql.tableData",
+        "title": "SQL Server: Table Data API",
+        "hidden": true
+      },
+      {
+        "id": "mssql.importCsv",
+        "title": "SQL Server: Import CSV…",
+        "when": "contextValue == 'mssql.table'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "file"
+          ],
+          "properties": {
+            "file": {
+              "type": "string",
+              "title": "CSV file",
+              "format": "file",
+              "x-file-extensions": [
+                "csv",
+                "tsv",
+                "txt"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "mssql.importData",
+        "title": "SQL Server: Import API",
+        "hidden": true
+      },
+      {
+        "id": "mssql.explain",
+        "title": "SQL Server: Execution Plan API",
+        "hidden": true
       },
       {
         "id": "mssql.history",

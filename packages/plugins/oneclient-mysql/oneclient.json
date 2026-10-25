@@ -1,0 +1,507 @@
+{
+  "name": "oneclient-mysql",
+  "displayName": "MySQL",
+  "description": "Connect to MySQL and MariaDB: databases, tables, views, procedures and functions; query windows with IntelliSense, streamed result grids, table data editor with staged changes, CSV import, execution plans, SSH tunnels and object search.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "engines": {
+    "oneclient": "^0.1.0"
+  },
+  "main": "dist/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "icons": [{ "id": "mysql", "description": "MySQL", "path": "icon.svg", "colored": true }],
+    "extensions": {
+      "docker.containerTemplates": [
+        {
+          "id": "mysql",
+          "title": "MySQL 8.4",
+          "product": "MySQL",
+          "description": "The official mysql image with a fresh, empty server (user root).",
+          "icon": "$(mysql)",
+          "image": "mysql:8.4",
+          "imagePatterns": [
+            "^(docker\\.io/)?(library/)?mysql([:@]|$)",
+            "^(docker\\.io/)?(library/)?mariadb([:@]|$)",
+            "bitnami/mysql",
+            "bitnami/mariadb",
+            "percona/percona-server"
+          ],
+          "ports": [
+            {
+              "container": "3306/tcp",
+              "host": 3306,
+              "label": "MySQL"
+            }
+          ],
+          "env": {
+            "MYSQL_ROOT_PASSWORD": "${password}"
+          },
+          "variables": {
+            "password": {
+              "label": "Password (user root)",
+              "secret": true,
+              "from": [
+                {
+                  "env": "MYSQL_ROOT_PASSWORD"
+                },
+                {
+                  "env": "MARIADB_ROOT_PASSWORD"
+                }
+              ]
+            }
+          },
+          "connection": {
+            "typeId": "mysql",
+            "name": "Local MySQL",
+            "config": {
+              "host": "${host}",
+              "port": "${port}",
+              "user": "root",
+              "password": "${password}",
+              "ssl": "Disable"
+            }
+          },
+          "startupSeconds": 90
+        }
+      ]
+    },
+    "connectionTypes": [
+      {
+        "id": "mysql",
+        "label": "MySQL",
+        "description": "MySQL and MariaDB (also Aurora, PlanetScale, TiDB…)",
+        "category": "Databases",
+        "icon": "icon.svg",
+        "connectionLabel": "Server"
+      }
+    ],
+    "explorerNodes": [
+      {
+        "id": "mysql.databases",
+        "connectionType": "mysql"
+      },
+      {
+        "id": "mysql.systemDatabases",
+        "parentNodeType": "mysql.databases"
+      },
+      {
+        "id": "mysql.database",
+        "parentNodeType": "mysql.databases"
+      },
+      {
+        "id": "mysql.tables",
+        "parentNodeType": "mysql.database"
+      },
+      {
+        "id": "mysql.table",
+        "parentNodeType": "mysql.tables"
+      },
+      {
+        "id": "mysql.views",
+        "parentNodeType": "mysql.database"
+      },
+      {
+        "id": "mysql.view",
+        "parentNodeType": "mysql.views"
+      },
+      {
+        "id": "mysql.procedures",
+        "parentNodeType": "mysql.database"
+      },
+      {
+        "id": "mysql.procedure",
+        "parentNodeType": "mysql.procedures"
+      },
+      {
+        "id": "mysql.functions",
+        "parentNodeType": "mysql.database"
+      },
+      {
+        "id": "mysql.function",
+        "parentNodeType": "mysql.functions"
+      },
+      {
+        "id": "mysql.columns",
+        "parentNodeType": "mysql.table"
+      },
+      {
+        "id": "mysql.column",
+        "parentNodeType": "mysql.columns"
+      },
+      {
+        "id": "mysql.indexes",
+        "parentNodeType": "mysql.table"
+      },
+      {
+        "id": "mysql.index",
+        "parentNodeType": "mysql.indexes"
+      },
+      {
+        "id": "mysql.foreignKeys",
+        "parentNodeType": "mysql.table"
+      },
+      {
+        "id": "mysql.foreignKey",
+        "parentNodeType": "mysql.foreignKeys"
+      },
+      {
+        "id": "mysql.fastToolsRoot"
+      },
+      {
+        "id": "mysql.fastQueriesRoot",
+        "parentNodeType": "mysql.fastToolsRoot"
+      },
+      {
+        "id": "mysql.fastQueryGroup",
+        "parentNodeType": "mysql.fastQueriesRoot"
+      },
+      {
+        "id": "mysql.fastQuery",
+        "parentNodeType": "mysql.fastQueryGroup"
+      }
+    ],
+    "views": [
+      {
+        "id": "mysql.query",
+        "title": "Query",
+        "tier": 2,
+        "location": "editor",
+        "entry": "index.html"
+      },
+      {
+        "id": "mysql.diagram",
+        "title": "Diagram",
+        "tier": 2,
+        "location": "editor",
+        "entry": "diagram.html",
+        "icon": "$(diagram)"
+      },
+      {
+        "id": "mysql.results",
+        "title": "MySQL Results",
+        "tier": 2,
+        "location": "panel",
+        "entry": "results.html",
+        "icon": "$(results)"
+      },
+      {
+        "id": "mysql.tableEditor",
+        "title": "Table Data",
+        "tier": 2,
+        "location": "editor",
+        "entry": "table-editor.html",
+        "icon": "$(table)"
+      },
+      {
+        "id": "mysql.importCsv",
+        "title": "Import CSV",
+        "tier": 2,
+        "location": "editor",
+        "entry": "import-csv.html",
+        "icon": "$(add)"
+      },
+      {
+        "id": "mysql.plan",
+        "title": "Execution Plan",
+        "tier": 2,
+        "location": "editor",
+        "entry": "plan.html",
+        "icon": "$(diagram)"
+      }
+    ],
+    "commands": [
+      {
+        "id": "mysql.newQuery",
+        "title": "MySQL: New Query",
+        "when": "contextValue == 'connection' && connectionType == 'mysql' || contextValue == 'mysql.database'"
+      },
+      {
+        "id": "mysql.createDatabase",
+        "title": "MySQL: Create Database…",
+        "when": "contextValue == 'mysql.databases'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Database name"
+            },
+            "charset": {
+              "type": "string",
+              "title": "Character set",
+              "default": "utf8mb4"
+            },
+            "collation": {
+              "type": "string",
+              "title": "Collation (optional)",
+              "description": "e.g. utf8mb4_0900_ai_ci — empty uses the character set's default.",
+              "examples": [
+                "utf8mb4_0900_ai_ci"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "mysql.queryHistory",
+        "title": "MySQL: Query History",
+        "when": "contextValue == 'connection' && connectionType == 'mysql' || contextValue == 'mysql.database'"
+      },
+      {
+        "id": "mysql.diagram",
+        "title": "MySQL: Database Diagram",
+        "icon": "$(diagram)",
+        "when": "contextValue == 'mysql.database' || contextValue == 'mysql.tables' || contextValue == 'mysql.table'"
+      },
+      {
+        "id": "mysql.selectTop",
+        "title": "MySQL: Select Top 1000 Rows",
+        "when": "contextValue == 'mysql.table' || contextValue == 'mysql.view'"
+      },
+      {
+        "id": "mysql.countRows",
+        "title": "MySQL: Count Rows",
+        "when": "contextValue == 'mysql.table' || contextValue == 'mysql.view'"
+      },
+      {
+        "id": "mysql.scriptCreate",
+        "title": "MySQL: Script Table as CREATE",
+        "when": "contextValue == 'mysql.table'"
+      },
+      {
+        "id": "mysql.scriptInsert",
+        "title": "MySQL: Script Table as INSERT",
+        "when": "contextValue == 'mysql.table'"
+      },
+      {
+        "id": "mysql.scriptModify",
+        "title": "MySQL: Script as DROP and CREATE",
+        "when": "contextValue == 'mysql.view' || contextValue == 'mysql.function' || contextValue == 'mysql.procedure'"
+      },
+      {
+        "id": "mysql.scriptExecute",
+        "title": "MySQL: Script as CALL",
+        "when": "contextValue == 'mysql.function' || contextValue == 'mysql.procedure'"
+      },
+      {
+        "id": "mysql.erModel",
+        "title": "MySQL: Diagram Model",
+        "hidden": true
+      },
+      {
+        "id": "mysql.newFastQuery",
+        "title": "MySQL: New Fast Query…",
+        "when": "contextValue == 'mysql.fastQueriesRoot' || contextValue == 'mysql.fastQueryGroup'"
+      },
+      {
+        "id": "mysql.runFastQuery",
+        "title": "MySQL: Run Fast Query",
+        "icon": "$(play)",
+        "when": "contextValue == 'mysql.fastQuery'"
+      },
+      {
+        "id": "mysql.runFastQueryOn",
+        "title": "MySQL: Run Fast Query on Database…",
+        "when": "contextValue == 'mysql.fastQuery'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "targetDatabase"
+          ],
+          "properties": {
+            "targetDatabase": {
+              "type": "string",
+              "title": "Database"
+            }
+          }
+        }
+      },
+      {
+        "id": "mysql.renameFastQuery",
+        "title": "MySQL: Rename Fast Query…",
+        "when": "contextValue == 'mysql.fastQuery'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "newName"
+          ],
+          "properties": {
+            "newName": {
+              "type": "string",
+              "title": "New name",
+              "default": "{label}"
+            }
+          }
+        }
+      },
+      {
+        "id": "mysql.deleteFastQuery",
+        "title": "MySQL: Delete Fast Query",
+        "when": "contextValue == 'mysql.fastQuery'",
+        "confirm": "Delete fast query \"{label}\" (its .query.sql file)?"
+      },
+      {
+        "id": "mysql.saveFastQuery",
+        "title": "MySQL: Save Fast Query",
+        "hidden": true
+      },
+      {
+        "id": "mysql.attachFastToolsFolder",
+        "title": "MySQL: Attach Fast Tools Folder…",
+        "when": "contextValue == 'mysql.fastToolsRoot' || contextValue == 'mysql.fastToolsFolder'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "folder"
+          ],
+          "properties": {
+            "folder": {
+              "type": "string",
+              "title": "Folder for fast queries (*.query.sql)",
+              "format": "directory"
+            }
+          }
+        }
+      },
+      {
+        "id": "mysql.detachFastToolsFolder",
+        "title": "MySQL: Detach Fast Tools Folder",
+        "when": "contextValue == 'mysql.fastToolsFolder'",
+        "confirm": "Detach this folder? Its fast queries stay on disk."
+      },
+      {
+        "id": "mysql.editData",
+        "title": "MySQL: Edit Data",
+        "when": "contextValue == 'mysql.table'"
+      },
+      {
+        "id": "mysql.tableData",
+        "title": "MySQL: Table Data API",
+        "hidden": true
+      },
+      {
+        "id": "mysql.importCsv",
+        "title": "MySQL: Import CSV…",
+        "when": "contextValue == 'mysql.table'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "file"
+          ],
+          "properties": {
+            "file": {
+              "type": "string",
+              "title": "CSV file",
+              "format": "file",
+              "x-file-extensions": [
+                "csv",
+                "tsv",
+                "txt"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "mysql.importData",
+        "title": "MySQL: Import API",
+        "hidden": true
+      },
+      {
+        "id": "mysql.explain",
+        "title": "MySQL: Execution Plan API",
+        "hidden": true
+      },
+      {
+        "id": "mysql.history",
+        "title": "MySQL: List Query History",
+        "when": "view == 'mysql.query'"
+      },
+      {
+        "id": "mysql.deleteHistory",
+        "title": "MySQL: Delete Query History",
+        "when": "view == 'mysql.query'"
+      },
+      {
+        "id": "mysql.executeQuery",
+        "title": "MySQL: Execute Query",
+        "when": "view == 'mysql.query'"
+      },
+      {
+        "id": "mysql.cancelQuery",
+        "title": "MySQL: Cancel Query",
+        "when": "view == 'mysql.query'"
+      },
+      {
+        "id": "mysql.listDatabases",
+        "title": "MySQL: List Databases",
+        "when": "view == 'mysql.query'"
+      },
+      {
+        "id": "mysql.serverInfo",
+        "title": "MySQL: Server Info",
+        "when": "view == 'mysql.query'"
+      },
+      {
+        "id": "mysql.completionCatalog",
+        "title": "MySQL: IntelliSense Catalog",
+        "when": "view == 'mysql.query'"
+      },
+      {
+        "id": "mysql.search",
+        "title": "MySQL: Search Objects",
+        "hidden": true
+      }
+    ],
+    "searchProviders": [
+      {
+        "id": "objects",
+        "label": "MySQL objects",
+        "command": "mysql.search",
+        "connectionType": "mysql",
+        "order": 22,
+        "icon": "$(database)"
+      }
+    ],
+    "menus": [
+      {
+        "menu": "run",
+        "title": "Execute Query",
+        "keybinding": "F5",
+        "when": "activeView == 'mysql.query'",
+        "group": "1_run"
+      },
+      {
+        "menu": "run",
+        "title": "Cancel Query",
+        "keybinding": "Escape",
+        "when": "activeView == 'mysql.query'",
+        "group": "1_run"
+      },
+      {
+        "menu": "run",
+        "title": "Show Results",
+        "keybinding": "Ctrl+R",
+        "when": "activeView == 'mysql.query'",
+        "group": "2_results"
+      }
+    ],
+    "explorerSections": [
+      {
+        "id": "fastTools",
+        "title": "Fast Tools",
+        "rootNodeType": "mysql.fastToolsRoot",
+        "connectionType": "mysql"
+      }
+    ]
+  },
+  "activationEvents": [
+    "onConnectionType:mysql"
+  ]
+}

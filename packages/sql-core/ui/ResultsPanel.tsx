@@ -3,7 +3,7 @@ import type { QueryRun } from "./api.js";
 import type { ToResults, WindowUpdate } from "./protocol.js";
 import { formatElapsed } from "./format.js";
 import { ResultGrid, guessTables } from "@oneclient/editor-kit/sql";
-import type { SqlDialectUi } from "./dialect.js";
+import { type SqlDialectUi, resolveFeatures } from "./dialect.js";
 
 /**
  * "Query Results" — a SQL plugin's view in the app's shared bottom panel. Shows the
@@ -92,6 +92,7 @@ export function ResultsPanel({ dialect }: { dialect: SqlDialectUi }) {
 }
 
 function ResultsView({ run, running, sql, dialect }: { run: QueryRun | null; running: boolean; sql: string | undefined; dialect: SqlDialectUi }) {
+  const features = resolveFeatures(dialect);
   if (!run) return <div className="empty">{running ? "Executing query…" : "No results."}</div>;
   if (run.resultSets.length === 0) return <div className="empty">The query returned no result sets — see Messages.</div>;
   const single = run.resultSets.length === 1;
@@ -99,7 +100,7 @@ function ResultsView({ run, running, sql, dialect }: { run: QueryRun | null; run
   return (
     <div className={`result-sets ${single ? "single" : ""}`}>
       {run.resultSets.map((rs, i) => (
-        <ResultGrid key={i} result={rs} fill={single} dialect={dialect.gridDialect} tableHint={tables[i]} />
+        <ResultGrid key={i} result={rs} fill={single} dialect={dialect.gridDialect} tableHint={tables[i]} exports={features.resultExport} cellViewer={features.cellViewer} />
       ))}
     </div>
   );

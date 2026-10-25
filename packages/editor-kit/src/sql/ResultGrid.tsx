@@ -12,6 +12,10 @@ export interface ResultGridProps {
   dialect: Dialect;
   /** Default table for INSERT exports and the base of saved file names. */
   tableHint?: string | undefined;
+  /** Export ▾ and "Copy … as" CSV / TSV / JSON / Markdown / INSERT (default on; plain Ctrl+C always works). */
+  exports?: boolean;
+  /** The cell viewer: double-click / Enter opens a value in full, pretty-printed (default on). */
+  cellViewer?: boolean;
 }
 
 type Format = "tsv" | "csv" | "json" | "markdown" | "insert";
@@ -31,7 +35,7 @@ type Menu = { x: number; y: number; kind: "context" | "export" } | null;
  * (Ctrl+Shift+C with headers); double-click or Enter opens the cell viewer; right-click or Export copies / saves the
  * selection — or every shown row — as CSV, TSV, JSON, Markdown or INSERTs. Only visible rows render, so 10k rows stay smooth.
  */
-export function ResultGrid({ result, fill, dialect, tableHint }: ResultGridProps) {
+export function ResultGrid({ result, fill, dialect, tableHint, exports = true, cellViewer = true }: ResultGridProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewport, setViewport] = useState(400);
@@ -119,7 +123,7 @@ export function ResultGrid({ result, fill, dialect, tableHint }: ResultGridProps
     } else if (mod && k.toLowerCase() === "c") {
       e.preventDefault();
       copySelection(e.shiftKey);
-    } else if ((k === "Enter" || k === "F2") && sel) {
+    } else if ((k === "Enter" || k === "F2") && sel && cellViewer) {
       e.preventDefault();
       setViewer({ row: sel.r1, col: sel.c1 });
     } else if (k === "Escape") {
@@ -201,6 +205,7 @@ export function ResultGrid({ result, fill, dialect, tableHint }: ResultGridProps
         <span className="sqlg-spacer" />
         {stats && <span className="sqlg-stats">{stats}</span>}
         {toast && <span className="sqlg-toast">{toast}</span>}
+        {exports && (
         <button
           className="sqlg-btn"
           title="Copy or save the selection (or all shown rows)"
@@ -211,6 +216,7 @@ export function ResultGrid({ result, fill, dialect, tableHint }: ResultGridProps
         >
           Export ▾
         </button>
+        )}
       </div>
       <div
         className="sqlg-scroll"
@@ -260,7 +266,7 @@ export function ResultGrid({ result, fill, dialect, tableHint }: ResultGridProps
                       style={{ width: widths[c] }}
                       onMouseDown={(e) => cellDown(e, r, c)}
                       onMouseEnter={() => dragging.current && setSel((s) => (s ? { ...s, r1: r, c1: c } : s))}
-                      onDoubleClick={() => setViewer({ row: r, col: c })}
+                      onDoubleClick={() => cellViewer && setViewer({ row: r, col: c })}
                       onContextMenu={(e) => onContextMenu(e, r, c)}
                     >
                       {cellText(value)}
@@ -288,7 +294,7 @@ export function ResultGrid({ result, fill, dialect, tableHint }: ResultGridProps
               <button onClick={() => (copySelection(true), setMenu(null))}>
                 Copy with headers <kbd>Ctrl+Shift+C</kbd>
               </button>
-              {sel && (
+              {sel && cellViewer && (
                 <button onClick={() => (setViewer({ row: sel.r1, col: sel.c1 }), setMenu(null))}>
                   View value <kbd>Enter</kbd>
                 </button>
@@ -306,6 +312,8 @@ export function ResultGrid({ result, fill, dialect, tableHint }: ResultGridProps
               <hr />
             </>
           )}
+          {exports && (
+            <>
           <div className="sqlg-menu-head">Copy {menu.kind === "context" || (sel && !single) ? "selection" : "shown rows"} as</div>
           {FORMATS.map((f) => (
             <button key={f.id} onClick={() => copyAs(f.id)}>
@@ -324,6 +332,8 @@ export function ResultGrid({ result, fill, dialect, tableHint }: ResultGridProps
                   {f.label} (.{f.ext})
                 </button>
               ))}
+            </>
+          )}
             </>
           )}
         </Popup>
