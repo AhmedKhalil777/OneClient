@@ -2,6 +2,7 @@ import sql from "mssql";
 import { quoteIdent } from "../config.js";
 import { qualified } from "../metadata.js";
 import { faker, fakerEntry, seedFaker } from "./catalog.js";
+import { FakerError } from "./errors.js";
 import { type ChildRule, type ColumnRule, type GenerateRequest, type GenerateResult, MAX_DEPTH, MAX_ROWS, type TableRule, type TableSample } from "./rules.js";
 import { type ColumnInfo, type TableInfo, tableInfo } from "./schema.js";
 import { suggestRule, suggestTable, textCapacity } from "./suggest.js";
@@ -42,8 +43,7 @@ class Placeholder {
   constructor(readonly text: string) {}
 }
 
-/** Thrown for problems in the faker configuration (shown to the user as is). */
-export class FakerError extends Error {}
+export { FakerError };
 
 /** The mssql parameter type for a column, so values go over the wire with the column's own type. */
 function sqlType(c: ColumnInfo): sql.ISqlType | (() => sql.ISqlType) {

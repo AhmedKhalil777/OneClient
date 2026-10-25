@@ -1,6 +1,6 @@
 import type { ViewMessageHandler } from "@oneclient/plugin-api";
-import { recordHistory } from "./history.js";
-import { type QueryRun, executeQuery } from "./query-runner.js";
+import type { HistoryStore } from "./history.js";
+import type { ExecuteQuery, QueryRunSummary } from "./types.js";
 
 /**
  * Message hub between the two halves of the query UI:
@@ -21,35 +21,18 @@ export interface WindowInfo {
   version: string;
   database?: string | null | undefined;
 }
-export type WindowState = { kind: "running"; started: number } | { kind: "done"; run: QueryRun } | { kind: "failed"; error: string };
-export interface WindowUpdate {
+export type WindowState<R extends QueryRunSummary = QueryRunSummary> = { kind: "running"; started: number } | { kind: "done"; run: R } | { kind: "failed"; error: string };
+export interface WindowUpdate<R extends QueryRunSummary = QueryRunSummary> {
   type: "update";
   windowId: string;
   title: string;
   info: WindowInfo | null;
-  state: WindowState;
+  state: WindowState<R>;
   /** The script that ran — the results panel guesses table names for exports from it. */
   sql?: string;
 }
 
 const MAX_CACHED_WINDOWS = 10;
-
-let resultsReply: Reply | null = null;
-/** Each query window's reply channel. Replies reach every window of that connection, so messages carry windowId. */
-const editorReplies = new Map<string, Reply>();
-const cache = new Map<string, WindowUpdate>();
-let activeWindow: { windowId: string; title: string } | null = null;
-
-function toResults(message: unknown) {
-  resultsReply?.(message);
-}
-
-function remember(update: WindowUpdate) {
-  cache.delete(update.windowId); // re-insert = most recent
-  cache.set(update.windowId, update);
-  while (cache.size > MAX_CACHED_WINDOWS) cache.delete(cache.keys().next().value!);
-  toResults(update);
-}
 
 type FromQueryWindow =
   | { type: "hello"; windowId: string }
@@ -65,8 +48,26 @@ type FromQueryWindow =
       info: WindowInfo | null;
     };
 
-export function createQueryViewHandler(): ViewMessageHandler {
-  return {
+type FromResults = { type: "hello" } | { type: "goToLine"; windowId: string; line: number };
+
+/** The query window's and the Query Results panel's backend handlers (register them as `<prefix>.query` / `<prefix>.results`). */
+export function createQueryViews(executeQuery: ExecuteQuery, history: HistoryStore | undefined): { query: ViewMessageHandler; results: ViewMessageHandler } {
+  let resultsReply: Reply | null = null;
+  /** Each query window's reply channel. Replies reach every window of that connection, so messages carry windowId. */
+  const editorReplies = new Map<string, Reply>();
+  const cache = new Map<string, WindowUpdate>();
+  let activeWindow: { windowId: string; title: string } | null = null;
+
+  const toResults = (message: unknown) => resultsReply?.(message);
+
+  function remember(update: WindowUpdate) {
+    cache.delete(update.windowId); // re-insert = most recent
+    cache.set(update.windowId, update);
+    while (cache.size > MAX_CACHED_WINDOWS) cache.delete(cache.keys().next().value!);
+    toResults(update);
+  }
+
+  const query: ViewMessageHandler = {
     async onMessage(message, ctx) {
       const msg = message as FromQueryWindow;
       if (msg.type === "hello") {
@@ -87,7 +88,7 @@ export function createQueryViewHandler(): ViewMessageHandler {
         }
         const sql = msg.sql;
         const started = Date.now();
-        const history = (entry: Parameters<typeof recordHistory>[1]) => void recordHistory(ctx.connectionId!, entry).catch(() => undefined);
+        const record = (entry: Parameters<HistoryStore["record"]>[1]) => void history?.record(ctx.connectionId!, entry).catch(() => undefined);
         remember({ type: "update", windowId, title, info, sql, state: { kind: "running", started } });
         try {
           const run = await executeQuery({
@@ -101,7 +102,7 @@ export function createQueryViewHandler(): ViewMessageHandler {
           remember({ type: "update", windowId, title, info: info && { ...info, database: run.database }, sql, state: { kind: "done", run } });
           const rows = run.resultSets.reduce((n, rs) => n + rs.totalRows, 0);
           const firstError = run.messages.find((m) => m.kind === "error")?.text;
-          history({ sql, database: run.database, status: run.cancelled ? "cancelled" : run.hasErrors ? "error" : "ok", elapsedMs: run.elapsedMs, rows: rows || run.rowsAffected, ...(firstError ? { error: firstError } : {}) });
+          record({ sql, database: run.database, status: run.cancelled ? "cancelled" : run.hasErrors ? "error" : "ok", elapsedMs: run.elapsedMs, rows: rows || run.rowsAffected, ...(firstError ? { error: firstError } : {}) });
           ctx.reply({
             type: "done",
             windowId,
@@ -115,18 +116,14 @@ export function createQueryViewHandler(): ViewMessageHandler {
         } catch (err) {
           const error = err instanceof Error ? err.message : String(err);
           remember({ type: "update", windowId, title, info, sql, state: { kind: "failed", error } });
-          history({ sql, database: msg.database ?? null, status: "error", elapsedMs: Date.now() - started, rows: 0, error });
+          record({ sql, database: msg.database ?? null, status: "error", elapsedMs: Date.now() - started, rows: 0, error });
           ctx.reply({ type: "failed", windowId, queryId, error });
         }
       }
     },
   };
-}
 
-type FromResults = { type: "hello" } | { type: "goToLine"; windowId: string; line: number };
-
-export function createResultsViewHandler(): ViewMessageHandler {
-  return {
+  const results: ViewMessageHandler = {
     onMessage(message, ctx) {
       const msg = message as FromResults;
       if (msg.type === "hello") {
@@ -140,4 +137,6 @@ export function createResultsViewHandler(): ViewMessageHandler {
       resultsReply = null;
     },
   };
+
+  return { query, results };
 }

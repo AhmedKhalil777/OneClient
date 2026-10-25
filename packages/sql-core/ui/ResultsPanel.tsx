@@ -3,13 +3,14 @@ import type { QueryRun } from "./api.js";
 import type { ToResults, WindowUpdate } from "./protocol.js";
 import { formatElapsed } from "./format.js";
 import { ResultGrid, guessTables } from "@oneclient/editor-kit/sql";
+import type { SqlDialectUi } from "./dialect.js";
 
 /**
- * "Query Results" — the SQL Server plugin's view in the app's shared bottom
- * panel. Shows the Results grids / Messages / status of whichever query
- * window was last active, like SSMS's results pane but in one shared place.
+ * "Query Results" — a SQL plugin's view in the app's shared bottom panel. Shows the
+ * Results grids / Messages / status of whichever query window was last active,
+ * like SSMS's results pane but in one shared place.
  */
-export function ResultsPanel() {
+export function ResultsPanel({ dialect }: { dialect: SqlDialectUi }) {
   const [windows, setWindows] = useState<Map<string, WindowUpdate>>(new Map());
   const [active, setActive] = useState<{ windowId: string; title: string } | null>(null);
   const [tab, setTab] = useState<"results" | "messages">("results");
@@ -27,7 +28,7 @@ export function ResultsPanel() {
         setWindows((prev) => new Map(prev).set(msg.windowId, msg));
         setActive({ windowId: msg.windowId, title: msg.title });
         if (msg.state.kind === "done") {
-          // SSMS shows Messages when there's nothing else to look at.
+          // Show Messages when there's nothing else to look at.
           setTab(msg.state.run.resultSets.length === 0 ? "messages" : "results");
         } else if (msg.state.kind === "failed") {
           setTab("messages");
@@ -50,7 +51,7 @@ export function ResultsPanel() {
   if (!active || !current) {
     return (
       <div className="results-panel">
-        <div className="empty">Run a query (F5) in a SQL Server query window to see results here.</div>
+        <div className="empty">Run a query (F5) in a {dialect.productName} query window to see results here.</div>
       </div>
     );
   }
@@ -75,7 +76,7 @@ export function ResultsPanel() {
         </span>
       </div>
       <div className="results-body">
-        {tab === "results" ? <ResultsView run={run} running={running} sql={current.sql} /> : <MessagesView update={current} onGoToLine={goToLine} />}
+        {tab === "results" ? <ResultsView run={run} running={running} sql={current.sql} dialect={dialect} /> : <MessagesView update={current} onGoToLine={goToLine} />}
       </div>
       <div className={`statusbar ${statusClass(current)}`}>
         <span className="status-text">{statusText(current)}</span>
@@ -90,7 +91,7 @@ export function ResultsPanel() {
   );
 }
 
-function ResultsView({ run, running, sql }: { run: QueryRun | null; running: boolean; sql: string | undefined }) {
+function ResultsView({ run, running, sql, dialect }: { run: QueryRun | null; running: boolean; sql: string | undefined; dialect: SqlDialectUi }) {
   if (!run) return <div className="empty">{running ? "Executing query…" : "No results."}</div>;
   if (run.resultSets.length === 0) return <div className="empty">The query returned no result sets — see Messages.</div>;
   const single = run.resultSets.length === 1;
@@ -98,7 +99,7 @@ function ResultsView({ run, running, sql }: { run: QueryRun | null; running: boo
   return (
     <div className={`result-sets ${single ? "single" : ""}`}>
       {run.resultSets.map((rs, i) => (
-        <ResultGrid key={i} result={rs} fill={single} dialect="mssql" tableHint={tables[i]} />
+        <ResultGrid key={i} result={rs} fill={single} dialect={dialect.gridDialect} tableHint={tables[i]} />
       ))}
     </div>
   );

@@ -2,7 +2,12 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { deleteHistory, listHistory, recordHistory } from "../src/history.js";
+import { createHistoryStore } from "../src/history.js";
+
+const history = createHistoryStore("postgres");
+const recordHistory = history.record;
+const listHistory = history.list;
+const deleteHistory = history.remove;
 
 describe("query history", () => {
   let home: string;

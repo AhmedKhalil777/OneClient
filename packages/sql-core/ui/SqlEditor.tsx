@@ -2,7 +2,6 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import type { CompletionProvider } from "@oneclient/editor-kit";
 import { useAutocomplete } from "@oneclient/editor-kit/react";
 import { type FindMatch, FindMarks, type FindMode, FindWidget, type Geometry, GoToLine } from "@oneclient/editor-kit/editor";
-import { highlightSql } from "./highlight.js";
 
 const NO_PROVIDERS: readonly CompletionProvider[] = [];
 
@@ -26,8 +25,8 @@ const GEOMETRY: Geometry = { paddingTop: 6, paddingLeft: 8, lineHeight: LINE_HEI
  */
 export const SqlEditor = forwardRef<
   SqlEditorHandle,
-  { value: string; onChange: (v: string) => void; completionProviders?: readonly CompletionProvider[] }
->(function SqlEditor({ value, onChange, completionProviders = NO_PROVIDERS }, ref) {
+  { value: string; onChange: (v: string) => void; highlight: (text: string) => string; completionProviders?: readonly CompletionProvider[] }
+>(function SqlEditor({ value, onChange, highlight, completionProviders = NO_PROVIDERS }, ref) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
@@ -59,7 +58,7 @@ export const SqlEditor = forwardRef<
   }, []);
   useAutocomplete(textareaRef, { providers: completionProviders });
 
-  const html = useMemo(() => highlightSql(value), [value]);
+  const html = useMemo(() => highlight(value), [highlight, value]);
   const lineCount = useMemo(() => value.split("\n").length, [value]);
 
   function goToLineAt(line: number) {

@@ -172,6 +172,21 @@
       {
         "id": "postgres.constraint",
         "parentNodeType": "postgres.constraints"
+      },
+      {
+        "id": "postgres.fastToolsRoot"
+      },
+      {
+        "id": "postgres.fastQueriesRoot",
+        "parentNodeType": "postgres.fastToolsRoot"
+      },
+      {
+        "id": "postgres.fastQueryGroup",
+        "parentNodeType": "postgres.fastQueriesRoot"
+      },
+      {
+        "id": "postgres.fastQuery",
+        "parentNodeType": "postgres.fastQueryGroup"
       }
     ],
     "views": [
@@ -252,6 +267,87 @@
         "when": "contextValue == 'postgres.function' || contextValue == 'postgres.procedure'"
       },
       {
+        "id": "postgres.newFastQuery",
+        "title": "PostgreSQL: New Fast Query…",
+        "when": "contextValue == 'postgres.fastQueriesRoot' || contextValue == 'postgres.fastQueryGroup'"
+      },
+      {
+        "id": "postgres.runFastQuery",
+        "title": "PostgreSQL: Run Fast Query",
+        "icon": "$(play)",
+        "when": "contextValue == 'postgres.fastQuery'"
+      },
+      {
+        "id": "postgres.runFastQueryOn",
+        "title": "PostgreSQL: Run Fast Query on Database…",
+        "when": "contextValue == 'postgres.fastQuery'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "targetDatabase"
+          ],
+          "properties": {
+            "targetDatabase": {
+              "type": "string",
+              "title": "Database"
+            }
+          }
+        }
+      },
+      {
+        "id": "postgres.renameFastQuery",
+        "title": "PostgreSQL: Rename Fast Query…",
+        "when": "contextValue == 'postgres.fastQuery'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "newName"
+          ],
+          "properties": {
+            "newName": {
+              "type": "string",
+              "title": "New name",
+              "default": "{label}"
+            }
+          }
+        }
+      },
+      {
+        "id": "postgres.deleteFastQuery",
+        "title": "PostgreSQL: Delete Fast Query",
+        "when": "contextValue == 'postgres.fastQuery'",
+        "confirm": "Delete fast query \"{label}\" (its .query.sql file)?"
+      },
+      {
+        "id": "postgres.saveFastQuery",
+        "title": "PostgreSQL: Save Fast Query",
+        "hidden": true
+      },
+      {
+        "id": "postgres.attachFastToolsFolder",
+        "title": "PostgreSQL: Attach Fast Tools Folder…",
+        "when": "contextValue == 'postgres.fastToolsRoot' || contextValue == 'postgres.fastToolsFolder'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "folder"
+          ],
+          "properties": {
+            "folder": {
+              "type": "string",
+              "title": "Folder for fast queries (*.query.sql)",
+              "format": "directory"
+            }
+          }
+        }
+      },
+      {
+        "id": "postgres.detachFastToolsFolder",
+        "title": "PostgreSQL: Detach Fast Tools Folder",
+        "when": "contextValue == 'postgres.fastToolsFolder'",
+        "confirm": "Detach this folder? Its fast queries stay on disk."
+      },
+      {
         "id": "postgres.history",
         "title": "PostgreSQL: List Query History",
         "when": "view == 'postgres.query'"
@@ -323,6 +419,14 @@
         "keybinding": "Ctrl+R",
         "when": "activeView == 'postgres.query'",
         "group": "2_results"
+      }
+    ],
+    "explorerSections": [
+      {
+        "id": "fastTools",
+        "title": "Fast Tools",
+        "rootNodeType": "postgres.fastToolsRoot",
+        "connectionType": "postgres"
       }
     ]
   },

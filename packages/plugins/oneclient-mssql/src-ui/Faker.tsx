@@ -317,7 +317,7 @@ function TableEditor({ info, rule, suggested, onChange, catalog, depth, store, f
   );
 }
 
-/** Fake Data tab: configure a faker (a *.faker.json file in the connection's fakers folder), preview it, insert rows. */
+/** Fake Data tab: configure a faker (a *.faker.json file in the connection's Fast Tools folder), preview it, insert rows. */
 export function Faker() {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState("");
@@ -374,7 +374,7 @@ export function Faker() {
       <div className="fk-page">
         <div className="fk-picker">
           <h3>New faker</h3>
-          {!loaded.folder && <p className="fk-message err">No fakers folder is attached to this connection yet — you can try things out, but to save, right-click the connection in FAKERS → Attach Fakers Folder….</p>}
+          {!loaded.folder && <p className="fk-message err">No Fast Tools folder is attached to this connection yet — you can try things out, but to save, right-click the connection in FAST TOOLS → Attach Fast Tools Folder….</p>}
           {!loaded.database ? (
             <>
               <p className="fk-dim">Which database?</p>
@@ -454,7 +454,7 @@ export function Faker() {
     if (!r.ok) return setMessage({ text: r.error, tone: "err" });
     setFile(r.data.file);
     setSavedSnapshot(snapshot);
-    setMessage({ text: `Saved to ${r.data.file} in the fakers folder.`, tone: "ok" });
+    setMessage({ text: `Saved to ${r.data.file} in the Fast Tools folder.`, tone: "ok" });
     window.oneclientView.refreshExplorer();
   };
 
@@ -530,7 +530,7 @@ export function Faker() {
         <button className="btn" onClick={() => loaded.suggested && setRule(loaded.suggested)} title="Back to the automatic suggestions (removes nested rows)">
           Reset
         </button>
-        <button className="btn" disabled={busy !== "" || !loaded.folder} onClick={() => void save()} title={loaded.folder ? `Save as a .faker.json file in ${loaded.folder}` : "Attach a fakers folder first (FAKERS section → right-click the connection)"}>
+        <button className="btn" disabled={busy !== "" || !loaded.folder} onClick={() => void save()} title={loaded.folder ? `Save as a .faker.json file in ${loaded.folder}` : "Attach a Fast Tools folder first (FAST TOOLS section → right-click the connection)"}>
           {file ? (dirty ? "Save ●" : "Saved") : "Save faker"}
         </button>
         <button className="btn" disabled={busy !== ""} onClick={() => void runPreview()}>

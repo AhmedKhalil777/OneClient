@@ -1,7 +1,7 @@
 {
   "name": "oneclient-mssql",
   "displayName": "SQL Server",
-  "description": "Connect to Microsoft SQL Server: object explorer, query editor, result grids and a fake-data generator — a small SSMS.",
+  "description": "Connect to Microsoft SQL Server: object explorer, query editor, result grids and Fast Tools (saved fast queries, fake-data generator) — a small SSMS.",
   "version": "0.1.0",
   "publisher": "oneclient",
   "license": "MIT",
@@ -144,7 +144,23 @@
         "parentNodeType": "mssql.functions"
       },
       {
-        "id": "mssql.fakersRoot"
+        "id": "mssql.fastToolsRoot"
+      },
+      {
+        "id": "mssql.fastQueriesRoot",
+        "parentNodeType": "mssql.fastToolsRoot"
+      },
+      {
+        "id": "mssql.fastQueryGroup",
+        "parentNodeType": "mssql.fastQueriesRoot"
+      },
+      {
+        "id": "mssql.fastQuery",
+        "parentNodeType": "mssql.fastQueryGroup"
+      },
+      {
+        "id": "mssql.fakersRoot",
+        "parentNodeType": "mssql.fastToolsRoot"
       },
       {
         "id": "mssql.fakerGroup",
@@ -271,6 +287,63 @@
         "hidden": true
       },
       {
+        "id": "mssql.newFastQuery",
+        "title": "SQL Server: New Fast Query…",
+        "when": "contextValue == 'mssql.fastQueriesRoot' || contextValue == 'mssql.fastQueryGroup'"
+      },
+      {
+        "id": "mssql.runFastQuery",
+        "title": "SQL Server: Run Fast Query",
+        "icon": "$(play)",
+        "when": "contextValue == 'mssql.fastQuery'"
+      },
+      {
+        "id": "mssql.runFastQueryOn",
+        "title": "SQL Server: Run Fast Query on Database…",
+        "when": "contextValue == 'mssql.fastQuery'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "targetDatabase"
+          ],
+          "properties": {
+            "targetDatabase": {
+              "type": "string",
+              "title": "Database"
+            }
+          }
+        }
+      },
+      {
+        "id": "mssql.renameFastQuery",
+        "title": "SQL Server: Rename Fast Query…",
+        "when": "contextValue == 'mssql.fastQuery'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "newName"
+          ],
+          "properties": {
+            "newName": {
+              "type": "string",
+              "title": "New name",
+              "default": "{label}"
+            }
+          }
+        }
+      },
+      {
+        "id": "mssql.deleteFastQuery",
+        "title": "SQL Server: Delete Fast Query",
+        "when": "contextValue == 'mssql.fastQuery'",
+        "confirm": "Delete fast query \"{label}\" (its .query.sql file)?"
+      },
+      {
+        "id": "mssql.saveFastQuery",
+        "title": "SQL Server: Save Fast Query",
+        "hidden": true
+      },
+      {
         "id": "mssql.faker",
         "title": "SQL Server: Faker API",
         "hidden": true
@@ -283,12 +356,12 @@
       {
         "id": "mssql.newFaker",
         "title": "SQL Server: New Faker…",
-        "when": "contextValue == 'mssql.fakersRoot' || contextValue == 'mssql.fakerGroup' || contextValue == 'mssql.fakersFolder'"
+        "when": "contextValue == 'mssql.fakersRoot' || contextValue == 'mssql.fakerGroup'"
       },
       {
-        "id": "mssql.attachFakersFolder",
-        "title": "SQL Server: Attach Fakers Folder…",
-        "when": "contextValue == 'mssql.fakersRoot' || contextValue == 'mssql.fakersFolder'",
+        "id": "mssql.attachFastToolsFolder",
+        "title": "SQL Server: Attach Fast Tools Folder…",
+        "when": "contextValue == 'mssql.fastToolsRoot' || contextValue == 'mssql.fastToolsFolder'",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -297,17 +370,17 @@
           "properties": {
             "folder": {
               "type": "string",
-              "title": "Folder with *.faker.json files",
+              "title": "Folder for fast queries (*.query.sql) and fakers (*.faker.json)",
               "format": "directory"
             }
           }
         }
       },
       {
-        "id": "mssql.detachFakersFolder",
-        "title": "SQL Server: Detach Fakers Folder",
-        "when": "contextValue == 'mssql.fakersFolder'",
-        "confirm": "Detach this folder? The faker files stay on disk."
+        "id": "mssql.detachFastToolsFolder",
+        "title": "SQL Server: Detach Fast Tools Folder",
+        "when": "contextValue == 'mssql.fastToolsFolder'",
+        "confirm": "Detach this folder? Its fast queries and fakers stay on disk."
       },
       {
         "id": "mssql.runFaker",
@@ -351,9 +424,9 @@
     ],
     "explorerSections": [
       {
-        "id": "fakers",
-        "title": "Fakers",
-        "rootNodeType": "mssql.fakersRoot",
+        "id": "fastTools",
+        "title": "Fast Tools",
+        "rootNodeType": "mssql.fastToolsRoot",
         "connectionType": "mssql"
       }
     ],

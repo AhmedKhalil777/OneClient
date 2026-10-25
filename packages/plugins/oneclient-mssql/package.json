@@ -16,6 +16,7 @@
     "@faker-js/faker": "10.5.0",
     "@oneclient/editor-kit": "workspace:*",
     "@oneclient/plugin-api": "workspace:*",
+    "@oneclient/sql-core": "workspace:*",
     "mssql": "^11.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

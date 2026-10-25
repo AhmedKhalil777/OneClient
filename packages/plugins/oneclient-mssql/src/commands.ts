@@ -1,6 +1,6 @@
 import type { CommandHandler, TreeNode } from "@oneclient/plugin-api";
+import { type SqlCore, commandArg as arg } from "@oneclient/sql-core";
 import { describeConnection, quoteIdent } from "./config.js";
-import { describeError } from "./errors.js";
 import type { NodeData } from "./explorer-provider.js";
 import {
   completionCatalog,
@@ -11,55 +11,13 @@ import {
   objectDefinition,
   qualified,
 } from "./metadata.js";
-import { cancelQuery, executeQuery } from "./query-runner.js";
 import { callFakerApi, deleteSavedFaker, fakerTab, renameSavedFaker, runSavedFaker } from "./faker/api.js";
-import { attachFolder, detachFolder } from "./faker/store.js";
 import { searchObjects } from "./search.js";
 import { erModel } from "./diagram.js";
-import { deleteHistory, listHistory } from "./history.js";
 import { requireSession } from "./sessions.js";
 
 /** Context-menu args: core spreads the right-clicked node's `data` in (see CommandContribution.when). */
 type NodeArg = { connectionId: string } & NodeData;
-
-function arg<T>(args: unknown[]): T {
-  const value = args[0] as T | undefined;
-  if (!value) throw new Error("Missing command argument.");
-  return value;
-}
-
-let queryCounter = 0;
-
-/**
- * A query window is opened by returning `openNode` — a node whose
- * `openView` core opens as a tab. A fresh id each time = a fresh window
- * (SSMS's SQLQuery1.sql, SQLQuery2.sql, …).
- */
-function queryWindow(opts: { database?: string | undefined; sql?: string; autorun?: boolean; title?: string; history?: boolean }): TreeNode {
-  queryCounter++;
-  const params: Record<string, string> = { windowId: `q${Date.now()}-${queryCounter}` };
-  if (opts.database) params.database = opts.database;
-  if (opts.sql) params.sql = opts.sql;
-  if (opts.autorun) params.autorun = "1";
-  if (opts.history) params.history = "1";
-  const title = opts.title ?? `SQLQuery${queryCounter}.sql`;
-  params.title = title; // the window labels its results in the Query Results panel with this
-  return {
-    id: params.windowId!,
-    label: title,
-    nodeType: "mssql.query",
-    collapsible: "none",
-    openView: { viewId: "mssql.query", title, params },
-  };
-}
-
-async function action(fn: () => Promise<{ ok: true; openNode?: TreeNode }>): Promise<{ ok: boolean; error?: string; openNode?: TreeNode }> {
-  try {
-    return await fn();
-  } catch (err) {
-    return { ok: false, error: describeError(err) };
-  }
-}
 
 /** The ER diagram tab of a database; one tab per database, so opening it again focuses it. */
 function diagramTab(database: string, focus?: string): TreeNode {
@@ -69,7 +27,9 @@ function diagramTab(database: string, focus?: string): TreeNode {
   return { id: `diagram:${database}`, label: title, nodeType: "mssql.diagram", collapsible: "none", openView: { viewId: "mssql.diagram", title, icon: "$(diagram)", params } };
 }
 
-export function createCommandHandlers(): CommandHandler[] {
+/** SQL Server's own commands; query execution, history and Fast Queries come from the SQL core (`core.commands`). */
+export function createCommandHandlers(core: SqlCore): CommandHandler[] {
+  const { action, queryWindow } = core;
   return [
     {
       // The diagram view's data: tables, columns, keys and relations.
@@ -115,24 +75,6 @@ export function createCommandHandlers(): CommandHandler[] {
           const { connectionId, database } = arg<NodeArg>(args);
           requireSession(connectionId);
           return { ok: true, openNode: fakerTab(database ? { database } : {}, "New faker") };
-        }),
-    },
-    {
-      commandId: "mssql.attachFakersFolder",
-      execute: (args) =>
-        action(async () => {
-          const { connectionId, folder } = arg<NodeArg & { folder?: string }>(args);
-          await attachFolder(connectionId, String(folder ?? ""));
-          return { ok: true };
-        }),
-    },
-    {
-      commandId: "mssql.detachFakersFolder",
-      execute: (args) =>
-        action(async () => {
-          const { connectionId } = arg<NodeArg>(args);
-          detachFolder(connectionId);
-          return { ok: true };
         }),
     },
     {
@@ -251,47 +193,8 @@ export function createCommandHandlers(): CommandHandler[] {
         }),
     },
 
-    {
-      commandId: "mssql.queryHistory",
-      execute: (args) =>
-        action(async () => {
-          const { connectionId, database } = arg<NodeArg>(args);
-          requireSession(connectionId);
-          return { ok: true, openNode: queryWindow({ database, history: true, title: "Query History" }) };
-        }),
-    },
 
     // ---- Used by the query window (view == 'mssql.query') ----
-    {
-      commandId: "mssql.history",
-      async execute(args) {
-        const { connectionId, search, limit } = arg<{ connectionId: string; search?: string; limit?: number }>(args);
-        return listHistory(connectionId, { ...(search ? { search } : {}), ...(limit ? { limit } : {}) });
-      },
-    },
-    {
-      commandId: "mssql.deleteHistory",
-      async execute(args) {
-        const { connectionId, id } = arg<{ connectionId: string; id?: string }>(args);
-        await deleteHistory(connectionId, id);
-        return { ok: true };
-      },
-    },
-    {
-      commandId: "mssql.executeQuery",
-      async execute(args) {
-        const a = arg<{ connectionId: string; windowId: string; queryId: string; database?: string; sql: string; lineOffset?: number }>(args);
-        if (typeof a.sql !== "string" || !a.windowId || !a.queryId) return { ok: false, error: "Invalid query request." };
-        return executeQuery(a);
-      },
-    },
-    {
-      commandId: "mssql.cancelQuery",
-      execute(args) {
-        const { queryId } = arg<{ queryId: string }>(args);
-        return { ok: cancelQuery(queryId) };
-      },
-    },
     {
       commandId: "mssql.listDatabases",
       async execute(args) {

@@ -1,17 +1,30 @@
 import type { TreeNode } from "@oneclient/plugin-api";
+import type { FastTool } from "@oneclient/sql-core";
 import { describeConnection } from "../config.js";
 import { describeError } from "../errors.js";
 import { listDatabases, listObjects } from "../metadata.js";
 import { requireSession } from "../sessions.js";
-import { catalog } from "./catalog.js";
-import { FakerError, runFaker } from "./engine.js";
+import { FakerError } from "./errors.js";
 import { FakerFileError, readFakerFile, writeFakerFile } from "./fakerfile.js";
 import type { GenerateRequest, TableRule } from "./rules.js";
 import { tableInfo } from "./schema.js";
-import { deleteFaker, fakersFolder, listFakers, readFaker, renameFaker, requireFolder, writeFaker } from "./store.js";
+import { folders } from "../folders.js";
+import { deleteFaker, listFakers, readFaker, renameFaker, writeFaker } from "./store.js";
 import { suggestTable } from "./suggest.js";
 
 type Params = Record<string, unknown>;
+
+/**
+ * The generator modules load @faker-js/faker, an ES module: loaded when a faker is first used rather than when the
+ * plugin activates, so the rest of SQL Server (and Node versions that can't require() ES modules) isn't affected.
+ */
+async function generators() {
+  const lib = await import("./catalog.js");
+  await lib.loadFaker();
+  return lib;
+}
+const catalog = async () => (await generators()).catalog();
+const runFaker = async (...args: Parameters<typeof import("./engine.js").runFaker>) => (await generators(), (await import("./engine.js")).runFaker(...args));
 
 const str = (p: Params, key: string): string => {
   const v = p[key];
@@ -35,7 +48,7 @@ function asRequest(p: Params): GenerateRequest {
 
 const userDatabases = async (cid: string) => (await listDatabases(requireSession(cid).pool)).filter((d) => d.database_id > 4 && d.state_desc === "ONLINE").map((d) => d.name);
 
-/** The Fake Data view's backend (`mssql.faker` command). Fakers are `*.faker.json` files in the connection's fakers folder. */
+/** The Fake Data view's backend (`mssql.faker` command). Fakers are `*.faker.json` files in the connection's Fast Tools folder. */
 const API: Record<string, (connectionId: string, p: Params) => Promise<unknown> | unknown> = {
   /**
    * Everything the editor needs: a faker file (by `file`), or a new faker for a table. Without a database and/or table
@@ -43,14 +56,14 @@ const API: Record<string, (connectionId: string, p: Params) => Promise<unknown> 
    */
   load: async (cid, p) => {
     const { pool } = requireSession(cid);
-    const folder = fakersFolder(cid) ?? null;
+    const folder = folders.get(cid) ?? null;
     const file = optStr(p, "file");
-    const doc = file ? await readFaker(requireFolder(cid), file) : undefined;
+    const doc = file ? await readFaker(folders.require(cid), file) : undefined;
     const database = optStr(p, "database") ?? doc?.database;
-    if (!database) return { folder, databases: await userDatabases(cid), catalog: catalog() };
+    if (!database) return { folder, databases: await userDatabases(cid), catalog: await catalog() };
     const schema = doc?.rule.schema ?? optStr(p, "schema");
     const table = doc?.rule.table ?? optStr(p, "table");
-    if (!schema || !table) return { folder, database, tables: (await listObjects(pool, database, "tables")).map((t) => `${t.schema}.${t.name}`), catalog: catalog() };
+    if (!schema || !table) return { folder, database, tables: (await listObjects(pool, database, "tables")).map((t) => `${t.schema}.${t.name}`), catalog: await catalog() };
     const info = await tableInfo(pool, database, schema, table);
     const suggested = suggestTable(info);
     return {
@@ -63,7 +76,7 @@ const API: Record<string, (connectionId: string, p: Params) => Promise<unknown> 
       suggested,
       rule: doc ? { ...doc.rule, columns: mergeColumns(doc.rule, suggested) } : suggested,
       faker: doc ? { file, name: doc.name, count: doc.count, seed: doc.seed ?? null, database: doc.database ?? null } : null,
-      catalog: catalog(),
+      catalog: await catalog(),
     };
   },
   /** Metadata of another table: for a "Create new rows" foreign key's parent, or a nested child. */
@@ -75,7 +88,7 @@ const API: Record<string, (connectionId: string, p: Params) => Promise<unknown> 
   generate: (cid, p) => runFaker(requireSession(cid).pool, asRequest(p), true),
   save: async (cid, p) => {
     const req = asRequest(p);
-    const root = requireFolder(cid);
+    const root = folders.require(cid);
     const name = str(p, "name").trim();
     const doc = { name, database: p.anyDatabase === true ? undefined : req.database, count: req.count, seed: req.seed, rule: req.rule };
     const file = await writeFaker(root, doc, optStr(p, "file"));
@@ -117,7 +130,7 @@ export async function callFakerApi(connectionId: string | undefined, method: str
   }
 }
 
-// ---- the FAKERS sidebar section ------------------------------------------------------------------------------
+// ---- Fakers in the FAST TOOLS sidebar section ------------------------------------------------------------------------------
 
 export const FAKER_ICON = "$(wrench)";
 
@@ -132,20 +145,12 @@ export function fakerTab(params: Record<string, string>, title: string): TreeNod
   };
 }
 
-/**
- * Children of the section's per-connection root: the attached folder, then fakers grouped by database
- * (fakers that don't name one are under "Any database"); unreadable files are listed with their problem.
- */
-export async function fakerSectionNodes(connectionId: string, node: TreeNode): Promise<TreeNode[]> {
-  const folder = fakersFolder(connectionId);
+/** Fakers grouped by database (fakers that don't name one are under "Any database"); unreadable files are listed with their problem. */
+async function fakerNodes(folder: string, node: TreeNode): Promise<TreeNode[]> {
+  const fakers = await listFakers(folder);
   if (node.nodeType === "mssql.fakersRoot") {
-    if (!folder) {
-      return [{ id: "fakers:none", label: "No folder attached — right-click to attach one", nodeType: "mssql.fakerHint", collapsible: "none", icon: "$(folder)", contextValue: "mssql.fakersRoot" }];
-    }
-    const fakers = await listFakers(folder);
     const groups = [...new Set(fakers.filter((f) => !f.error).map((f) => f.database ?? ""))].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b)));
     const nodes: TreeNode[] = [
-      { id: "fakers:folder", label: folder, nodeType: "mssql.fakersFolder", collapsible: "none", icon: "$(folder-opened)", contextValue: "mssql.fakersFolder" },
       ...groups.map(
         (db): TreeNode => ({
           id: `fakers:db:${db}`,
@@ -164,9 +169,9 @@ export async function fakerSectionNodes(connectionId: string, node: TreeNode): P
     if (fakers.length === 0) nodes.push({ id: "fakers:empty", label: "No fakers yet — right-click → New Faker…", nodeType: "mssql.fakerHint", collapsible: "none", contextValue: "mssql.fakersRoot" });
     return nodes;
   }
-  if (node.nodeType === "mssql.fakerGroup" && folder) {
+  if (node.nodeType === "mssql.fakerGroup") {
     const db = (node.data as { database?: string } | undefined)?.database ?? "";
-    return (await listFakers(folder))
+    return fakers
       .filter((f) => !f.error && (f.database ?? "") === db)
       .map((f) => ({
         id: `faker:${f.file}`,
@@ -182,9 +187,19 @@ export async function fakerSectionNodes(connectionId: string, node: TreeNode): P
   return [];
 }
 
+/** Fakers as a Fast Tool: a "Fakers" folder in FAST TOOLS (SQL Server only — the generator speaks T-SQL). */
+export const fakerTool: FastTool = {
+  id: "fakers",
+  label: "Fakers",
+  icon: FAKER_ICON,
+  rootNodeType: "mssql.fakersRoot",
+  nodeTypes: ["mssql.fakerGroup"],
+  children: (_cid, folder, node) => fakerNodes(folder, node),
+};
+
 /** "Run Faker" from the tree. A faker without a database runs in `database` (the group it was listed in) or fails clearly. */
 export async function runSavedFaker(connectionId: string, file: string, database?: string) {
-  const doc = await readFaker(requireFolder(connectionId), file);
+  const doc = await readFaker(folders.require(connectionId), file);
   const db = doc.database ?? database;
   if (!db) throw new FakerError(`"${doc.name}" doesn't name a database — open it and run it from the editor.`);
   const result = await runFaker(requireSession(connectionId).pool, { database: db, rule: doc.rule, count: doc.count, ...(doc.seed !== undefined ? { seed: doc.seed } : {}) }, true);
@@ -193,9 +208,9 @@ export async function runSavedFaker(connectionId: string, file: string, database
 
 export async function renameSavedFaker(connectionId: string, file: string, name: string) {
   if (!name.trim()) throw new FakerError("Give the faker a name.");
-  return renameFaker(requireFolder(connectionId), file, name);
+  return renameFaker(folders.require(connectionId), file, name);
 }
 
 export async function deleteSavedFaker(connectionId: string, file: string) {
-  await deleteFaker(requireFolder(connectionId), file);
+  await deleteFaker(folders.require(connectionId), file);
 }

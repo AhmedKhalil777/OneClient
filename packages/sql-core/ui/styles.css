@@ -141,6 +141,58 @@ body.dragging {
 .run-badge.warn {
   color: var(--oc-warningForeground, #e5c07b);
 }
+.toolbar-notice {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+  cursor: default;
+}
+.toolbar-notice.ok {
+  color: var(--oc-successForeground, #89d185);
+}
+.toolbar-notice.error {
+  color: var(--danger);
+}
+
+/* ---- Save as Fast Query ---- */
+.fq-dialog {
+  width: min(480px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fq-dialog .sqlg-dialog-title,
+.fq-dialog .sqlg-dialog-note {
+  margin-bottom: 0;
+}
+.fq-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.fq-input {
+  background: var(--oc-input-background, #3c3c3c);
+  color: var(--text);
+  border: 1px solid var(--oc-input-border, var(--border));
+  border-radius: 3px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 13px;
+}
+.fq-input:focus {
+  outline: 1px solid var(--oc-focusBorder, #007fd4);
+}
+.fq-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
 .toolbar-info {
   color: var(--text-dim);
   font-size: 12px;

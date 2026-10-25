@@ -1,4 +1,13 @@
-import { faker } from "@faker-js/faker";
+import type { Faker } from "@faker-js/faker";
+
+/**
+ * @faker-js/faker is an ES module, which this CommonJS plugin can only load with import() on Node < 22.12 — so it is
+ * loaded by loadFaker(), awaited before the catalog is shown or a faker runs (see api.ts).
+ */
+let faker: Faker;
+export async function loadFaker(): Promise<void> {
+  if (!faker) faker = (await import("@faker-js/faker")).faker;
+}
 
 /**
  * The Bogus-style value generators a column can use. Each entry names a function of `@faker-js/faker`; the map

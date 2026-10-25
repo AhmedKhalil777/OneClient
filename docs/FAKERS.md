@@ -1,11 +1,12 @@
 # Fakers — fake data for SQL Server
 
 A **faker** describes how to fill a table with realistic fake rows (like .NET's Bogus). Fakers are plain JSON files
-(`*.faker.json`) in a folder you attach to a SQL Server connection, so you can keep them in a repo, review and share them.
+(`*.faker.json`) in the [Fast Tools](FAST-TOOLS.md) folder you attach to a SQL Server connection, so you can keep them in a repo, review and share them.
 
 ## Using them
 
-- **Attach a folder:** SQL Server sidebar → **FAKERS** section → right-click the connection → *Attach Fakers Folder…*.
+- **Attach a folder:** SQL Server sidebar → **FAST TOOLS** section → right-click the connection → *Attach Fast Tools Folder…*
+  (the same folder holds the connection's [fast queries](FAST-TOOLS.md)). Fakers are listed under **Fakers** in it.
   Every `*.faker.json` in the folder (sub-folders too) is listed, grouped by database. Unreadable files are shown with the problem.
 - **Create:** right-click → *New Faker…* (pick database and table), or right-click a table in the Object Explorer →
   *Generate Fake Data…*. New fakers are saved at the folder root as `<name>.faker.json`.

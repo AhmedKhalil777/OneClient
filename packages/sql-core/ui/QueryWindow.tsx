@@ -1,20 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  type ServerInfo,
-  autorun,
-  cancelQuery,
-  deleteHistory,
-  executeQuery,
-  initialDatabase,
-  initialSql,
-  listDatabases,
-  openHistory,
-  queryHistory,
-  serverInfo,
-  windowId,
-} from "./api.js";
 import { HistoryPanel, type RiskyStatement, SafeModeDialog, findRiskyStatements } from "@oneclient/editor-kit/sql";
-import { createSqlCompletionProvider } from "./completion.js";
+import { type ServerInfo, autorun, createSqlApi, initialDatabase, initialFastQuery, initialSql, openHistory, windowId } from "./api.js";
+import type { SqlDialectUi } from "./dialect.js";
 import { formatElapsed } from "./format.js";
 import type { ToQueryWindow } from "./protocol.js";
 import { SqlEditor, type SqlEditorHandle } from "./SqlEditor.js";
@@ -25,7 +12,8 @@ type Status =
   | { kind: "done"; hasErrors: boolean; cancelled: boolean; elapsedMs: number; rows: number }
   | { kind: "failed"; error: string };
 
-const RESULTS_VIEW = "mssql.results";
+type FastQuery = { file: string; name: string; anyDatabase: boolean };
+
 const SAFE_MODE_KEY = "oneclient.sql.safeMode";
 
 function initialSafeMode(): boolean {
@@ -37,11 +25,13 @@ function initialSafeMode(): boolean {
 }
 
 /**
- * One SSMS-style query window: toolbar + editor. Results and messages show in
- * the app's shared bottom panel ("Query Results"), not inside this tab — the
- * backend streams them there and tells this window when the run is done.
+ * One query window: toolbar + editor. Results and messages show in the app's shared bottom panel
+ * ("Query Results"), not inside this tab — the backend streams them there and tells this window when the run is done.
+ * A window opened from FAST TOOLS edits that fast query: ★ Save (Ctrl+S) writes it back.
  */
-export function QueryWindow() {
+export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
+  const api = useMemo(() => createSqlApi(dialect.prefix), [dialect.prefix]);
+  const resultsView = `${dialect.prefix}.results`;
   const [sql, setSql] = useState(initialSql);
   const [database, setDatabase] = useState<string | undefined>(initialDatabase);
   const [databases, setDatabases] = useState<string[]>([]);
@@ -52,17 +42,21 @@ export function QueryWindow() {
   const [historyToken, setHistoryToken] = useState(0);
   const [safeMode, setSafeMode] = useState(initialSafeMode);
   const [pending, setPending] = useState<{ risks: RiskyStatement[]; runnable: { sql: string; lineOffset: number } } | null>(null);
+  const [fastQuery, setFastQuery] = useState<FastQuery | null>(initialFastQuery);
+  const [savedSql, setSavedSql] = useState(initialFastQuery ? initialSql : null);
+  const [saveDialog, setSaveDialog] = useState(false);
+  const [notice, setNotice] = useState<{ text: string; tone: "ok" | "error" } | null>(null);
   const editorRef = useRef<SqlEditorHandle>(null);
-  const title = useMemo(() => document.title, []);
 
   const databaseRef = useRef(database);
   databaseRef.current = database;
   const infoRef = useRef(info);
   infoRef.current = info;
-  const completion = useMemo(() => createSqlCompletionProvider(() => databaseRef.current), []);
+  const completion = useMemo(() => dialect.createCompletion(() => databaseRef.current), [dialect]);
   const completionProviders = useMemo(() => [completion.provider], [completion]);
 
   const running = status.kind === "running";
+  const fastQueries = dialect.fastQueries !== false;
 
   const execute = useCallback(
     (override?: { sql: string; lineOffset: number }, confirmed = false) => {
@@ -88,16 +82,50 @@ export function QueryWindow() {
         lineOffset: runnable.lineOffset,
         info: infoRef.current && { ...infoRef.current, database: databaseRef.current },
       });
-      window.oneclientView.revealView(RESULTS_VIEW);
+      window.oneclientView.revealView(resultsView);
       // The script may create/alter/drop objects — refresh IntelliSense lazily.
-      if (/\b(CREATE|ALTER|DROP|SELECT\s+[\s\S]*\bINTO|sp_rename)\b/i.test(runnable.sql)) completion.invalidate();
+      if (dialect.schemaChange.test(runnable.sql)) completion.invalidate();
     },
-    [status.kind, sql, completion, safeMode],
+    [status.kind, sql, completion, safeMode, dialect, resultsView],
   );
 
   const cancel = useCallback(() => {
-    if (status.kind === "running") void cancelQuery(status.queryId);
-  }, [status]);
+    if (status.kind === "running") void api.cancelQuery(status.queryId);
+  }, [status, api]);
+
+  /** Writes the fast query (a new one, or the one this window edits) to the connection's Fast Tools folder. */
+  const saveFastQuery = useCallback(
+    async (target: { name: string; anyDatabase: boolean; file?: string | undefined }) => {
+      const r = await api.saveFastQuery({ file: target.file, name: target.name, sql, database: target.anyDatabase ? undefined : databaseRef.current });
+      if (!r.ok) {
+        setNotice({ text: r.error, tone: "error" });
+        return false;
+      }
+      setFastQuery({ file: r.file, name: r.name, anyDatabase: target.anyDatabase });
+      setSavedSql(sql);
+      setNotice({ text: `Saved fast query "${r.name}" (${r.file}).`, tone: "ok" });
+      window.oneclientView.refreshExplorer();
+      return true;
+    },
+    [api, sql],
+  );
+
+  const save = useCallback(() => {
+    if (!fastQueries) return;
+    if (fastQuery) void saveFastQuery(fastQuery);
+    else setSaveDialog(true);
+  }, [fastQueries, fastQuery, saveFastQuery]);
+
+  // Unsaved edits of a fast query: ● on the tab, and core asks before closing it.
+  useEffect(() => {
+    if (savedSql !== null) window.oneclientView.setDirty(sql !== savedSql);
+  }, [sql, savedSql]);
+
+  useEffect(() => {
+    if (!notice || notice.tone === "error") return;
+    const t = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(t);
+  }, [notice]);
 
   // Backend → this window (filter: every window of the connection gets these).
   useEffect(() => {
@@ -126,14 +154,14 @@ export function QueryWindow() {
     return () => window.removeEventListener("focus", onFocus);
   }, []);
 
-  // Initial load: server info, database list, the session's current database, then autorun (Select Top 1000).
+  // Initial load: server info, database list, the session's current database, then autorun (Select Top 1000, a fast query).
   useEffect(() => {
-    void serverInfo().then(setInfo).catch(() => undefined);
-    void listDatabases().then(setDatabases).catch(() => undefined);
+    void api.serverInfo().then(setInfo).catch(() => undefined);
+    void api.listDatabases().then(setDatabases).catch(() => undefined);
     void (async () => {
       if (!initialDatabase) {
-        // An empty run just opens this window's session and reports DB_NAME().
-        const r = await executeQuery({ queryId: "init", sql: "" }).catch(() => null);
+        // An empty run just opens this window's session and reports the current database.
+        const r = await api.executeQuery({ queryId: "init", sql: "" }).catch(() => null);
         if (r?.ok && r.database) setDatabase(r.database);
       }
       if (autorun && initialSql) {
@@ -151,11 +179,12 @@ export function QueryWindow() {
     return () => clearInterval(t);
   }, [running]);
 
-  // SSMS shortcuts: F5 / Ctrl+E execute, Alt+Break (or Esc while running) cancel, Ctrl+R show results.
+  // F5 / Ctrl+E (and Ctrl+Enter where the dialect wants it) execute, Alt+Break (or Esc while running) cancel,
+  // Ctrl+R show results, Ctrl+Shift+H history, Ctrl+S save as fast query.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.ctrlKey || e.metaKey;
-      if (e.key === "F5" || (mod && e.key.toLowerCase() === "e")) {
+      if (e.key === "F5" || (mod && (e.key.toLowerCase() === "e" || (dialect.ctrlEnterExecutes && e.key === "Enter")))) {
         e.preventDefault();
         execute();
       } else if ((e.altKey && (e.key === "Pause" || e.key === "Cancel")) || (e.key === "Escape" && running)) {
@@ -164,14 +193,17 @@ export function QueryWindow() {
       } else if (mod && e.shiftKey && e.key.toLowerCase() === "h") {
         e.preventDefault();
         setShowHistory((v) => !v);
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        save();
       } else if (mod && e.key.toLowerCase() === "r") {
         e.preventDefault();
-        window.oneclientView.revealView(RESULTS_VIEW);
+        window.oneclientView.revealView(resultsView);
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [execute, cancel, running]);
+  }, [execute, cancel, save, running, dialect, resultsView]);
 
   function toggleSafeMode(on: boolean) {
     setSafeMode(on);
@@ -188,13 +220,7 @@ export function QueryWindow() {
   return (
     <div className="window">
       <div className="toolbar">
-        <select
-          className="db-select"
-          value={database ?? ""}
-          onChange={(e) => setDatabase(e.target.value)}
-          disabled={running}
-          title="Available databases"
-        >
+        <select className="db-select" value={database ?? ""} onChange={(e) => setDatabase(e.target.value)} disabled={running} title={dialect.databaseTitle ?? "Available databases"}>
           {!database && <option value="">(default)</option>}
           {dbOptions.map((d) => (
             <option key={d} value={d}>
@@ -202,26 +228,41 @@ export function QueryWindow() {
             </option>
           ))}
         </select>
-        <button className="btn btn-run" onClick={() => execute()} disabled={running} title="Execute (F5) — runs the selection if there is one">
+        <button className="btn btn-run" onClick={() => execute()} disabled={running} title={`Execute (F5${dialect.ctrlEnterExecutes ? " / Ctrl+Enter" : ""}) — runs the selection if there is one`}>
           ▶ Execute
         </button>
-        <button className="btn" onClick={cancel} disabled={!running} title="Cancel executing query (Alt+Break)">
+        <button className="btn" onClick={cancel} disabled={!running} title={dialect.cancelTitle ?? "Cancel executing query (Alt+Break)"}>
           ■ Cancel
         </button>
         <span className="toolbar-sep" />
-        <button className="btn" onClick={() => window.oneclientView.revealView(RESULTS_VIEW)} title="Show results (Ctrl+R)">
+        <button className="btn" onClick={() => window.oneclientView.revealView(resultsView)} title="Show results (Ctrl+R)">
           ▦ Results
         </button>
         <button className={`btn ${showHistory ? "btn-on" : ""}`} onClick={() => setShowHistory((v) => !v)} title="Query history of this connection (Ctrl+Shift+H)">
           ⟲ History
         </button>
+        {fastQueries && (
+          <button
+            className="btn"
+            onClick={save}
+            disabled={!sql.trim()}
+            title={fastQuery ? `Save "${fastQuery.name}" (${fastQuery.file}) — Ctrl+S` : "Save this script as a fast query in FAST TOOLS, to run again in one click (Ctrl+S)"}
+          >
+            ★ {fastQuery ? "Save Fast Query" : "Save as Fast Query"}
+          </button>
+        )}
         <label className="safe-toggle" title="Safe mode: ask before UPDATE/DELETE without WHERE, DROP, TRUNCATE">
           <input type="checkbox" checked={safeMode} onChange={(e) => toggleSafeMode(e.target.checked)} />
           Safe mode
         </label>
         <span className="spacer" />
+        {notice && (
+          <span className={`toolbar-notice ${notice.tone}`} title={notice.text} onClick={() => setNotice(null)}>
+            {notice.text}
+          </span>
+        )}
         {badge && (
-          <button className={`run-badge ${badge.tone}`} onClick={() => window.oneclientView.revealView(RESULTS_VIEW)} title="Show results">
+          <button className={`run-badge ${badge.tone}`} onClick={() => window.oneclientView.revealView(resultsView)} title="Show results">
             {badge.text}
           </button>
         )}
@@ -231,12 +272,12 @@ export function QueryWindow() {
       </div>
       <div className="window-body">
         <div className="editor-pane">
-          <SqlEditor ref={editorRef} value={sql} onChange={setSql} completionProviders={completionProviders} />
+          <SqlEditor ref={editorRef} value={sql} onChange={setSql} highlight={dialect.highlight} completionProviders={completionProviders} />
         </div>
         {showHistory && (
           <HistoryPanel
-            load={queryHistory}
-            remove={deleteHistory}
+            load={api.queryHistory}
+            remove={api.deleteHistory}
             refreshToken={historyToken}
             onClose={() => (setShowHistory(false), editorRef.current?.focus())}
             onUse={(text, mode) => (mode === "insert" ? editorRef.current?.insertText(text) : (setSql(text), editorRef.current?.focus()))}
@@ -264,6 +305,73 @@ export function QueryWindow() {
           }}
         />
       )}
+      {saveDialog && (
+        <SaveFastQueryDialog
+          database={database}
+          onCancel={() => (setSaveDialog(false), editorRef.current?.focus())}
+          onSave={async (name, anyDatabase) => {
+            if (await saveFastQuery({ name, anyDatabase })) {
+              setSaveDialog(false);
+              editorRef.current?.focus();
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function SaveFastQueryDialog({ database, onSave, onCancel }: { database: string | undefined; onSave: (name: string, anyDatabase: boolean) => Promise<void>; onCancel: () => void }) {
+  const [name, setName] = useState("");
+  const [anyDatabase, setAnyDatabase] = useState(!database);
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => inputRef.current?.focus(), []);
+
+  async function submit() {
+    if (!name.trim() || busy) return;
+    setBusy(true);
+    await onSave(name.trim(), anyDatabase);
+    setBusy(false);
+  }
+
+  return (
+    <div className="sqlg-overlay" onMouseDown={(e) => e.target === e.currentTarget && onCancel()} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), onCancel())}>
+      <form
+        className="sqlg-dialog fq-dialog"
+        role="dialog"
+        aria-labelledby="fq-title"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+      >
+        <div className="sqlg-dialog-title" id="fq-title">
+          ★ Save as Fast Query
+        </div>
+        <label className="fq-field">
+          Name
+          <input ref={inputRef} className="fq-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Blocking sessions" />
+        </label>
+        <label className="fq-check">
+          <input type="radio" name="fq-scope" checked={!anyDatabase} disabled={!database} onChange={() => setAnyDatabase(false)} />
+          Only for <strong>{database ?? "(no database)"}</strong> — listed under it, runs there in one click
+        </label>
+        <label className="fq-check">
+          <input type="radio" name="fq-scope" checked={anyDatabase} onChange={() => setAnyDatabase(true)} />
+          Any database — choose where to run it each time
+        </label>
+        <div className="sqlg-dialog-note">Saved as a plain <code>.query.sql</code> file in the connection's Fast Tools folder, so it can live in a repo.</div>
+        <div className="sqlg-dialog-actions">
+          <span className="sqlg-spacer" />
+          <button type="button" className="sqlg-btn" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="submit" className="sqlg-btn on" disabled={!name.trim() || busy}>
+            Save
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
