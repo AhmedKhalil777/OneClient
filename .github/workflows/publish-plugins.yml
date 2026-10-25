@@ -1,0 +1,46 @@
+# Publish every plugin to GitHub Packages as @<owner>/oneclient-<name> (see scripts/publish-plugins.mjs).
+#
+#   Release published                     → publishes the plugins at the versions in their oneclient.json
+#   Actions ▸ Publish plugins ▸ Run       → same; tick "dry run" to only build and pack
+# Versions that are already on the registry are skipped, so bump a plugin's version (package.json + oneclient.json) to ship a change.
+name: Publish plugins
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (build and pack, publish nothing)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Publish
+        run: node scripts/publish-plugins.mjs ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

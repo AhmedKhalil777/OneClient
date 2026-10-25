@@ -14,11 +14,13 @@
     "test": "pnpm -r --filter=./packages/** run test",
     "package": "node scripts/package.mjs",
     "package:dir": "node scripts/package.mjs --dir",
+    "publish:plugins": "node scripts/publish-plugins.mjs",
     "web:install": "pnpm install --filter \"@oneclient/server...\" --filter \"{./packages/plugins/**}...\"",
     "web:build": "pnpm --filter \"@oneclient/server...\" --filter \"{./packages/plugins/**}...\" run build",
     "web:start": "node packages/server/dist/main.js"
   },
   "devDependencies": {
+    "esbuild": "0.25.12",
     "playwright-core": "^1.48.0",
     "typescript": "^5.6.0"
   }
