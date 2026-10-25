@@ -26,6 +26,7 @@ export default defineConfig({
         tableEditor: resolve(__dirname, "src-ui/table-editor.html"),
         importCsv: resolve(__dirname, "src-ui/import-csv.html"),
         plan: resolve(__dirname, "src-ui/plan.html"),
+        backgroundTask: resolve(__dirname, "src-ui/background-task.html"),
       },
     },
   },

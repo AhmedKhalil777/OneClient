@@ -1,5 +1,5 @@
 import type { ExplorerProvider, TreeNode } from "@oneclient/plugin-api";
-import type { FastToolsSection } from "@oneclient/sql-core";
+import type { SqlSections } from "@oneclient/sql-core";
 import { type ObjectKind, listColumns, listConstraints, listDatabases, listIndexes, listObjects, listSchemas } from "./metadata.js";
 import { poolFor, requireSession } from "./sessions.js";
 
@@ -70,13 +70,13 @@ function folder(id: string, label: string, nodeType: string, data: NodeData): Tr
 const CONSTRAINT_KIND: Record<string, string> = { p: "Primary key", u: "Unique", c: "Check", f: "Foreign key", x: "Exclusion", n: "Not null" };
 
 /** Databases → schemas → tables / views / materialized views / functions / procedures / sequences — like pgAdmin. */
-export function createExplorerProvider(fastTools: FastToolsSection | undefined): ExplorerProvider {
+export function createExplorerProvider(sections: SqlSections): ExplorerProvider {
   return {
-    nodeTypes: [...NODE_TYPES, ...(fastTools?.nodeTypes ?? [])],
+    nodeTypes: [...NODE_TYPES, ...sections.nodeTypes],
 
     async getChildren(node, ctx): Promise<TreeNode[]> {
       // FAST TOOLS section (SQL core): works off the attached folder, so it doesn't need the server.
-      if (node && fastTools?.handles(node.nodeType)) return fastTools.nodes(ctx.connectionId, node);
+      if (node && sections.handles(node.nodeType)) return sections.nodes(ctx.connectionId, node);
       const session = requireSession(ctx.connectionId);
       const showSystem = session.config.showSystemObjects === true;
       if (!node) return [{ ...folder("databases", "Databases", "postgres.databases", {}), collapsible: "expanded" }];

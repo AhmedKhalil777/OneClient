@@ -8,6 +8,7 @@ export { ResultsPanel } from "./ResultsPanel.js";
 export { TableEditor } from "./TableEditor.js";
 export { ImportCsv } from "./ImportCsv.js";
 export { PlanView } from "./PlanView.js";
+export { BackgroundTaskView } from "./BackgroundTaskView.js";
 export { SqlEditor, type SqlEditorHandle } from "./SqlEditor.js";
 export { type SqlDialectUi, type SqlFeaturesUi, resolveFeatures } from "./dialect.js";
 export { type QueryMessage, type QueryRun, type ResultColumn, type ResultSet, type ServerInfo, type SqlApi, connectionId, createSqlApi, invoke, windowId } from "./api.js";

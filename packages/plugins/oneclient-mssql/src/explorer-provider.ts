@@ -1,5 +1,5 @@
 import type { ExplorerProvider, TreeNode } from "@oneclient/plugin-api";
-import type { FastToolsSection } from "@oneclient/sql-core";
+import type { SqlSections } from "@oneclient/sql-core";
 import { formatType, listColumns, listDatabases, listIndexes, listObjects } from "./metadata.js";
 import { requireSession } from "./sessions.js";
 
@@ -34,7 +34,7 @@ function folder(id: string, label: string, nodeType: string, data: NodeData): Tr
 }
 
 /** Mirrors SSMS's Object Explorer, minus the server-level folders that need sysadmin to be useful. */
-export function createExplorerProvider(fastTools: FastToolsSection | undefined): ExplorerProvider {
+export function createExplorerProvider(sections: SqlSections): ExplorerProvider {
   return {
     nodeTypes: [
       "mssql.databases",
@@ -53,12 +53,12 @@ export function createExplorerProvider(fastTools: FastToolsSection | undefined):
       "mssql.procedure",
       "mssql.functions",
       "mssql.function",
-      ...(fastTools?.nodeTypes ?? []),
+      ...sections.nodeTypes,
     ],
 
     async getChildren(node, ctx): Promise<TreeNode[]> {
       // FAST TOOLS section: works off the attached folder, so it doesn't need the server.
-      if (node && fastTools?.handles(node.nodeType)) return fastTools.nodes(ctx.connectionId, node);
+      if (node && sections.handles(node.nodeType)) return sections.nodes(ctx.connectionId, node);
       const { pool } = requireSession(ctx.connectionId);
       if (!node) return [{ ...folder("databases", "Databases", "mssql.databases", {}), collapsible: "expanded" }];
 

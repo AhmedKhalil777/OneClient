@@ -113,3 +113,12 @@ function sweepIdleWindows(session: ServerSession): void {
     }
   }
 }
+
+/** Closes one query window's dedicated session (a background task's own one, when it ends). */
+export async function closeWindow(connectionId: string, windowId: string): Promise<void> {
+  const session = sessions.get(connectionId);
+  const w = session?.windows.get(windowId);
+  if (!session || !w) return;
+  session.windows.delete(windowId);
+  await w.client.end().catch(() => undefined);
+}

@@ -161,6 +161,24 @@
       {
         "id": "mysql.fastQuery",
         "parentNodeType": "mysql.fastQueryGroup"
+      },
+      {
+        "id": "mysql.historyRoot"
+      },
+      {
+        "id": "mysql.historyGroup",
+        "parentNodeType": "mysql.historyRoot"
+      },
+      {
+        "id": "mysql.historyEntry",
+        "parentNodeType": "mysql.historyGroup"
+      },
+      {
+        "id": "mysql.backgroundRoot"
+      },
+      {
+        "id": "mysql.backgroundTask",
+        "parentNodeType": "mysql.backgroundRoot"
       }
     ],
     "views": [
@@ -210,6 +228,14 @@
         "location": "editor",
         "entry": "plan.html",
         "icon": "$(diagram)"
+      },
+      {
+        "id": "mysql.backgroundTask",
+        "title": "Background Task",
+        "tier": 2,
+        "location": "editor",
+        "entry": "background-task.html",
+        "icon": "$(clock)"
       }
     ],
     "commands": [
@@ -419,6 +445,63 @@
         "hidden": true
       },
       {
+        "id": "mysql.runInBackground",
+        "title": "MySQL: Run in Background",
+        "hidden": true
+      },
+      {
+        "id": "mysql.backgroundTasks",
+        "title": "MySQL: Background Tasks API",
+        "hidden": true
+      },
+      {
+        "id": "mysql.cancelBackgroundTask",
+        "title": "MySQL: Cancel Background Task",
+        "when": "contextValue == 'mysql.backgroundTaskRunning'"
+      },
+      {
+        "id": "mysql.removeBackgroundTask",
+        "title": "MySQL: Remove Background Task",
+        "when": "contextValue == 'mysql.backgroundTask'"
+      },
+      {
+        "id": "mysql.rerunInBackground",
+        "title": "MySQL: Run Again in Background",
+        "when": "contextValue == 'mysql.backgroundTask' || contextValue == 'mysql.backgroundTaskRunning'"
+      },
+      {
+        "id": "mysql.openBackgroundSql",
+        "title": "MySQL: Open SQL in a Query Window",
+        "when": "contextValue == 'mysql.backgroundTask' || contextValue == 'mysql.backgroundTaskRunning'"
+      },
+      {
+        "id": "mysql.clearBackgroundTasks",
+        "title": "MySQL: Remove Finished Background Tasks",
+        "when": "contextValue == 'mysql.backgroundRoot'",
+        "confirm": "Remove all finished background tasks of this connection and their saved results?"
+      },
+      {
+        "id": "mysql.runHistoryEntry",
+        "title": "MySQL: Run in a New Query Window",
+        "when": "contextValue == 'mysql.historyEntry'"
+      },
+      {
+        "id": "mysql.runHistoryEntryInBackground",
+        "title": "MySQL: Run in the Background",
+        "when": "contextValue == 'mysql.historyEntry'"
+      },
+      {
+        "id": "mysql.deleteHistoryEntry",
+        "title": "MySQL: Delete from Query History",
+        "when": "contextValue == 'mysql.historyEntry'"
+      },
+      {
+        "id": "mysql.clearQueryHistory",
+        "title": "MySQL: Clear Query History",
+        "when": "contextValue == 'mysql.historyRoot' || contextValue == 'mysql.historyGroup'",
+        "confirm": "Clear the whole query history of this connection?"
+      },
+      {
         "id": "mysql.history",
         "title": "MySQL: List Query History",
         "when": "view == 'mysql.query'"
@@ -497,6 +580,19 @@
         "id": "fastTools",
         "title": "Fast Tools",
         "rootNodeType": "mysql.fastToolsRoot",
+        "connectionType": "mysql"
+      },
+      {
+        "id": "queryHistory",
+        "title": "Query History",
+        "rootNodeType": "mysql.historyRoot",
+        "connectionType": "mysql",
+        "collapsed": true
+      },
+      {
+        "id": "backgroundTasks",
+        "title": "Background Tasks",
+        "rootNodeType": "mysql.backgroundRoot",
         "connectionType": "mysql"
       }
     ]

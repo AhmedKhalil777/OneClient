@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Task, TaskOptions } from "@oneclient/plugin-api";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { MAX_RUNNING, createBackground, formatElapsed, titleOf } from "../src/background/manager.js";
+import { MAX_RUNNING, createBackground, errorSummary, formatElapsed, titleOf } from "../src/background/manager.js";
 import { createBackgroundStore } from "../src/background/store.js";
 import { createHistoryStore } from "../src/history.js";
 import { createQueryWindowFactory } from "../src/query-window.js";
@@ -202,11 +202,13 @@ describe("background tasks", () => {
   });
 
   it("describes time and titles for people", () => {
+    expect(errorSummary("Msg 208, Level 16, State 1, Line 1\nInvalid object name 'x'.\nLine 1")).toBe("Invalid object name 'x'.");
+    expect(errorSummary('ERROR:  relation "t" does not exist\nLine 1')).toBe('ERROR:  relation "t" does not exist');
     expect(formatElapsed(420)).toBe("420 ms");
     expect(formatElapsed(3200)).toBe("3.2 s");
     expect(formatElapsed(133_000)).toBe("2m 13s");
     expect(formatElapsed(3_900_000)).toBe("1h 05m");
-    expect(titleOf("\n-- hi\n  SELECT   a,\n b FROM t")).toBe("SELECT a,");
+    expect(titleOf("\n-- hi\n  SELECT   a,\n b FROM t")).toBe("SELECT a, b FROM t");
     expect(titleOf("x".repeat(200))).toHaveLength(70);
     expect(oneLine("# c\n  UPDATE t   SET a = 1", 12)).toBe("UPDATE t SE…");
     const base = { id: "i", connectionId: "c", title: "t", sql: "s", database: null, startedAt: new Date(2026, 9, 25, 14, 3).getTime(), elapsedMs: 133_000, rows: 1234, resultSets: 1, hasErrors: false };
@@ -229,12 +231,12 @@ describe("the QUERY HISTORY and BACKGROUND TASKS sections", () => {
     await history.record(c, { sql: "SELECT 1", database: "shop", status: "ok", elapsedMs: 4, rows: 1 });
     await history.record(c, { sql: "UPDATE t SET a = 1\nWHERE b = 2", database: null, status: "error", elapsedMs: 9, rows: 0, error: "boom" });
     const section = createHistorySection("x", history, createQueryWindowFactory("x"));
-    expect(combineSections([section]).handles("x.historyEntry")).toBe(true);
+    expect(combineSections([section]).handles("x.historyGroup")).toBe(true); // nodes that have children; entries are leaves
 
     const root = await section.nodes(c, { id: "r", label: "c", nodeType: "x.historyRoot", collapsible: "expanded" });
     expect(root.map((g) => [g.label, g.description, g.collapsible])).toEqual([["Today", "2", "expanded"]]);
     const entries = await section.nodes(c, root[0]!);
-    expect(entries.map((e) => [e.label, e.icon])).toEqual([["UPDATE t SET a = 1", "$(close)"], ["SELECT 1", "$(file-code)"]]); // newest first; failed ones marked
+    expect(entries.map((e) => [e.label, e.icon])).toEqual([["UPDATE t SET a = 1 WHERE b = 2", "$(close)"], ["SELECT 1", "$(file-code)"]]); // newest first; failed ones marked
     expect(entries[1]).toMatchObject({ nodeType: "x.historyEntry", contextValue: "x.historyEntry", data: { database: "shop" } });
     expect(entries[1]!.openView).toMatchObject({ viewId: "x.query", params: { sql: "SELECT 1", database: "shop", windowId: expect.stringMatching(/^hist:/) } });
     expect(entries[0]!.tooltip).toContain("— boom");

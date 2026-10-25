@@ -159,6 +159,24 @@
         "parentNodeType": "mssql.fastQueryGroup"
       },
       {
+        "id": "mssql.historyRoot"
+      },
+      {
+        "id": "mssql.historyGroup",
+        "parentNodeType": "mssql.historyRoot"
+      },
+      {
+        "id": "mssql.historyEntry",
+        "parentNodeType": "mssql.historyGroup"
+      },
+      {
+        "id": "mssql.backgroundRoot"
+      },
+      {
+        "id": "mssql.backgroundTask",
+        "parentNodeType": "mssql.backgroundRoot"
+      },
+      {
         "id": "mssql.fakersRoot",
         "parentNodeType": "mssql.fastToolsRoot"
       },
@@ -226,6 +244,14 @@
         "location": "editor",
         "entry": "plan.html",
         "icon": "$(diagram)"
+      },
+      {
+        "id": "mssql.backgroundTask",
+        "title": "Background Task",
+        "tier": 2,
+        "location": "editor",
+        "entry": "background-task.html",
+        "icon": "$(clock)"
       }
     ],
     "commands": [
@@ -337,6 +363,63 @@
         "id": "mssql.explain",
         "title": "SQL Server: Execution Plan API",
         "hidden": true
+      },
+      {
+        "id": "mssql.runInBackground",
+        "title": "SQL Server: Run in Background",
+        "hidden": true
+      },
+      {
+        "id": "mssql.backgroundTasks",
+        "title": "SQL Server: Background Tasks API",
+        "hidden": true
+      },
+      {
+        "id": "mssql.cancelBackgroundTask",
+        "title": "SQL Server: Cancel Background Task",
+        "when": "contextValue == 'mssql.backgroundTaskRunning'"
+      },
+      {
+        "id": "mssql.removeBackgroundTask",
+        "title": "SQL Server: Remove Background Task",
+        "when": "contextValue == 'mssql.backgroundTask'"
+      },
+      {
+        "id": "mssql.rerunInBackground",
+        "title": "SQL Server: Run Again in Background",
+        "when": "contextValue == 'mssql.backgroundTask' || contextValue == 'mssql.backgroundTaskRunning'"
+      },
+      {
+        "id": "mssql.openBackgroundSql",
+        "title": "SQL Server: Open SQL in a Query Window",
+        "when": "contextValue == 'mssql.backgroundTask' || contextValue == 'mssql.backgroundTaskRunning'"
+      },
+      {
+        "id": "mssql.clearBackgroundTasks",
+        "title": "SQL Server: Remove Finished Background Tasks",
+        "when": "contextValue == 'mssql.backgroundRoot'",
+        "confirm": "Remove all finished background tasks of this connection and their saved results?"
+      },
+      {
+        "id": "mssql.runHistoryEntry",
+        "title": "SQL Server: Run in a New Query Window",
+        "when": "contextValue == 'mssql.historyEntry'"
+      },
+      {
+        "id": "mssql.runHistoryEntryInBackground",
+        "title": "SQL Server: Run in the Background",
+        "when": "contextValue == 'mssql.historyEntry'"
+      },
+      {
+        "id": "mssql.deleteHistoryEntry",
+        "title": "SQL Server: Delete from Query History",
+        "when": "contextValue == 'mssql.historyEntry'"
+      },
+      {
+        "id": "mssql.clearQueryHistory",
+        "title": "SQL Server: Clear Query History",
+        "when": "contextValue == 'mssql.historyRoot' || contextValue == 'mssql.historyGroup'",
+        "confirm": "Clear the whole query history of this connection?"
       },
       {
         "id": "mssql.history",
@@ -519,6 +602,19 @@
         "id": "fastTools",
         "title": "Fast Tools",
         "rootNodeType": "mssql.fastToolsRoot",
+        "connectionType": "mssql"
+      },
+      {
+        "id": "queryHistory",
+        "title": "Query History",
+        "rootNodeType": "mssql.historyRoot",
+        "connectionType": "mssql",
+        "collapsed": true
+      },
+      {
+        "id": "backgroundTasks",
+        "title": "Background Tasks",
+        "rootNodeType": "mssql.backgroundRoot",
         "connectionType": "mssql"
       }
     ],

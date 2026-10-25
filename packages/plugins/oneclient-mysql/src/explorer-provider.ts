@@ -1,5 +1,5 @@
 import type { ExplorerProvider, TreeNode } from "@oneclient/plugin-api";
-import type { FastToolsSection } from "@oneclient/sql-core";
+import type { SqlSections } from "@oneclient/sql-core";
 import { type ObjectKind, listColumns, listDatabases, listForeignKeys, listIndexes, listObjects } from "./metadata.js";
 import { poolFor, requireSession } from "./sessions.js";
 
@@ -61,13 +61,13 @@ function folder(id: string, label: string, nodeType: string, data: NodeData): Tr
   return { id, label, nodeType, collapsible: "collapsed", icon: ICON.folder, contextValue: nodeType, data };
 }
 
-export function createExplorerProvider(fastTools: FastToolsSection | undefined): ExplorerProvider {
+export function createExplorerProvider(sections: SqlSections): ExplorerProvider {
   return {
-    nodeTypes: [...NODE_TYPES, ...(fastTools?.nodeTypes ?? [])],
+    nodeTypes: [...NODE_TYPES, ...sections.nodeTypes],
 
     async getChildren(node, ctx): Promise<TreeNode[]> {
       // FAST TOOLS section (SQL core): works off the attached folder, so it doesn't need the server.
-      if (node && fastTools?.handles(node.nodeType)) return fastTools.nodes(ctx.connectionId, node);
+      if (node && sections.handles(node.nodeType)) return sections.nodes(ctx.connectionId, node);
       const session = requireSession(ctx.connectionId);
       const showSystem = session.config.showSystemObjects === true;
       if (!node) return [{ ...folder("databases", "Databases", "mysql.databases", {}), collapsible: "expanded" }];

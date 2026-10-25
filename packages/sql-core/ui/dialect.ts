@@ -44,9 +44,11 @@ export interface SqlFeaturesUi {
   importCsv?: boolean;
   /** Execution plans: ▤ Plan in the query window (view `<prefix>.plan`). Needs the core's `explain` command. */
   plan?: boolean;
+  /** ⏱ Background in the query window and the background task view (`<prefix>.backgroundTask`). Needs the core's background commands. */
+  background?: boolean;
 }
 
 /** The features with their defaults filled in. */
 export function resolveFeatures(dialect: SqlDialectUi): Required<SqlFeaturesUi> {
-  return { history: true, fastQueries: true, safeMode: true, resultExport: true, cellViewer: true, tableEditor: true, importCsv: true, plan: true, ...dialect.features };
+  return { history: true, fastQueries: true, safeMode: true, resultExport: true, cellViewer: true, tableEditor: true, importCsv: true, plan: true, background: true, ...dialect.features };
 }

@@ -16,10 +16,10 @@ export { type FolderStore, createFolderStore, findFiles, freeName, inFolder, slu
 export { FAST_QUERY_ICON, type FastQueries, createFastQueries } from "./fast-queries/api.js";
 export { FAST_QUERY_EXT, type FastQueryDoc, readFastQuery, writeFastQuery } from "./fast-queries/file.js";
 export { dataHome } from "./paths.js";
-export { type Background, type BackgroundHost, createBackground, formatElapsed, titleOf } from "./background/manager.js";
+export { type Background, type BackgroundHost, createBackground, errorSummary, formatElapsed, titleOf } from "./background/manager.js";
 export { type BackgroundStore, createBackgroundStore } from "./background/store.js";
 export type { BackgroundResult, BackgroundResultSet, BackgroundState, BackgroundTaskDetail, BackgroundTaskInfo } from "./background/types.js";
-export { type SqlSection, combineSections, createBackgroundSection, createHistorySection, dayLabel, describeTask, oneLine } from "./sections.js";
+export { type SqlSection, type SqlSections, combineSections, createBackgroundSection, createHistorySection, dayLabel, describeTask, oneLine } from "./sections.js";
 export { SSH_AUTH_AGENT, SSH_AUTH_KEY, SSH_AUTH_PASSWORD, type SshConfig, type Tunnel, type TunnelTarget, checkHostKey, closeTunnel, openTunnel, sshEnabled, sshSchemaProperties, tunnelFor } from "./ssh/tunnel.js";
 export type { TableEditor } from "./table-editor/api.js";
 export { type Planner, PlanError, analyzePlan, createPlanner } from "./plan/api.js";

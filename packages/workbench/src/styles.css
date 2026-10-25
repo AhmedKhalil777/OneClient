@@ -165,8 +165,11 @@ textarea {
   z-index: 5;
   background: transparent;
 }
+.sidebar-resize-handle {
+  touch-action: none;
+}
 .sidebar-resize-handle:hover,
-.sidebar-resize-handle.active {
+body.sidebar-resizing .sidebar-resize-handle {
   background: var(--accent);
   opacity: 0.6;
 }
@@ -174,6 +177,11 @@ textarea {
 body.sidebar-resizing {
   cursor: col-resize !important;
   user-select: none !important;
+}
+/* A view's iframe under the pointer would swallow the drag's mouse events (and make the page glitch): not while dragging. */
+body.sidebar-resizing iframe,
+body.panel-resizing iframe {
+  pointer-events: none;
 }
 
 .sidebar-section {
@@ -656,6 +664,7 @@ pre.result {
   display: none;
 }
 .panel-resize-handle {
+  touch-action: none;
   position: absolute;
   left: 0;
   right: 0;

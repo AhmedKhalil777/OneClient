@@ -187,6 +187,24 @@
       {
         "id": "postgres.fastQuery",
         "parentNodeType": "postgres.fastQueryGroup"
+      },
+      {
+        "id": "postgres.historyRoot"
+      },
+      {
+        "id": "postgres.historyGroup",
+        "parentNodeType": "postgres.historyRoot"
+      },
+      {
+        "id": "postgres.historyEntry",
+        "parentNodeType": "postgres.historyGroup"
+      },
+      {
+        "id": "postgres.backgroundRoot"
+      },
+      {
+        "id": "postgres.backgroundTask",
+        "parentNodeType": "postgres.backgroundRoot"
       }
     ],
     "views": [
@@ -236,6 +254,14 @@
         "location": "editor",
         "entry": "plan.html",
         "icon": "$(diagram)"
+      },
+      {
+        "id": "postgres.backgroundTask",
+        "title": "Background Task",
+        "tier": 2,
+        "location": "editor",
+        "entry": "background-task.html",
+        "icon": "$(clock)"
       }
     ],
     "commands": [
@@ -440,6 +466,63 @@
         "hidden": true
       },
       {
+        "id": "postgres.runInBackground",
+        "title": "PostgreSQL: Run in Background",
+        "hidden": true
+      },
+      {
+        "id": "postgres.backgroundTasks",
+        "title": "PostgreSQL: Background Tasks API",
+        "hidden": true
+      },
+      {
+        "id": "postgres.cancelBackgroundTask",
+        "title": "PostgreSQL: Cancel Background Task",
+        "when": "contextValue == 'postgres.backgroundTaskRunning'"
+      },
+      {
+        "id": "postgres.removeBackgroundTask",
+        "title": "PostgreSQL: Remove Background Task",
+        "when": "contextValue == 'postgres.backgroundTask'"
+      },
+      {
+        "id": "postgres.rerunInBackground",
+        "title": "PostgreSQL: Run Again in Background",
+        "when": "contextValue == 'postgres.backgroundTask' || contextValue == 'postgres.backgroundTaskRunning'"
+      },
+      {
+        "id": "postgres.openBackgroundSql",
+        "title": "PostgreSQL: Open SQL in a Query Window",
+        "when": "contextValue == 'postgres.backgroundTask' || contextValue == 'postgres.backgroundTaskRunning'"
+      },
+      {
+        "id": "postgres.clearBackgroundTasks",
+        "title": "PostgreSQL: Remove Finished Background Tasks",
+        "when": "contextValue == 'postgres.backgroundRoot'",
+        "confirm": "Remove all finished background tasks of this connection and their saved results?"
+      },
+      {
+        "id": "postgres.runHistoryEntry",
+        "title": "PostgreSQL: Run in a New Query Window",
+        "when": "contextValue == 'postgres.historyEntry'"
+      },
+      {
+        "id": "postgres.runHistoryEntryInBackground",
+        "title": "PostgreSQL: Run in the Background",
+        "when": "contextValue == 'postgres.historyEntry'"
+      },
+      {
+        "id": "postgres.deleteHistoryEntry",
+        "title": "PostgreSQL: Delete from Query History",
+        "when": "contextValue == 'postgres.historyEntry'"
+      },
+      {
+        "id": "postgres.clearQueryHistory",
+        "title": "PostgreSQL: Clear Query History",
+        "when": "contextValue == 'postgres.historyRoot' || contextValue == 'postgres.historyGroup'",
+        "confirm": "Clear the whole query history of this connection?"
+      },
+      {
         "id": "postgres.history",
         "title": "PostgreSQL: List Query History",
         "when": "view == 'postgres.query'"
@@ -518,6 +601,19 @@
         "id": "fastTools",
         "title": "Fast Tools",
         "rootNodeType": "postgres.fastToolsRoot",
+        "connectionType": "postgres"
+      },
+      {
+        "id": "queryHistory",
+        "title": "Query History",
+        "rootNodeType": "postgres.historyRoot",
+        "connectionType": "postgres",
+        "collapsed": true
+      },
+      {
+        "id": "backgroundTasks",
+        "title": "Background Tasks",
+        "rootNodeType": "postgres.backgroundRoot",
         "connectionType": "postgres"
       }
     ]

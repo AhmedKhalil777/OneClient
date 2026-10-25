@@ -45,7 +45,9 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
   const [fastQuery, setFastQuery] = useState<FastQuery | null>(initialFastQuery);
   const [savedSql, setSavedSql] = useState(initialFastQuery ? initialSql : null);
   const [saveDialog, setSaveDialog] = useState(false);
-  const [notice, setNotice] = useState<{ text: string; tone: "ok" | "error" } | null>(null);
+  const [notice, setNotice] = useState<{ text: string; tone: "ok" | "error"; task?: { id: string; title: string } } | null>(null);
+  /** "Long-running": Execute hands the script to a background task instead of running it in this window. */
+  const [inBackground, setInBackground] = useState(false);
   const editorRef = useRef<SqlEditorHandle>(null);
 
   const databaseRef = useRef(database);
@@ -59,9 +61,23 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
   const features = resolveFeatures(dialect);
   const fastQueries = features.fastQueries;
 
+  /** Starts the script as a background task (its own connection, at app level) and says where to find it. */
+  const startBackground = useCallback(
+    async (text: string) => {
+      const r = await api.runInBackground({ sql: text, database: databaseRef.current });
+      if (!r.ok) {
+        setNotice({ text: r.error, tone: "error" });
+        return;
+      }
+      setNotice({ text: `Running in the background: ${r.title}`, tone: "ok", task: { id: r.id, title: r.title } });
+    },
+    [api],
+  );
+
   const execute = useCallback(
-    (override?: { sql: string; lineOffset: number }, confirmed = false) => {
-      if (status.kind === "running") return;
+    (override?: { sql: string; lineOffset: number }, confirmed = false, forceBackground = false) => {
+      const toBackground = features.background && (forceBackground || inBackground);
+      if (status.kind === "running" && !toBackground) return;
       const runnable = override ?? editorRef.current?.getRunnable() ?? { sql, lineOffset: 1 };
       if (!runnable.sql.trim()) return;
       if (features.safeMode && safeMode && !confirmed) {
@@ -70,6 +86,10 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
           setPending({ risks, runnable: { sql: runnable.sql, lineOffset: runnable.lineOffset } });
           return;
         }
+      }
+      if (toBackground) {
+        void startBackground(runnable.sql);
+        return;
       }
       const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       setStatus({ kind: "running", started: Date.now(), queryId });
@@ -87,7 +107,7 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
       // The script may create/alter/drop objects — refresh IntelliSense lazily.
       if (dialect.schemaChange.test(runnable.sql)) completion.invalidate();
     },
-    [status.kind, sql, completion, safeMode, features.safeMode, dialect, resultsView],
+    [status.kind, sql, completion, safeMode, features.safeMode, features.background, inBackground, startBackground, dialect, resultsView],
   );
 
   const openPlan = useCallback(() => {
@@ -130,7 +150,7 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
 
   useEffect(() => {
     if (!notice || notice.tone === "error") return;
-    const t = setTimeout(() => setNotice(null), 4000);
+    const t = setTimeout(() => setNotice(null), notice.task ? 12_000 : 4000);
     return () => clearTimeout(t);
   }, [notice]);
 
@@ -191,7 +211,10 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.ctrlKey || e.metaKey;
-      if (e.key === "F5" || (mod && (e.key.toLowerCase() === "e" || (dialect.ctrlEnterExecutes && e.key === "Enter")))) {
+      if (features.background && mod && e.shiftKey && e.key === "Enter") {
+        e.preventDefault();
+        execute(undefined, false, true); // Ctrl+Shift+Enter: this run goes to the background, whatever the toggle says
+      } else if (e.key === "F5" || (mod && (e.key.toLowerCase() === "e" || (dialect.ctrlEnterExecutes && e.key === "Enter")))) {
         e.preventDefault();
         execute();
       } else if ((e.altKey && (e.key === "Pause" || e.key === "Cancel")) || (e.key === "Escape" && running)) {
@@ -213,7 +236,7 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [execute, cancel, save, openPlan, running, dialect, resultsView, features.history, features.plan]);
+  }, [execute, cancel, save, openPlan, running, dialect, resultsView, features.history, features.plan, features.background]);
 
   function toggleSafeMode(on: boolean) {
     setSafeMode(on);
@@ -238,9 +261,15 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
             </option>
           ))}
         </select>
-        <button className="btn btn-run" onClick={() => execute()} disabled={running} title={`Execute (F5${dialect.ctrlEnterExecutes ? " / Ctrl+Enter" : ""}) — runs the selection if there is one`}>
-          ▶ Execute
+        <button className="btn btn-run" onClick={() => execute()} disabled={running && !(features.background && inBackground)} title={`Execute (F5${dialect.ctrlEnterExecutes ? " / Ctrl+Enter" : ""}) — runs the selection if there is one${features.background && inBackground ? ". Background is on: it runs as a background task." : ""}`}>
+          ▶ {features.background && inBackground ? "Execute in background" : "Execute"}
         </button>
+        {features.background && (
+          <label className={`safe-toggle bg-toggle ${inBackground ? "on" : ""}`} title="Mark this as a long-running query: Execute then runs it as a background task (own connection, at app level) — you can close this tab, keep working, and open it again from BACKGROUND TASKS. Ctrl+Shift+Enter runs just this one in the background.">
+            <input type="checkbox" checked={inBackground} onChange={(e) => setInBackground(e.target.checked)} />
+            ⏱ Background
+          </label>
+        )}
         <button className="btn" onClick={cancel} disabled={!running} title={dialect.cancelTitle ?? "Cancel executing query (Alt+Break)"}>
           ■ Cancel
         </button>
@@ -278,6 +307,17 @@ export function QueryWindow({ dialect }: { dialect: SqlDialectUi }) {
         {notice && (
           <span className={`toolbar-notice ${notice.tone}`} title={notice.text} onClick={() => setNotice(null)}>
             {notice.text}
+            {notice.task && (
+              <button
+                className="sqlg-link"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.oneclientView.openView({ viewId: `${dialect.prefix}.backgroundTask`, title: notice.task!.title, icon: "$(clock)", params: { id: notice.task!.id } });
+                }}
+              >
+                Open
+              </button>
+            )}
           </span>
         )}
         {badge && (

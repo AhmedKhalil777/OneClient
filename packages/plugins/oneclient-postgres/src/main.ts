@@ -5,7 +5,7 @@ import { createConnectionProvider } from "./connection-provider.js";
 import { describeError } from "./errors.js";
 import { createExplorerProvider } from "./explorer-provider.js";
 import { cancelQuery, executeQuery } from "./query-runner.js";
-import { closeAll, requireSession } from "./sessions.js";
+import { closeAll, requireSession, closeWindow } from "./sessions.js";
 import { createDatabase } from "./databases.js";
 import { postgresPlanAccess } from "./plan.js";
 import { postgresTableAccess } from "./table-access.js";
@@ -21,13 +21,16 @@ export function activate(context: PluginContext): void {
     cancelQuery,
     ensureConnected: (connectionId) => void requireSession(connectionId),
     describeError,
+    host: context,
+    releaseWindow: closeWindow,
+    productName: "PostgreSQL",
     tableAccess: postgresTableAccess,
     planAccess: postgresPlanAccess,
     createDatabase,
   });
 
   context.subscriptions.push(context.registerConnectionProvider(createConnectionProvider()));
-  context.subscriptions.push(context.registerExplorerProvider(createExplorerProvider(core.fastTools)));
+  context.subscriptions.push(context.registerExplorerProvider(createExplorerProvider(core.sections)));
   context.subscriptions.push(context.registerView("postgres.query", core.views.query));
   context.subscriptions.push(context.registerView("postgres.results", core.views.results));
   for (const handler of [...core.commands, ...createCommandHandlers(core)]) context.subscriptions.push(context.registerCommand(handler));

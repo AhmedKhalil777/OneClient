@@ -5,8 +5,8 @@ const dialect = { prefix: "x", productName: "X", gridDialect: "postgres", highli
 
 describe("SQL core view features", () => {
   it("are all on unless the dialect turns them off", () => {
-    expect(resolveFeatures(dialect)).toEqual({ history: true, fastQueries: true, safeMode: true, resultExport: true, cellViewer: true, tableEditor: true, importCsv: true, plan: true });
-    expect(resolveFeatures({ ...dialect, features: { history: false, resultExport: false } })).toEqual({ history: false, fastQueries: true, safeMode: true, resultExport: false, cellViewer: true, tableEditor: true, importCsv: true, plan: true });
+    expect(resolveFeatures(dialect)).toEqual({ history: true, fastQueries: true, safeMode: true, resultExport: true, cellViewer: true, tableEditor: true, importCsv: true, plan: true, background: true });
+    expect(resolveFeatures({ ...dialect, features: { history: false, resultExport: false } })).toEqual({ history: false, fastQueries: true, safeMode: true, resultExport: false, cellViewer: true, tableEditor: true, importCsv: true, plan: true, background: true });
   });
 });
 

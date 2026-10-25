@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { TreeNode } from "@oneclient/plugin-api";
 import type { SearchHit, WorkbenchShortcut, WorkspaceFolderInfo } from "@oneclient/backend/shared/ipc-contract.js";
 import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "@oneclient/backend/shared/types.js";
@@ -74,31 +74,45 @@ function useResizableSidebar() {
     const stored = Number(localStorage.getItem(SIDEBAR_STORAGE_KEY));
     return stored >= SIDEBAR_MIN && stored <= SIDEBAR_MAX ? stored : SIDEBAR_DEFAULT;
   });
-  const [resizing, setResizing] = useState(false);
 
-  useEffect(() => {
-    if (!resizing) return;
-    function onMove(e: MouseEvent) {
-      setWidth(Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, e.clientX - ACTIVITY_BAR_WIDTH)));
-    }
-    function onUp() {
-      setResizing(false);
-    }
-    document.body.classList.add("sidebar-resizing");
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      document.body.classList.remove("sidebar-resizing");
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, [resizing]);
-
-  useEffect(() => {
+  // The layout reads the width from this CSS variable, so a drag can move it frame by frame without re-rendering the
+  // app (and everything in it) on every mouse move; React only learns the final width when the drag ends.
+  useLayoutEffect(() => {
+    document.documentElement.style.setProperty("--sidebar-width", `${width}px`);
     localStorage.setItem(SIDEBAR_STORAGE_KEY, String(width));
   }, [width]);
 
-  return { width, resizing, startResizing: () => setResizing(true) };
+  function startResizing(e: React.PointerEvent<HTMLElement>) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const handle = e.currentTarget;
+    // Pointer capture: the handle keeps getting the moves when the pointer crosses a view's iframe or leaves the window.
+    handle.setPointerCapture(e.pointerId);
+    document.body.classList.add("sidebar-resizing");
+    let latest = width;
+    let frame = 0;
+    const apply = () => {
+      frame = 0;
+      document.documentElement.style.setProperty("--sidebar-width", `${latest}px`);
+    };
+    const onMove = (ev: PointerEvent) => {
+      latest = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, ev.clientX - ACTIVITY_BAR_WIDTH));
+      if (!frame) frame = requestAnimationFrame(apply); // at most one layout per frame, however fast the mouse reports
+    };
+    const onEnd = () => {
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onEnd);
+      handle.removeEventListener("pointercancel", onEnd);
+      if (frame) cancelAnimationFrame(frame);
+      document.body.classList.remove("sidebar-resizing");
+      setWidth(latest);
+    };
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onEnd);
+    handle.addEventListener("pointercancel", onEnd);
+  }
+
+  return { width, startResizing };
 }
 
 const CONTAINER_STORAGE_KEY = "oneclient.activeViewContainer";
@@ -1395,7 +1409,7 @@ export function App() {
       className="app"
       style={{
         gridTemplateColumns: container.visible
-          ? `var(--activity-bar-width) ${sidebar.width}px 1fr`
+          ? "var(--activity-bar-width) var(--sidebar-width) 1fr"
           : "var(--activity-bar-width) 1fr",
       }}
     >
@@ -1410,7 +1424,7 @@ export function App() {
         onManage={openManageMenu}
       />
 
-      <div className="sidebar-wrapper" style={{ width: sidebar.width }} hidden={!container.visible}>
+      <div className="sidebar-wrapper" style={{ width: "var(--sidebar-width)" }} hidden={!container.visible}>
         {/* Search stays mounted once opened, so its query and results survive switching containers. */}
         {(container.active === "search" || searchMounted) && (
           <div hidden={container.active !== "search"} className="sidebar-slot">
@@ -1447,13 +1461,7 @@ export function App() {
           onExplorerContextMenu={openExplorerContextMenu}
         />
         )}
-        <div
-          className={`sidebar-resize-handle ${sidebar.resizing ? "active" : ""}`}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            sidebar.startResizing();
-          }}
-        />
+        <div className="sidebar-resize-handle" onPointerDown={sidebar.startResizing} />
       </div>
 
       <div className="main-area">

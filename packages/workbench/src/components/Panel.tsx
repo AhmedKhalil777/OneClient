@@ -100,27 +100,46 @@ export function Panel({ state, overlayOpen, onRunTask }: { state: PanelState; ov
   const { views, open, activeKey, height, mounted } = state;
   const byKey = useMemo(() => new Map(views.map((v) => [keyOf(v), v])), [views]);
 
-  function startResize(e: React.MouseEvent) {
+  function startResize(e: React.PointerEvent<HTMLElement>) {
+    if (e.button !== 0) return;
     e.preventDefault();
+    const handle = e.currentTarget;
+    const panel = handle.parentElement as HTMLElement;
+    // Pointer capture: the handle keeps getting the moves when the pointer crosses a view's iframe or leaves the window.
+    handle.setPointerCapture(e.pointerId);
     const startY = e.clientY;
     const startHeight = height;
     const maxHeight = window.innerHeight - 160;
-    const onMove = (ev: MouseEvent) => state.setHeight(Math.min(maxHeight, startHeight + startY - ev.clientY));
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+    let latest = startHeight;
+    let frame = 0;
+    // The panel's height is written straight to the element, at most once per frame; React learns the final height at the end.
+    const apply = () => {
+      frame = 0;
+      panel.style.height = `${latest}px`;
+    };
+    const onMove = (ev: PointerEvent) => {
+      latest = Math.max(MIN_HEIGHT, Math.min(maxHeight, startHeight + startY - ev.clientY));
+      if (!frame) frame = requestAnimationFrame(apply);
+    };
+    const onEnd = () => {
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onEnd);
+      handle.removeEventListener("pointercancel", onEnd);
+      if (frame) cancelAnimationFrame(frame);
       document.body.classList.remove("panel-resizing");
+      state.setHeight(latest);
     };
     document.body.classList.add("panel-resizing");
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onEnd);
+    handle.addEventListener("pointercancel", onEnd);
   }
 
   if (views.length === 0) return null;
 
   return (
     <div className="panel" style={{ height: open ? height : 0 }} hidden={!open}>
-      <div className="panel-resize-handle" onMouseDown={startResize} />
+      <div className="panel-resize-handle" onPointerDown={startResize} />
       <div className="panel-header">
         {/* Icon navigator: one button per plugin panel view; the active one's title is spelled out. */}
         <div className="panel-nav" role="tablist">

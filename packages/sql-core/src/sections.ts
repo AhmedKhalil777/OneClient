@@ -4,6 +4,7 @@ import { formatElapsed } from "./background/manager.js";
 import type { BackgroundTaskInfo } from "./background/types.js";
 import type { HistoryEntry, HistoryStore } from "./history.js";
 import type { QueryWindowFactory } from "./query-window.js";
+import { summarize } from "./sql-text.js";
 
 /**
  * A sidebar section of a SQL plugin (Fast Tools, Query History, Background Tasks): per connection one root node whose
@@ -17,8 +18,10 @@ export interface SqlSection {
   nodes(connectionId: string, node: TreeNode): Promise<TreeNode[]>;
 }
 
-/** Several sections as one: what the plugin's explorer provider is handed. */
-export function combineSections(sections: SqlSection[]): Pick<SqlSection, "nodeTypes" | "handles" | "nodes"> {
+/** Several sections as one: what the plugin's explorer provider is handed (`core.sections`). */
+export type SqlSections = Pick<SqlSection, "nodeTypes" | "handles" | "nodes">;
+
+export function combineSections(sections: SqlSection[]): SqlSections {
   const nodeTypes = sections.flatMap((s) => s.nodeTypes);
   return {
     nodeTypes,
@@ -46,12 +49,8 @@ export function dayLabel(t: number, now = Date.now()): string {
   return `${DAYS[d.getDay()]} ${d.getDate()} ${d.toLocaleString("en", { month: "short" })}${d.getFullYear() !== new Date(now).getFullYear() ? ` ${d.getFullYear()}` : ""}`;
 }
 
-/** The first meaningful line of a script, one line, cut to `max` characters. */
-export function oneLine(sql: string, max = 90): string {
-  const line = sql.split(/\r?\n/).map((l) => l.trim()).find((l) => l && !l.startsWith("--") && !l.startsWith("#") && !l.startsWith("/*")) ?? sql.trim();
-  const one = line.replace(/\s+/g, " ");
-  return one.length > max ? `${one.slice(0, max - 1)}…` : one;
-}
+/** A script as one short line (see summarize). */
+export const oneLine = (sql: string, max = 90): string => summarize(sql, max);
 
 // ---- QUERY HISTORY ---------------------------------------------------------------------------------------------------
 

@@ -536,3 +536,19 @@ body.dragging {
 .pl-props th { text-align: left; font-weight: 400; color: var(--text-dim); padding: 1px 16px 1px 0; vertical-align: top; white-space: nowrap; }
 .pl-props td { font-family: var(--mono); font-size: 12px; padding: 1px 0; word-break: break-word; }
 .pl-raw { flex: 1; max-height: none; margin: 8px 12px; }
+
+/* ---- Background tasks ---- */
+.bt-toggle { }
+.bg-toggle.on { color: var(--oc-textLink-foreground, #3794ff); font-weight: 600; }
+.bt-title { max-width: 38%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bt-state { font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; padding: 1px 8px; border-radius: 9px; border: 1px solid currentColor; }
+.bt-state.running { color: var(--oc-textLink-foreground, #3794ff); }
+.bt-state.done { color: var(--oc-successForeground, #3fb950); }
+.bt-state.failed { color: var(--danger); }
+.bt-state.cancelled, .bt-state.interrupted { color: var(--oc-editorWarning-foreground, #cca700); }
+.bt-clock { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.bt-clock.running { color: var(--oc-textLink-foreground, #3794ff); }
+.bt-wait { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 48px 24px; text-align: center; }
+.bt-big { font-family: var(--mono); font-size: 44px; font-variant-numeric: tabular-nums; color: var(--oc-textLink-foreground, #3794ff); }
+.bt-sql { user-select: text; white-space: pre-wrap; }
+.toolbar-notice .sqlg-link { margin-left: 8px; }

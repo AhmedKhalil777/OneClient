@@ -58,6 +58,7 @@ export function createSqlApi(prefix: string) {
     deleteHistory: (id?: string) => call<{ ok: boolean }>("deleteHistory", id ? { id } : {}),
     listDatabases: () => call<string[]>("listDatabases"),
     serverInfo: () => call<ServerInfo>("serverInfo"),
+    runInBackground: (q: { sql: string; database?: string | undefined }) => call<{ ok: true; id: string; title: string } | { ok: false; error: string }>("runInBackground", q),
     saveFastQuery: (q: { file?: string | undefined; name: string; sql: string; database?: string | undefined }) =>
       call<{ ok: true; file: string; name: string } | { ok: false; error: string }>("saveFastQuery", q),
   };

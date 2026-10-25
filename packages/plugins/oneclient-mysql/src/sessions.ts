@@ -123,3 +123,12 @@ export async function dedicatedConnection(connectionId: string, database?: strin
   const session = requireSession(connectionId);
   return mysql.createConnection(toPoolOptions(session.clientConfig, database ? { database } : {}));
 }
+
+/** Closes one query window's dedicated session (a background task's own one, when it ends). */
+export async function closeWindow(connectionId: string, windowId: string): Promise<void> {
+  const session = sessions.get(connectionId);
+  const w = session?.windows.get(windowId);
+  if (!session || !w) return;
+  session.windows.delete(windowId);
+  await w.connection.end().catch(() => undefined);
+}

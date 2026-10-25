@@ -1,5 +1,6 @@
 import type { Tasks } from "@oneclient/plugin-api";
 import type { HistoryStore } from "../history.js";
+import { summarize } from "../sql-text.js";
 import type { ExecuteQuery } from "../types.js";
 import type { BackgroundStore } from "./store.js";
 import type { BackgroundResult, BackgroundTaskDetail, BackgroundTaskInfo } from "./types.js";
@@ -37,11 +38,14 @@ export const MAX_RUNNING = 6;
 /** Finished results kept in memory (older ones are read from disk when opened). */
 const MEMORY_RESULTS = 12;
 
-/** The first meaningful line of a script: comments and blank lines skipped, whitespace collapsed. */
-export function titleOf(sql: string): string {
-  const line = sql.split(/\r?\n/).map((l) => l.trim()).find((l) => l && !l.startsWith("--") && !l.startsWith("#") && !l.startsWith("/*")) ?? sql.trim();
-  const one = line.replace(/\s+/g, " ");
-  return one.length > 70 ? `${one.slice(0, 69)}…` : one || "Query";
+/** The task's title: the script as one short line. */
+export const titleOf = (sql: string): string => summarize(sql, 70) || "Query";
+
+/** The line of an error message that says what is wrong: SQL Server prefixes it with "Msg 208, Level 16, State 1, Line 1". */
+export function errorSummary(text: string): string {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const first = lines[0] ?? "";
+  return /^Msg \d+, Level \d+/.test(first) && lines[1] ? lines[1] : first;
 }
 
 export function formatElapsed(ms: number): string {
@@ -84,7 +88,7 @@ export function createBackground(options: BackgroundOptions): Background {
       info.resultSets = job.result.resultSets.length;
       info.hasErrors = run.hasErrors;
       info.database = run.database ?? info.database;
-      const firstError = job.result.messages.find((m) => m.kind === "error")?.text.split("\n")[0];
+      const firstError = errorSummary(job.result.messages.find((m) => m.kind === "error")?.text ?? "") || undefined;
       info.state = job.cancelled || run.cancelled ? "cancelled" : run.hasErrors ? "failed" : "done";
       if (info.state === "failed") info.error = firstError ?? "The script failed.";
     } else {
