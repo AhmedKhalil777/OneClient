@@ -124,6 +124,8 @@ export const shellExecutor: Executor = async ({ step, signal, log }: ExecInput) 
 
 // ---------------------------------------------------------------- http
 
+export const DEFAULT_HTTP_TIMEOUT_SECONDS = 30;
+
 export const httpExecutor: Executor = async ({ step, signal, log }: ExecInput) => {
   const s = step as HttpStep;
   const method = (s.method || "GET").toUpperCase();
@@ -134,15 +136,26 @@ export const httpExecutor: Executor = async ({ step, signal, log }: ExecInput) =
   }
   log(`${method} ${s.url}\n`);
   const started = Date.now();
+  // A request nobody answers must not hang the pipeline (a container's published port accepts connections before the
+  // server behind it is up): without a timeout of its own the step gets 30 seconds, then fails and can be retried.
+  const limit = s.timeoutSeconds && s.timeoutSeconds > 0 ? s.timeoutSeconds : DEFAULT_HTTP_TIMEOUT_SECONDS;
+  const guarded = AbortSignal.any([signal, AbortSignal.timeout(limit * 1000)]);
   let res: Response;
   try {
-    res = await fetch(s.url, { method, headers, ...(hasBody ? { body: s.body } : {}), signal });
+    res = await fetch(s.url, { method, headers, ...(hasBody ? { body: s.body } : {}), signal: guarded });
   } catch (err) {
     if (signal.aborted) throw err;
+    if (guarded.aborted) return { error: `No answer from ${s.url} within ${limit}s.` };
     const cause = (err as { cause?: { message?: string } }).cause?.message;
     return { error: `Request failed: ${cause ?? (err instanceof Error ? err.message : String(err))}` };
   }
-  const body = await res.text();
+  let body: string;
+  try {
+    body = await res.text();
+  } catch (err) {
+    if (signal.aborted) throw err;
+    return { error: guarded.aborted ? `The response from ${s.url} did not finish within ${limit}s.` : `Could not read the response: ${err instanceof Error ? err.message : String(err)}` };
+  }
   const durationMs = Date.now() - started;
   const responseHeaders: Record<string, string> = {};
   res.headers.forEach((v, k) => (responseHeaders[k.toLowerCase()] = v));

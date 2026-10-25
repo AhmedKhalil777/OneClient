@@ -1,18 +1,87 @@
-// Plugin showcase tabs, and download links resolved to the files of the latest GitHub release.
-// Every link already points at the releases page, so the page works even when the API call fails.
+// The site's small amount of behaviour: theme switch, product-tour tabs, scroll reveals, the live GitHub star count and
+// download links resolved to the files of the latest release. Every link already points at the releases page, so the
+// page works with JavaScript off and when the GitHub API call fails.
 
 const REPO = "AhmedKhalil777/OneClient";
+const STAR_COUNT_MIN = 25;
+document.documentElement.classList.add("js");
 
-// ---- tabs ----
-const tabs = document.querySelectorAll(".tabs [role=tab]");
-for (const tab of tabs) {
-  tab.addEventListener("click", () => {
-    for (const t of tabs) t.setAttribute("aria-selected", String(t === tab));
-    for (const panel of document.querySelectorAll(".tab-panel")) panel.hidden = panel.dataset.panel !== tab.dataset.tab;
+// ---- theme ----
+document.getElementById("theme-toggle")?.addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+  document.documentElement.dataset.theme = next;
+  try {
+    localStorage.setItem("oneclient-theme", next);
+  } catch {
+    /* not remembered */
+  }
+});
+
+// ---- nav border once scrolled ----
+const nav = document.getElementById("nav");
+const onScroll = () => nav?.classList.toggle("scrolled", window.scrollY > 8);
+onScroll();
+addEventListener("scroll", onScroll, { passive: true });
+
+// ---- product tour ----
+const SHOTS = {
+  workbench: ["images/workbench.png", "The oneClient workbench with the Explorer, a JSON editor and the integrated terminal"],
+  "aggregate-order": ["images/aggregate-order.png", "A Fast Aggregate: an order form with its items and tags"],
+  pipelines: ["images/pipelines.png", "A passing test pipeline with its steps and assertions"],
+  postgres: ["images/postgres.png", "A PostgreSQL query window with results"],
+  kafka: ["images/kafka.png", "The Kafka topic browser with a message open"],
+  "http-client": ["images/http-client.png", "The HTTP client with a request and its JSON response"],
+};
+const heroShot = document.getElementById("hero-shot");
+const chips = document.querySelectorAll(".chips [role=tab]");
+for (const chip of chips) {
+  chip.addEventListener("click", () => {
+    const [src, alt] = SHOTS[chip.dataset.shot] ?? [];
+    if (!src || !heroShot) return;
+    for (const c of chips) c.setAttribute("aria-selected", String(c === chip));
+    heroShot.src = src;
+    heroShot.alt = alt;
   });
 }
 
-// ---- downloads ----
+// ---- reveal on scroll ----
+const reveals = document.querySelectorAll(".reveal");
+if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          e.target.classList.add("in");
+          io.unobserve(e.target);
+        }
+      }
+    },
+    { rootMargin: "0px 0px -8% 0px", threshold: 0.08 },
+  );
+  for (const el of reveals) io.observe(el);
+} else {
+  for (const el of reveals) el.classList.add("in");
+}
+
+// ---- GitHub: stars, and the latest release's files ----
+const compact = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "")}k` : String(n));
+
+async function wireStars() {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO}`, { headers: { Accept: "application/vnd.github+json" } });
+    if (!res.ok) return;
+    const { stargazers_count: stars } = await res.json();
+    // A small number is a weak signal: show the count only once it reads as one.
+    if (typeof stars !== "number" || stars < STAR_COUNT_MIN) return;
+    for (const el of document.querySelectorAll("[data-stars]")) {
+      el.textContent = compact(stars);
+      el.hidden = false;
+    }
+  } catch {
+    /* offline or rate-limited: the buttons simply stay without a number */
+  }
+}
+
 // Asset names come from scripts/package.mjs: oneClient-<version>-<os>-<arch>.<ext>.
 const ASSETS = {
   "win-installer": /-win-x64\.exe$/,
@@ -37,7 +106,8 @@ async function wireDownloads() {
   const os = detectOs();
   if (os) {
     document.querySelector(`.dl-card[data-os="${os}"]`)?.classList.add("is-current");
-    document.getElementById("hero-download-label").textContent = HERO[os][0];
+    const label = document.getElementById("hero-download-label");
+    if (label) label.textContent = HERO[os][0];
   }
 
   let release;
@@ -58,16 +128,14 @@ async function wireDownloads() {
     const url = urls[link.dataset.asset];
     if (url) link.href = url;
   }
-
-  const version = release.tag_name || release.name || "";
-  if (version) document.getElementById("dl-version").textContent = version;
-  const hero = document.getElementById("hero-download");
   if (os && urls[HERO[os][1]]) {
-    hero.href = urls[HERO[os][1]];
-    document.getElementById("hero-download-note").textContent = `${version} · ${os === "mac" ? "Apple silicon — Intel build below" : "free"} · other platforms below`;
-  } else if (version) {
-    document.getElementById("hero-download-note").textContent = `Latest: ${version}`;
+    const hero = document.getElementById("hero-download");
+    if (hero) hero.href = urls[HERO[os][1]];
   }
+  const version = release.tag_name?.replace(/^v/, "");
+  const v = document.getElementById("dl-version");
+  if (version && v) v.textContent = `v${version}`;
 }
 
-void wireDownloads();
+wireStars();
+wireDownloads();

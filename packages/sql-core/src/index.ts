@@ -17,7 +17,7 @@ export { type FolderStore, createFolderStore, findFiles, freeName, inFolder, slu
 export { FAST_QUERY_ICON, type FastQueries, createFastQueries } from "./fast-queries/api.js";
 export { FAST_QUERY_EXT, type FastQueryDoc, readFastQuery, writeFastQuery } from "./fast-queries/file.js";
 export { AGGREGATE_EXT, AGGREGATE_ICON, type FastAggregates, createFastAggregates } from "./aggregate/api.js";
-export { candidateFilter, childFilter, displayColumn, friendlyError, groupForeignKeys, searchFilter, justInsertedFilter, normalizeAggregate, optionLabel, parentFilter, parentLinks, suggestAggregate, validateAggregate } from "./aggregate/model.js";
+export { candidateFilter, childFilter, displayColumn, friendlyError, groupForeignKeys, searchFilter, justInsertedFilter, normalizeAggregate, optionLabel, parentFilter, parentLinks, parentName, parentValuesFilter, suggestAggregate, validateAggregate } from "./aggregate/model.js";
 export type { AggregateConfig, AggregatePage, ColumnLink, ForeignKey, ParentLink, ParentOption, Relation, TableRef } from "./aggregate/types.js";
 export { dataHome } from "./paths.js";
 export { type Background, type BackgroundHost, createBackground, errorSummary, formatElapsed, titleOf } from "./background/manager.js";

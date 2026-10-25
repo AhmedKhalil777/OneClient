@@ -29,8 +29,10 @@ export function examplePipeline(dockerConnectionId: string): Omit<Pipeline, "id"
         method: "GET",
         url: "http://{{steps.web.endpoint}}/",
         expectStatus: "200",
-        retries: 3,
-        retryDelaySeconds: 1,
+        // The container's port opens a moment before nginx answers: wait for it, retry if it doesn't.
+        timeoutSeconds: 8,
+        retries: 4,
+        retryDelaySeconds: 2,
         assertions: [
           { target: "status", op: "equals", value: "200" },
           { target: "body", op: "contains", value: "{{greeting}}" },

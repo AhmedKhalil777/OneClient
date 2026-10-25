@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { candidateFilter, childFilter, displayColumn, friendlyError, groupForeignKeys, searchFilter, justInsertedFilter, optionLabel, parentFilter, parentLinks, inheritedValues, linkRow, normalizeAggregate, suggestAggregate, validateAggregate } from "../src/aggregate/model.js";
+import { candidateFilter, childFilter, displayColumn, friendlyError, groupForeignKeys, searchFilter, justInsertedFilter, optionLabel, parentFilter, parentLinks, parentName, parentValuesFilter, inheritedValues, linkRow, normalizeAggregate, suggestAggregate, validateAggregate } from "../src/aggregate/model.js";
 import type { ForeignKey, Relation, TableRef } from "../src/aggregate/types.js";
 import type { TableAccess, TableColumn } from "../src/table-editor/types.js";
 
@@ -250,5 +250,29 @@ describe("searchFilter", () => {
   it("is empty for blank input and matches nothing when there is nothing to search", () => {
     expect(searchFilter(columns, "  ", access)).toBeUndefined();
     expect(searchFilter([col("qty", "number")], "x", access)).toBe("1 = 0");
+  });
+});
+
+describe("foreign key names in lists", () => {
+  const col = (name: string, kind: TableColumn["kind"] = "text", over: Partial<TableColumn> = {}): TableColumn => ({ name, type: kind, kind, nullable: false, isPk: false, hasDefault: false, insertable: true, editable: true, ...over });
+  const access = {
+    quote: (n: string) => `"${n}"`,
+    qualify: (x: { schema: string; table: string }) => `"${x.schema}"."${x.table}"`,
+    literals: { string: "", bool: { true: "true", false: "false" } },
+  } as unknown as TableAccess;
+  const link = { column: "customer_id", refTable: t("customers"), refColumn: "id", display: "name" };
+  const customers = [col("id", "number", { isPk: true }), col("name")];
+
+  it("asks for a whole page of parents in one condition, once per distinct key", () => {
+    expect(parentValuesFilter(link, customers, access, ["3", "1", "3", ""])).toBe(`"id" IN (3, 1)`);
+    expect(parentValuesFilter(link, customers, access, [])).toBeUndefined();
+    expect(() => parentValuesFilter(link, customers, access, ["1; DROP"])).toThrow(/not a number/);
+  });
+
+  it("shortens a parent's name for a cell", () => {
+    expect(parentName("Initech\n Ltd")).toBe("Initech Ltd");
+    expect(parentName(null)).toBe("");
+    expect(parentName({ cut: true, preview: "huge" })).toBe("huge");
+    expect(parentName("x".repeat(80))).toBe(`${"x".repeat(60)}…`);
   });
 });

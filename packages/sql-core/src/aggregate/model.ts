@@ -272,6 +272,25 @@ export function parentLinks(table: TableRef, fks: ForeignKey[], columnsOf: Looku
   return out;
 }
 
+/**
+ * The condition that finds the parent rows for a page of foreign key values at once — so a list can show "Initech Ltd"
+ * instead of 3 without one query per row.
+ */
+export function parentValuesFilter(link: ParentLink, columns: TableColumn[], access: TableAccess, values: string[]): string | undefined {
+  const key = columnOf(columns, link.refColumn, link.refTable);
+  const unique = [...new Set(values.filter((v) => v !== ""))].slice(0, 100);
+  if (unique.length === 0) return undefined;
+  return `${access.quote(key.name)} IN (${unique.map((v) => literal(v, key, access)).join(", ")})`;
+}
+
+/** A parent's name for a list cell: the naming column's text, shortened; empty when it has none. */
+export function parentName(raw: unknown): string {
+  if (raw === null || raw === undefined) return "";
+  const text = typeof raw === "object" && "preview" in (raw as object) ? String((raw as { preview: unknown }).preview) : String(raw);
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat.length > 60 ? `${flat.slice(0, 60)}…` : flat;
+}
+
 /** How a parent row is shown in the picker: its name and key, "Ann Lee (#1)" — or just the key when it has no name. */
 export function optionLabel(name: unknown, value: string): string {
   // A "large" text column arrives cut (a preview object) when it is huge; a long name is shortened either way.

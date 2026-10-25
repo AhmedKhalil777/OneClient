@@ -1,0 +1,61 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The more precise this is, the faster it gets fixed.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a PostgreSQL connection
+        2. Right-click the table → New Fast Aggregate…
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output panel log
+      description: Bottom panel → **Output** → pick the plugin's *Log* (and *oneClient — Application*). Paste what's there. Remove anything private.
+      render: text
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: How are you running it?
+      options: [Desktop app, Web (self-hosted Node), Web (Docker), From source]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: oneClient version
+      description: The release you downloaded, or the commit if you build from source.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "Windows 11 / macOS 15 / Ubuntu 24.04"
+  - type: input
+    id: service
+    attributes:
+      label: Database / service and version
+      placeholder: "PostgreSQL 16, SQL Server 2022, MySQL 8.4, Kafka 3.7…"
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Screenshots, a minimal table definition, a sample request…

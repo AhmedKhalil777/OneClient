@@ -335,6 +335,29 @@ function EntityList({
     };
   }, [api, request, version]);
 
+  // Foreign key columns show the parent's name (a product, a customer) instead of its bare key.
+  const [labels, setLabels] = useState<Record<string, Record<string, string>>>({});
+  useEffect(() => {
+    if (!data) return;
+    const links = Object.values(parents).filter((l) => l.display);
+    if (links.length === 0) return;
+    let alive = true;
+    Promise.all(
+      links.map(async (link) => {
+        const index = data.columns.findIndex((c) => c.name === link.column);
+        const values = [...new Set(data.rows.map((r) => r[index]).filter((v) => v !== null && v !== undefined).map(String))];
+        if (index < 0 || values.length === 0) return [link.column, {}] as const;
+        const r = await api.aggregate<{ labels: Record<string, string> }>("labels", { database, ...link.refTable, column: link.refColumn, display: link.display, values });
+        return [link.column, r.labels] as const;
+      }),
+    )
+      .then((pairs) => alive && setLabels(Object.fromEntries(pairs)))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [api, database, data, parents]);
+
   const refresh = () => setVersion((v) => v + 1);
   const changed = () => (refresh(), onChanged?.());
   const cols = data ? visibleColumns(data.columns, entity.relation?.columns ?? entity.listColumns) : [];
@@ -438,9 +461,16 @@ function EntityList({
               <tr key={i} className={i === selected ? "sel" : ""} onClick={() => (setSelected(i), onOpen(entity, data.columns, row))} title="Open">
                 {cols.map((c) => {
                   const v = row[data.columns.indexOf(c)];
+                  const parentName = v === null || v === undefined ? undefined : labels[c.name]?.[String(v)];
                   return (
-                    <td key={c.name} className={v === null || v === undefined ? "null" : c.kind === "number" ? "num" : ""}>
-                      {show(v)}
+                    <td key={c.name} className={v === null || v === undefined ? "null" : parentName ? "" : c.kind === "number" ? "num" : ""} title={parentName ? `${parentName} (#${String(v)})` : undefined}>
+                      {parentName ? (
+                        <>
+                          {parentName} <span className="agg-dim">#{String(v)}</span>
+                        </>
+                      ) : (
+                        show(v)
+                      )}
                     </td>
                   );
                 })}

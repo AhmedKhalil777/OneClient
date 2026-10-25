@@ -272,3 +272,28 @@ describe("executors", () => {
     expect(bad.steps[0]!.error).toBe("denied");
   });
 });
+
+describe("http step timeout", () => {
+  it("fails a request nobody answers instead of hanging, and a retry can recover", async () => {
+    let calls = 0;
+    const server = createServer((req, res) => {
+      calls++;
+      if (calls === 1) return; // never answer the first request
+      res.end("ok");
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
+    try {
+      const started = Date.now();
+      const hung = await run(pipeline([{ ...newStep("http", []), id: "get", url, timeoutSeconds: 0.3 } as Step]), { http: httpExecutor }).result;
+      expect(hung.steps[0]!.error).toMatch(/Timed out after 0\.3s|No answer/);
+      expect(Date.now() - started).toBeLessThan(3000);
+      const recovered = await run(pipeline([{ ...newStep("http", []), id: "get", url, timeoutSeconds: 0.3, retries: 1 } as Step]), { http: httpExecutor }).result;
+      expect(recovered.status).toBe("passed");
+      expect(recovered.steps[0]!.attempts).toBe(1);
+    } finally {
+      server.closeAllConnections?.();
+      server.close();
+    }
+  });
+});

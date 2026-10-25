@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the job, not the solution. What's slow, awkward or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to happen?
+      description: A sketch is welcome — which screen, which plugin, what you'd click.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do instead today?
+  - type: dropdown
+    id: help
+    attributes:
+      label: Would you like to help build it?
+      options:
+        - No, just suggesting
+        - Yes, I can send a PR
+        - Yes, with some guidance

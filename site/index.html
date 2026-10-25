@@ -1,25 +1,39 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>oneClient — free PostgreSQL, SQL Server, MySQL, Kafka, Redis &amp; REST client</title>
-  <meta name="description" content="oneClient is a free, open-source desktop and web client for PostgreSQL, SQL Server, MySQL, Kafka, Redis, Docker, REST APIs (Postman alternative), Azure Blob Storage and Keycloak, with an AI assistant, Git graph and terminal in one VS Code-style window." />
+  <title>oneClient — one client for PostgreSQL, SQL Server, MySQL, Kafka, Redis &amp; REST</title>
+  <meta name="description" content="oneClient is a free, open-source, VS Code-style workbench for PostgreSQL, SQL Server, MySQL, Kafka, Redis, Docker, REST APIs, Azure Blob and Keycloak — with Fast Aggregates, test-scenario pipelines, an AI assistant and a plugin API. Desktop and self-hosted web." />
   <link rel="canonical" href="https://ahmedkhalil777.github.io/OneClient/" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="theme-color" content="#0b0d12" />
   <meta property="og:site_name" content="oneClient" />
   <meta property="og:url" content="https://ahmedkhalil777.github.io/OneClient/" />
-  <meta property="og:image:alt" content="The oneClient workbench with the Explorer, a JSON editor and the integrated terminal" />
-  <meta property="og:title" content="oneClient — one client for everything" />
-  <meta property="og:description" content="Databases, brokers, caches, APIs and containers in one VS Code-style window. Every integration is a plugin." />
-  <meta property="og:image" content="https://ahmedkhalil777.github.io/OneClient/images/workbench.png" />
   <meta property="og:type" content="website" />
+  <meta property="og:title" content="oneClient — one client for your whole backend stack" />
+  <meta property="og:description" content="Databases, brokers, caches, APIs and containers in one fast VS Code-style window. Free, open source, extensible." />
+  <meta property="og:image" content="https://ahmedkhalil777.github.io/OneClient/images/social-preview.png" />
+  <meta property="og:image:width" content="1280" />
+  <meta property="og:image:height" content="640" />
+  <meta property="og:image:alt" content="oneClient: one client for PostgreSQL, SQL Server, MySQL, Kafka, Redis, Docker and REST APIs" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="oneClient — one client for your whole backend stack" />
+  <meta name="twitter:description" content="Databases, brokers, caches, APIs and containers in one fast VS Code-style window. Free and open source." />
+  <meta name="twitter:image" content="https://ahmedkhalil777.github.io/OneClient/images/social-preview.png" />
   <link rel="icon" href="logo.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <script>
+    // Apply the saved (or system) theme before first paint, so there is no flash.
+    try {
+      var t = localStorage.getItem("oneclient-theme");
+      if (!t) t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -30,19 +44,17 @@
         "alternateName": "OneClient",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Windows, macOS, Linux, Web",
-        "description": "A free, open-source desktop and web client for PostgreSQL, SQL Server, MySQL, Apache Kafka, Redis, Docker, REST APIs, Azure Blob Storage and Keycloak, with an AI assistant, Git graph and terminal in one VS Code-style window.",
+        "description": "A free, open-source desktop and web workbench for PostgreSQL, SQL Server, MySQL, Apache Kafka, Redis, Docker, REST APIs, Azure Blob Storage and Keycloak, with Fast Aggregates, test pipelines, an AI assistant, Git graph and a plugin API.",
         "url": "https://ahmedkhalil777.github.io/OneClient/",
         "downloadUrl": "https://github.com/AhmedKhalil777/OneClient/releases/latest",
         "codeRepository": "https://github.com/AhmedKhalil777/OneClient",
         "license": "https://opensource.org/licenses/MIT",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD"
-        },
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
         "screenshot": "https://ahmedkhalil777.github.io/OneClient/images/workbench.png",
         "featureList": [
           "PostgreSQL, SQL Server and MySQL clients",
+          "Fast Aggregates: edit a table with its related tables as one screen",
+          "Test-scenario pipelines with test containers",
           "Apache Kafka UI",
           "Redis browser",
           "HTTP / REST client with Postman import",
@@ -60,42 +72,32 @@
           {
             "@type": "Question",
             "name": "Is there a free, open-source alternative to a separate database client, Kafka UI, Redis GUI and Postman?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "oneClient combines them in one VS Code-style app: PostgreSQL, SQL Server and MySQL / MariaDB clients, Apache Kafka, Redis, an HTTP client with Postman import, Docker, Azure Blob Storage and Keycloak. It is MIT-licensed and free."
-            }
+            "acceptedAnswer": { "@type": "Answer", "text": "oneClient combines them in one VS Code-style app: PostgreSQL, SQL Server and MySQL / MariaDB clients, Apache Kafka, Redis, an HTTP client with Postman import, Docker, Azure Blob Storage and Keycloak. It is MIT-licensed and free." }
           },
           {
             "@type": "Question",
             "name": "Does oneClient run in the browser?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. Besides the desktop app for Windows, macOS and Linux, there is a self-hosted web version: a small Node server you open from any browser."
-            }
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. Besides the desktop app for Windows, macOS and Linux, there is a self-hosted web version: a small Node server you open from any browser, also available as a Dockerfile." }
           },
           {
             "@type": "Question",
             "name": "Which databases are supported?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "PostgreSQL (including Azure Database for PostgreSQL, AWS RDS / Aurora, Supabase, Neon and TimescaleDB), Microsoft SQL Server, and MySQL / MariaDB, with query windows, a table data editor, CSV import, execution plans, SSH tunnels and query history."
-            }
+            "acceptedAnswer": { "@type": "Answer", "text": "PostgreSQL (including Azure Database for PostgreSQL, AWS RDS / Aurora, Supabase, Neon and TimescaleDB), Microsoft SQL Server, and MySQL / MariaDB, with query windows, a table data editor, CSV import, execution plans, SSH tunnels and Fast Aggregates." }
           },
           {
             "@type": "Question",
-            "name": "Can an AI assistant work with my databases and files?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "The AI Assistant plugin chats with Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen, OpenRouter, Ollama or any OpenAI-compatible server using your own API key. It can list tables and run read-only SQL; statements that change data and every file edit wait for your approval."
-            }
+            "name": "What is a Fast Aggregate?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Right-click a table and oneClient reads your foreign keys to build an editable aggregate: a paged list of the root rows, a form for each row, and its related tables (one-to-many and many-to-many) as tabs that open the same way — for example an Order with its Items, Notes and Tags." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does oneClient collect telemetry or need an account?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. There is no account and no telemetry. Connection passwords are encrypted with your operating system's keychain, and the AI assistant only talks to the provider you configure with your own API key." }
           },
           {
             "@type": "Question",
             "name": "Can I write my own plugin?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. Plugins declare connection types, explorer trees, editors, commands, menus and title-bar quick actions in a manifest, and run in their own process. The plugin API is a typed package, @oneclient/plugin-api."
-            }
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. Plugins declare connection types, explorer trees, editors, commands, menus and title-bar quick actions in a manifest, and run in their own process. The plugin API is a typed package, @oneclient/plugin-api." }
           }
         ]
       }
@@ -104,49 +106,88 @@
   </script>
 </head>
 <body>
-  <header class="nav">
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav" id="nav">
     <div class="wrap nav-inner">
-      <a class="brand" href="#top"><img src="logo.svg" alt="" width="28" height="28" /> oneClient</a>
-      <nav class="nav-links">
-        <a href="#features">Features</a>
+      <a class="brand" href="#top" aria-label="oneClient home"><img src="logo.svg" alt="" width="28" height="28" /><span>oneClient</span></a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#why">Why</a>
+        <a href="#aggregates">Aggregates</a>
+        <a href="#pipelines">Pipelines</a>
         <a href="#plugins">Plugins</a>
         <a href="#extend">Extend</a>
         <a href="#download">Download</a>
         <a href="#faq">FAQ</a>
       </nav>
-      <a class="btn btn-ghost btn-sm" href="https://github.com/AhmedKhalil777/OneClient">
-        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-        GitHub
-      </a>
+      <div class="nav-actions">
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch between dark and light theme" title="Switch theme">
+          <svg class="i-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
+          <svg class="i-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>
+        </button>
+        <a class="btn btn-ghost btn-sm star-btn" href="https://github.com/AhmedKhalil777/OneClient" rel="noopener">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25z"/></svg>
+          <span>Star</span><span class="star-count" data-stars hidden></span>
+        </a>
+      </div>
     </div>
   </header>
 
-  <main id="top">
-    <!-- Hero -->
-    <section class="hero">
-      <div class="wrap">
-        <p class="eyebrow">Free · Windows · macOS · Linux</p>
-        <h1>One client for <span class="grad">all your infrastructure.</span></h1>
+  <main id="main">
+    <!-- ============ Hero ============ -->
+    <section class="hero" id="top">
+      <div class="hero-glow" aria-hidden="true"></div>
+      <div class="wrap hero-inner">
+        <a class="pill" href="#aggregates"><span class="pill-new">New</span> Fast Aggregates &amp; Pipelines <span aria-hidden="true">→</span></a>
+        <h1>One client for your <span class="grad">whole backend stack.</span></h1>
         <p class="lede">
-          Stop juggling a database IDE, a Kafka UI, a Redis browser, Postman and a terminal.
-          oneClient puts them in one fast, VS Code-style window — and every integration is a plugin.
+          Query PostgreSQL, SQL Server and MySQL. Browse Kafka and Redis. Send REST requests. Spin up test containers and run
+          scenarios against them. All in one fast, VS Code-style window — free, open source and extensible.
         </p>
         <div class="cta">
-          <a class="btn btn-primary" id="hero-download" href="https://github.com/AhmedKhalil777/OneClient/releases/latest">
+          <a class="btn btn-primary btn-lg" id="hero-download" href="https://github.com/AhmedKhalil777/OneClient/releases/latest">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14"/></svg>
             <span id="hero-download-label">Download oneClient</span>
           </a>
-          <a class="btn btn-ghost" href="#features">See what it does</a>
+          <a class="btn btn-ghost btn-lg star-btn" href="https://github.com/AhmedKhalil777/OneClient" rel="noopener">
+            <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25z"/></svg>
+            <span>Star on GitHub</span><span class="star-count" data-stars hidden></span>
+          </a>
         </div>
-        <p class="cta-note" id="hero-download-note">Latest release on GitHub</p>
+        <ul class="trust" aria-label="Highlights">
+          <li>MIT licensed</li>
+          <li>Windows · macOS · Linux · Browser</li>
+          <li>No account, no telemetry</li>
+          <li>Bring your own AI key</li>
+        </ul>
 
-        <div class="shot shot-hero">
-          <img src="images/workbench.png" alt="The oneClient workbench with the Explorer, a JSON editor and the integrated terminal" width="1440" height="900" />
+        <div class="hero-stage">
+          <div class="chips" role="tablist" aria-label="Product tour">
+            <button role="tab" aria-selected="true" data-shot="workbench">Workbench</button>
+            <button role="tab" aria-selected="false" data-shot="aggregate-order">Fast Aggregates</button>
+            <button role="tab" aria-selected="false" data-shot="pipelines">Pipelines</button>
+            <button role="tab" aria-selected="false" data-shot="postgres">SQL</button>
+            <button role="tab" aria-selected="false" data-shot="kafka">Kafka</button>
+            <button role="tab" aria-selected="false" data-shot="http-client">HTTP</button>
+          </div>
+          <div class="window">
+            <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span><em>oneClient</em></div>
+            <div class="window-body">
+              <img id="hero-shot" src="images/workbench.png" alt="The oneClient workbench with the Explorer, a JSON editor and the integrated terminal" width="1440" height="900" fetchpriority="high" />
+            </div>
+          </div>
         </div>
+      </div>
+    </section>
 
-        <ul class="logos" aria-label="Supported tools">
+    <!-- ============ Works with ============ -->
+    <section class="works" aria-label="Works with">
+      <div class="wrap">
+        <p class="works-title">One workbench for</p>
+        <ul class="logos">
           <li><img src="icons/postgres.svg" alt="" /> PostgreSQL</li>
           <li><img src="icons/mssql.svg" alt="" /> SQL Server</li>
-          <li><img src="icons/mysql.svg" alt="" /> MySQL</li>
+          <li><img src="icons/mysql.svg" alt="" /> MySQL &amp; MariaDB</li>
           <li><img src="icons/kafka.svg" alt="" /> Apache Kafka</li>
           <li><img src="icons/redis.svg" alt="" /> Redis</li>
           <li><img src="icons/docker.svg" alt="" /> Docker</li>
@@ -157,160 +198,222 @@
       </div>
     </section>
 
-    <!-- Features -->
-    <section class="section" id="features">
+    <!-- ============ Why ============ -->
+    <section class="section" id="why">
       <div class="wrap">
-        <div class="section-head">
-          <p class="eyebrow">The workbench</p>
-          <h2>Everything you expect from your editor. Already there.</h2>
-          <p>Explorer, search, editor, Git, terminal and background tasks are part of oneClient itself — shared by every plugin, with the shortcuts you already know.</p>
+        <div class="section-head center reveal">
+          <p class="eyebrow">Why oneClient</p>
+          <h2>Seven apps open. One window needed.</h2>
+          <p>Backend work means a database IDE, a Kafka tool, a Redis browser, an API client, Docker Desktop, a terminal and a Git UI — each with its own login, shortcuts and window. oneClient puts them in one place, built like the editor you already know.</p>
         </div>
+        <div class="cards3">
+          <article class="card reveal">
+            <div class="card-icon"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 5h16v10H4zM8 19h8M12 15v4"/></svg></div>
+            <h3>Stop switching windows</h3>
+            <p>Query a table, peek at the Kafka topic it feeds, replay the API call that wrote it, and restart the container — without leaving the workbench.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card-icon"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 8-5 4 5 4M16 8l5 4-5 4M14 5l-4 14"/></svg></div>
+            <h3>Feels like VS Code</h3>
+            <p>Command palette, split editors, integrated terminal, Git graph, tasks, themes and the shortcuts already in your fingers. Nothing new to learn.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card-icon"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M9 21H5a2 2 0 0 1-2-2v-4M15 21h4a2 2 0 0 0 2-2v-4M9 9h6v6H9z"/></svg></div>
+            <h3>Yours to extend</h3>
+            <p>Every integration is a plugin with a typed API, running in its own process. Add the tool you need — no fork, no rebuild, no restart.</p>
+          </article>
+        </div>
+      </div>
+    </section>
 
-        <div class="feature">
-          <div class="feature-text">
-            <h3>Source Control, like VS Code</h3>
-            <p>Stage, unstage and discard changes; commit, amend, push or sync from one box; read diffs side by side or inline; check out and create branches. A commit graph shows branch lanes and refs.</p>
-            <p class="muted">It runs your own <code>git</code>, so hooks, credentials and config just work.</p>
+    <!-- ============ Fast Aggregates ============ -->
+    <section class="section section-alt" id="aggregates">
+      <div class="wrap">
+        <div class="spot">
+          <div class="spot-text reveal">
+            <p class="eyebrow">New · Fast Aggregates</p>
+            <h2>Edit a whole Order — not four tables.</h2>
+            <p class="spot-lede">Right-click a table. oneClient reads your foreign keys and builds the aggregate: a paged list of orders; each order opens into a form with its items, payments and tags underneath — and every child opens the same way.</p>
+            <ul class="checks">
+              <li><strong>Navigate like a document.</strong> Order › Items › Notes, with a breadcrumb back up.</li>
+              <li><strong>One-to-many and many-to-many.</strong> Add, edit and delete children; link tags through the join table.</li>
+              <li><strong>Parents by name.</strong> Pick the customer from a searchable list — or create the missing one in a dialog, without losing your order.</li>
+              <li><strong>Typed inputs.</strong> Date pickers, number fields, booleans, JSON — straight from the column types.</li>
+              <li><strong>Safe by default.</strong> Delete previews what goes with a row, unsaved edits ask before you leave, and database errors read like sentences.</li>
+            </ul>
+            <p class="muted">Works with PostgreSQL, SQL Server and MySQL. The configuration is a plain <code>.aggregate.json</code> you can commit.</p>
           </div>
-          <div class="shot"><img src="images/source-control.png" alt="Source Control with a side-by-side diff and the commit graph" loading="lazy" width="1440" height="900" /></div>
-        </div>
-
-        <div class="feature feature-flip">
-          <div class="feature-text">
-            <h3>Background tasks</h3>
-            <p>oneClient finds your <code>package.json</code> scripts, <code>.vscode/tasks.json</code> and <code>.oneclient/tasks.json</code> tasks, and .NET builds. Run them in the background with live output, progress in the status bar, Stop and Run Again.</p>
-            <p class="muted">Git fetch, pull and push, and long plugin jobs, are tracked here too.</p>
+          <div class="spot-shots reveal">
+            <figure class="window"><div class="window-bar" aria-hidden="true"><span></span><span></span><span></span><em>Orders</em></div><div class="window-body"><img src="images/aggregate-order-crop.png" alt="A Fast Aggregate: an order form with the customer picker, and its order items listed with product names" loading="lazy" width="1132" height="846" /></div></figure>
           </div>
-          <div class="shot"><img src="images/tasks.png" alt="The Tasks panel with a running build and finished test and lint tasks" loading="lazy" width="1440" height="900" /></div>
         </div>
+        <div class="duo">
+          <figure class="window reveal"><div class="window-body"><img src="images/aggregate-list-crop.png" alt="The paged list of orders with customer names and search" loading="lazy" width="1132" height="846" /></div><figcaption>A paged, searchable list — customers shown by name, not by key.</figcaption></figure>
+          <figure class="window reveal"><div class="window-body"><img src="images/aggregate-delete-crop.png" alt="A confirmation that lists the related rows deleted together with an order" loading="lazy" width="1132" height="846" /></div><figcaption>Delete shows exactly what goes with the row — then removes it all in one transaction.</figcaption></figure>
+        </div>
+      </div>
+    </section>
 
-        <div class="feature">
-          <div class="feature-text">
-            <h3>Search every folder at once</h3>
-            <p>Match case, whole word and regular expressions, include and exclude globs, and replace per file or everywhere. Results are grouped by file; click one to jump to it.</p>
-            <p class="muted">Search runs on a background worker, so the window stays responsive on large repos.</p>
+    <!-- ============ Pipelines ============ -->
+    <section class="section" id="pipelines">
+      <div class="wrap">
+        <div class="spot spot-flip">
+          <div class="spot-text reveal">
+            <p class="eyebrow">New · Pipelines &amp; test containers</p>
+            <h2>Turn a test scenario into a pipeline.</h2>
+            <p class="spot-lede">Run a script, start a throwaway container, seed data, call your REST API and assert on the response — as ordered steps with variables, retries and teardown, like a CI job you can run from your desk.</p>
+            <ol class="steps-demo" aria-label="An example pipeline">
+              <li><span>shell</span> Check the toolchain</li>
+              <li><span>container</span> Start <code>postgres:16</code>, wait until it accepts connections</li>
+              <li><span>shell</span> Seed data with PowerShell or bash</li>
+              <li><span>http</span> <code>POST /orders</code> → assert <code>status = 201</code></li>
+              <li><span>cleanup</span> Containers are removed — even if a step failed</li>
+            </ol>
+            <ul class="checks">
+              <li>Scripts in PowerShell, pwsh, bash, sh or cmd</li>
+              <li>A container's ports become variables: <code>{{steps.db.endpoint}}</code></li>
+              <li>Assert on status, JSON paths, headers, timing and exit codes</li>
+              <li>Live output, run history and a notification when it finishes</li>
+            </ul>
           </div>
-          <div class="shot"><img src="images/search.png" alt="Search results grouped by file" loading="lazy" width="1440" height="900" /></div>
+          <div class="spot-shots reveal">
+            <figure class="window"><div class="window-bar" aria-hidden="true"><span></span><span></span><span></span><em>Pipelines</em></div><div class="window-body"><img src="images/pipelines-crop.png" alt="A passing pipeline: toolchain check, start nginx, GET the home page, unknown path returns 404, clean up" loading="lazy" width="1132" height="846" /></div></figure>
+          </div>
         </div>
+      </div>
+    </section>
 
-        <ul class="mini-grid">
-          <li><strong>Integrated terminal</strong><span>PowerShell, Command Prompt, Git Bash, WSL, bash and zsh, in the bottom panel.</span></li>
-          <li><strong>Command palette</strong><span>Every core and plugin command, filtered as you type (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>).</span></li>
-          <li><strong>A real editor</strong><span>Find / replace, go to line, formatting, breadcrumbs and syntax highlighting.</span></li>
-          <li><strong>Menus &amp; shortcuts</strong><span>File, Edit, View, Go, Run, Terminal and Help — keyboard-first, like VS Code.</span></li>
-          <li><strong>Themes &amp; icons</strong><span>Color themes and file-icon themes, switchable live.</span></li>
-          <li><strong>Portable config</strong><span>Plain JSON in <code>~/.oneclient</code>; passwords encrypted with your OS keychain. Export and import connections.</span></li>
+    <!-- ============ Bento ============ -->
+    <section class="section section-alt" id="features">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <p class="eyebrow">Everything in the box</p>
+          <h2>A real workbench, with the tools each job deserves.</h2>
+          <p>Not a generic tree with a text box — every plugin brings the views its tool needs.</p>
+        </div>
+        <div class="bento">
+          <article class="b b-half reveal">
+            <h3>SQL that doesn't get in the way</h3>
+            <p>IntelliSense, multiple result sets, execution plans, query history, a staged table editor, CSV import and SSH tunnels — for PostgreSQL, SQL Server and MySQL.</p>
+            <img src="images/postgres.png" alt="A PostgreSQL query window with results" loading="lazy" width="1440" height="900" />
+          </article>
+          <article class="b b-half reveal"><h3>Kafka</h3><p>Topics, consumer groups, a message browser with filters, and a producer.</p><img src="images/kafka.png" alt="Kafka topic browser" loading="lazy" width="1440" height="900" /></article>
+          <article class="b reveal"><h3>HTTP client</h3><p>Collections, environments, Postman import, <code>.http</code> files with a ▶ per request.</p><img src="images/http-client.png" alt="HTTP client with a JSON response" loading="lazy" width="1440" height="900" /></article>
+          <article class="b reveal"><h3>Redis</h3><p>Namespace tree and editors for every data type, with TTL.</p><img src="images/redis.png" alt="Redis key browser" loading="lazy" width="1440" height="900" /></article>
+          <article class="b reveal"><h3>Git &amp; tasks</h3><p>Source control, a commit graph, and background tasks with live output.</p><img src="images/source-control.png" alt="Source control with a diff and the commit graph" loading="lazy" width="1440" height="900" /></article>
+        </div>
+        <ul class="mini-grid reveal">
+          <li><strong>AI assistant</strong><span>Claude, OpenAI, Gemini, DeepSeek, Ollama and more — with <em>your</em> key. It reads schemas, runs read-only SQL and proposes edits you approve.</span></li>
+          <li><strong>Notifications</strong><span>Toasts and a Notification Center when a task finishes or needs you, like VS Code.</span></li>
+          <li><strong>Docker &amp; test databases</strong><span>One-click PostgreSQL, SQL Server, Redis, Kafka and Keycloak — each with a ready connection.</span></li>
+          <li><strong>Command palette</strong><span>Every command from core and plugins, filtered as you type.</span></li>
+          <li><strong>Integrated terminal</strong><span>PowerShell, cmd, Git Bash, WSL, bash and zsh in the bottom panel.</span></li>
+          <li><strong>Azure Blob &amp; Keycloak</strong><span>Browse blobs and SAS links; manage realms, users and clients.</span></li>
+          <li><strong>Themes &amp; icons</strong><span>Color and icon themes, switched live.</span></li>
+          <li><strong>Portable config</strong><span>Plain JSON in <code>~/.oneclient</code>; passwords in your OS keychain. Export and import connections.</span></li>
+          <li><strong>Output you can trust</strong><span>Every plugin's activity and errors in one Output panel — nothing fails silently.</span></li>
         </ul>
       </div>
     </section>
 
-    <!-- Plugins showcase -->
-    <section class="section section-alt" id="plugins">
+    <!-- ============ Plugins ============ -->
+    <section class="section" id="plugins">
       <div class="wrap">
-        <div class="section-head">
+        <div class="section-head center reveal">
           <p class="eyebrow">Plugins</p>
-          <h2>Purpose-built tools for each piece of your stack.</h2>
-          <p>Not a generic tree with a text box — each plugin brings the views that tool deserves.</p>
+          <h2>Every integration is a plugin.</h2>
+          <p>Each runs in its own process, so one crashing never takes the rest down. Enable or disable them live.</p>
         </div>
-
-        <div class="tabs" role="tablist">
-          <button role="tab" aria-selected="true" data-tab="postgres"><img src="icons/postgres.svg" alt="" /> SQL</button>
-          <button role="tab" aria-selected="false" data-tab="kafka"><img src="icons/kafka.svg" alt="" /> Kafka</button>
-          <button role="tab" aria-selected="false" data-tab="http"><img src="icons/http.svg" alt="" /> HTTP</button>
-          <button role="tab" aria-selected="false" data-tab="redis"><img src="icons/redis.svg" alt="" /> Redis</button>
-        </div>
-
-        <div class="tab-panel" data-panel="postgres">
-          <div class="tab-text">
-            <h3>PostgreSQL, SQL Server &amp; MySQL</h3>
-            <p>Browse databases, schemas, tables, views, functions, procedures and sequences — with columns, keys and indexes. Query windows have IntelliSense, multiple result sets and server messages; a table data editor, CSV import, execution plans, query history and SSH tunnels come with every SQL plugin.</p>
-          </div>
-          <div class="shot"><img src="images/postgres.png" alt="A PostgreSQL query window with results" loading="lazy" width="1440" height="900" /></div>
-        </div>
-        <div class="tab-panel" data-panel="kafka" hidden>
-          <div class="tab-text">
-            <h3>Apache Kafka</h3>
-            <p>Brokers, topics and consumer groups. Browse and filter messages by partition and offset, inspect headers and JSON values, view partitions and configuration, and produce new messages.</p>
-          </div>
-          <div class="shot"><img src="images/kafka.png" alt="Kafka topic browser with a message open" loading="lazy" width="1440" height="900" /></div>
-        </div>
-        <div class="tab-panel" data-panel="http" hidden>
-          <div class="tab-text">
-            <h3>HTTP client</h3>
-            <p>Collections, folders, environments and history. Params, headers, body, auth and variables — and import straight from Postman or cURL.</p>
-          </div>
-          <div class="shot"><img src="images/http-client.png" alt="HTTP client with a request and its JSON response" loading="lazy" width="1440" height="900" /></div>
-        </div>
-        <div class="tab-panel" data-panel="redis" hidden>
-          <div class="tab-text">
-            <h3>Redis</h3>
-            <p>A key tree grouped by namespace, editors for strings, hashes, lists, sets, sorted sets, streams and JSON, plus TTL, rename and delete.</p>
-          </div>
-          <div class="shot"><img src="images/redis.png" alt="Redis key browser showing a hash" loading="lazy" width="1440" height="900" /></div>
-        </div>
-
-        <ul class="plugin-grid">
+        <ul class="plugin-grid reveal">
           <li><img src="icons/postgres.svg" alt="" /><div><strong>PostgreSQL</strong><span>Also Azure, RDS, Supabase, Neon, TimescaleDB</span></div></li>
           <li><img src="icons/mssql.svg" alt="" /><div><strong>SQL Server</strong><span>A small SSMS, plus a fake-data generator</span></div></li>
+          <li><img src="icons/mysql.svg" alt="" /><div><strong>MySQL &amp; MariaDB</strong><span>Query windows, table editor, CSV import, plans</span></div></li>
           <li><img src="icons/kafka.svg" alt="" /><div><strong>Apache Kafka</strong><span>Topics, groups, produce &amp; browse</span></div></li>
           <li><img src="icons/redis.svg" alt="" /><div><strong>Redis</strong><span>Every data type, TTL, namespaces</span></div></li>
-          <li><img src="icons/docker.svg" alt="" /><div><strong>Docker</strong><span>Containers and images — plus one-click test databases and brokers, already connected</span></div></li>
+          <li><img src="icons/docker.svg" alt="" /><div><strong>Docker</strong><span>Containers, images, templates and test containers</span></div></li>
+          <li><img src="icons/pipeline.svg" alt="" /><div><strong>Pipelines</strong><span>Scripts, containers and API checks as scenarios</span></div></li>
           <li><img src="icons/http.svg" alt="" /><div><strong>HTTP client</strong><span>Collections, environments, Postman import</span></div></li>
-          <li><img src="icons/azure-blob.svg" alt="" /><div><strong>Azure Blob Storage</strong><span>Upload, download, edit, SAS links; works with Azurite</span></div></li>
-          <li><img src="icons/keycloak.svg" alt="" /><div><strong>Keycloak</strong><span>Realms, users, roles, clients, plus token tools</span></div></li>
-          <li><img src="icons/mysql.svg" alt="" /><div><strong>MySQL &amp; MariaDB</strong><span>Query windows, table editor, CSV import, plans, SSH tunnels</span></div></li>
-          <li><img src="icons/ai.svg" alt="" /><div><strong>AI Assistant</strong><span>Claude, OpenAI, Gemini, DeepSeek, Kimi and more — your key, your approval</span></div></li>
+          <li><img src="icons/azure-blob.svg" alt="" /><div><strong>Azure Blob Storage</strong><span>Upload, download, edit; works with Azurite</span></div></li>
+          <li><img src="icons/keycloak.svg" alt="" /><div><strong>Keycloak</strong><span>Realms, users, roles, clients, token tools</span></div></li>
+          <li><img src="icons/ai.svg" alt="" /><div><strong>AI Assistant</strong><span>Your key, your approval on every change</span></div></li>
+          <li class="more"><div><strong>Yours here?</strong><span>Build a plugin in an afternoon ↓</span></div></li>
         </ul>
       </div>
     </section>
 
-    <!-- Extensibility -->
-    <section class="section" id="extend">
+    <!-- ============ Extend ============ -->
+    <section class="section section-alt" id="extend">
       <div class="wrap extend">
-        <div class="extend-text">
+        <div class="extend-text reveal">
           <p class="eyebrow">Built to be extended</p>
           <h2>Your tool isn't here yet? Write the plugin.</h2>
-          <p>The core has no tool-specific code at all. Plugins declare connection types, explorer trees, editor views, commands and menus in a manifest, and each one runs in its own process — so a crashing plugin never takes down the app.</p>
+          <p>The core has no tool-specific code at all. A plugin declares what it contributes in a manifest and implements it with a small, typed API — tasks, notifications, output channels, secrets, the workspace and other plugins' connections are all one call away.</p>
           <ul class="checks">
-            <li>One typed package to depend on: <code>@oneclient/plugin-api</code></li>
-            <li>Views in any web framework, hosted in their own sandboxed view</li>
-            <li>Shared workspace, tasks, search and editor APIs</li>
-            <li>Enable or disable plugins live — no restart</li>
+            <li>One typed package: <code>@oneclient/plugin-api</code></li>
+            <li>UI in any web framework, hosted in an isolated view</li>
+            <li>Plugins can offer tools to each other and to the AI assistant</li>
+            <li>Load, enable and disable live — no restart</li>
           </ul>
           <a class="btn btn-ghost" href="https://github.com/AhmedKhalil777/OneClient/tree/main/packages/plugin-api">Read the plugin API →</a>
         </div>
-        <div class="code">
-          <div class="code-bar"><span></span><span></span><span></span><em>oneclient.json</em></div>
-<pre><code><span class="p">{</span>
-  <span class="k">"name"</span>: <span class="s">"oneclient-postgres"</span>,
-  <span class="k">"displayName"</span>: <span class="s">"PostgreSQL"</span>,
-  <span class="k">"engines"</span>: <span class="p">{</span> <span class="k">"oneclient"</span>: <span class="s">"^0.1.0"</span> <span class="p">}</span>,
-  <span class="k">"main"</span>: <span class="s">"dist/main.js"</span>,
-  <span class="k">"contributes"</span>: <span class="p">{</span>
-    <span class="k">"connectionTypes"</span>: [<span class="p">{</span>
-      <span class="k">"id"</span>: <span class="s">"postgres"</span>,
-      <span class="k">"label"</span>: <span class="s">"PostgreSQL"</span>,
-      <span class="k">"category"</span>: <span class="s">"Databases"</span>,
-      <span class="k">"connectionLabel"</span>: <span class="s">"Server"</span>
-    <span class="p">}</span>],
-    <span class="k">"explorerNodes"</span>: [ <span class="c">…</span> ],
-    <span class="k">"views"</span>: [ <span class="c">…</span> ],
-    <span class="k">"commands"</span>: [ <span class="c">…</span> ]
-  <span class="p">}</span>
-<span class="p">}</span></code></pre>
+        <div class="code reveal">
+          <div class="code-bar"><span></span><span></span><span></span><em>src/main.ts</em></div>
+<pre><code><span class="k">export function</span> <span class="f">activate</span>(context: <span class="t">PluginContext</span>) {
+  context.<span class="f">registerCommand</span>({
+    commandId: <span class="s">"hello.run"</span>,
+    <span class="k">async</span> <span class="f">execute</span>() {
+      <span class="k">await</span> context.tasks.<span class="f">run</span>(
+        { title: <span class="s">"Say hello"</span>, cancellable: <span class="k">true</span> },
+        <span class="k">async</span> (task) =&gt; task.<span class="f">log</span>(<span class="s">"Hello from a plugin\n"</span>),
+      );
+      <span class="k">await</span> context.notifications.<span class="f">success</span>(<span class="s">"Done"</span>, {
+        actions: [{ label: <span class="s">"Show output"</span>, commandId: <span class="s">"hello.output"</span> }],
+      });
+    },
+  });
+}</code></pre>
         </div>
       </div>
     </section>
 
-    <!-- Download -->
+    <!-- ============ Run anywhere ============ -->
+    <section class="section" id="run">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <p class="eyebrow">Run it your way</p>
+          <h2>Desktop app, or self-host it in the browser.</h2>
+        </div>
+        <div class="cards3">
+          <article class="card reveal">
+            <h3>Desktop</h3>
+            <p>Native app for Windows, macOS and Linux. Passwords go to your OS keychain.</p>
+            <a class="btn btn-primary btn-sm" href="#download">Download</a>
+          </article>
+          <article class="card reveal">
+            <h3>Browser (self-hosted)</h3>
+            <p>A small Node server serves the whole workbench — terminal and Git included. Keep it behind HTTPS if you expose it.</p>
+            <pre class="cmd"><code>docker build -t oneclient .
+docker run -p 127.0.0.1:4180:4180 \
+  -v oneclient-data:/data oneclient</code></pre>
+          </article>
+          <article class="card reveal">
+            <h3>From source</h3>
+            <p>TypeScript, React and Electron in a pnpm workspace. Clone it, hack on it, send a PR.</p>
+            <a class="btn btn-ghost btn-sm" href="https://github.com/AhmedKhalil777/OneClient#build-from-source">Build from source</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Download ============ -->
     <section class="section section-alt" id="download">
       <div class="wrap">
-        <div class="section-head">
+        <div class="section-head center reveal">
           <p class="eyebrow">Download</p>
           <h2>Get oneClient <span id="dl-version"></span></h2>
-          <p>Free. All plugins are included.</p>
+          <p>Free. Every plugin is included.</p>
         </div>
-        <div class="dl-grid">
+        <div class="dl-grid reveal">
           <div class="dl-card" data-os="win">
             <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10.5 4.5v7H3zm0 13 7.5 1v-7H3zm8.5 1.1L21 21v-8.5h-9.5zm0-15.2V11.5H21V3z"/></svg>
             <h3>Windows</h3>
@@ -319,37 +422,78 @@
             <a class="dl-alt" data-asset="win-zip" href="https://github.com/AhmedKhalil777/OneClient/releases/latest">Portable .zip</a>
           </div>
           <div class="dl-card" data-os="mac">
-            <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.5 2-3.7 2.1-3.8-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9-1.7 0-3.3 1-4.2 2.5-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8s2 .8 3.3.8c1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.8-1.1-2.8-4.1zM13.9 5.1c.7-.8 1.2-2 1-3.1-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4z"/></svg>
+            <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.5 2-3.7 2.1-3.8-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9-1.7 0-3.3 1-4.2 2.5-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.5 1.3-.1 1.8-.8 3.3-.8s2 .8 3.3.8c1.4 0 2.3-1.2 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.8-4zM14 5.2c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.2.1 2.3-.6 3.1-1.5z"/></svg>
             <h3>macOS</h3>
             <p>Apple silicon &amp; Intel</p>
             <a class="btn btn-primary" data-asset="mac-arm64" href="https://github.com/AhmedKhalil777/OneClient/releases/latest">Apple silicon (.dmg)</a>
             <a class="dl-alt" data-asset="mac-x64" href="https://github.com/AhmedKhalil777/OneClient/releases/latest">Intel (.dmg)</a>
           </div>
           <div class="dl-card" data-os="linux">
-            <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"><path fill="currentColor" d="M12 2c-2.2 0-3.6 1.9-3.6 4.6 0 1.4.3 2.4-.6 3.7-1.2 1.7-3 3.6-3 6.3 0 .6.1 1.1.3 1.6-.9.4-1.6 1-1.6 1.7 0 1.2 2 1.4 3.6 2.1.9.4 1.6.9 2.5.9.8 0 1.4-.4 1.8-.9h1.2c.4.5 1 .9 1.8.9.9 0 1.6-.5 2.5-.9 1.6-.7 3.6-.9 3.6-2.1 0-.7-.7-1.3-1.6-1.7.2-.5.3-1 .3-1.6 0-2.7-1.8-4.6-3-6.3-.9-1.3-.6-2.3-.6-3.7C15.6 3.9 14.2 2 12 2zm-1.5 4.5c.4 0 .7.5.7 1.1s-.3 1.1-.7 1.1-.7-.5-.7-1.1.3-1.1.7-1.1zm3 0c.4 0 .7.5.7 1.1s-.3 1.1-.7 1.1-.7-.5-.7-1.1.3-1.1.7-1.1zM12 9.6c.9 0 2 .6 2 1s-1.1 1.2-2 1.2-2-.8-2-1.2 1.1-1 2-1z"/></svg>
+            <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM7 10l3 2-3 2M12.5 14.5H17"/></svg>
             <h3>Linux</h3>
             <p>x64 · any modern distro</p>
             <a class="btn btn-primary" data-asset="linux-appimage" href="https://github.com/AhmedKhalil777/OneClient/releases/latest">AppImage</a>
             <a class="dl-alt" data-asset="linux-tar" href="https://github.com/AhmedKhalil777/OneClient/releases/latest">.tar.gz</a>
           </div>
         </div>
-        <p class="dl-note">The installers aren't code-signed yet, so Windows SmartScreen and macOS Gatekeeper will ask you to confirm the first launch. Every release lists SHA-256 checksums. <a href="https://github.com/AhmedKhalil777/OneClient/releases">All releases →</a></p>
+        <p class="dl-note">The installers aren't code-signed yet, so Windows SmartScreen and macOS Gatekeeper will ask you to confirm the first launch. Every release lists SHA-256 checksums. <a href="https://github.com/AhmedKhalil777/OneClient/releases">All releases</a></p>
       </div>
     </section>
 
-    <!-- FAQ -->
-    <section class="section section-alt" id="faq">
+    <!-- ============ Open source ============ -->
+    <section class="section" id="open">
       <div class="wrap">
-        <div class="section-head">
+        <div class="oss reveal">
+          <div>
+            <p class="eyebrow">Open source, MIT</p>
+            <h2>Built in the open. Help shape it.</h2>
+            <p>oneClient is free and MIT-licensed, and it gets better with every plugin, bug report and idea. If it saves you a tab or two, a star helps other developers find it.</p>
+            <div class="cta">
+              <a class="btn btn-primary" href="https://github.com/AhmedKhalil777/OneClient" rel="noopener">
+                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25z"/></svg>
+                <span>Star on GitHub</span><span class="star-count" data-stars hidden></span>
+              </a>
+              <a class="btn btn-ghost" href="https://github.com/AhmedKhalil777/OneClient/issues?q=is%3Aopen+label%3A%22good+first+issue%22" rel="noopener">Good first issues</a>
+              <a class="btn btn-ghost" href="https://github.com/AhmedKhalil777/OneClient/discussions" rel="noopener">Discussions</a>
+            </div>
+          </div>
+          <ul class="oss-list">
+            <li><strong>Plugins</strong><span>Add a database, broker or service</span></li>
+            <li><strong>Bug reports</strong><span>Every plugin logs to the Output panel — paste it in</span></li>
+            <li><strong>Ideas</strong><span>Fast Aggregates JSON export, more dialects…</span></li>
+            <li><strong>Docs &amp; screenshots</strong><span>Small PRs welcome</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FAQ ============ -->
+    <section class="section section-alt" id="faq">
+      <div class="wrap narrow">
+        <div class="section-head center reveal">
           <p class="eyebrow">Questions</p>
           <h2>Frequently asked questions</h2>
         </div>
-        <div class="faq">
+        <div class="faq reveal">
           <details><summary>Is there a free, open-source alternative to a separate database client, Kafka UI, Redis GUI and Postman?</summary><p>oneClient combines them in one VS Code-style app: PostgreSQL, SQL Server and MySQL / MariaDB clients, Apache Kafka, Redis, an HTTP client with Postman import, Docker, Azure Blob Storage and Keycloak. It is MIT-licensed and free.</p></details>
-          <details><summary>Does oneClient run in the browser?</summary><p>Yes. Besides the desktop app for Windows, macOS and Linux, there is a self-hosted web version: a small Node server you open from any browser.</p></details>
-          <details><summary>Which databases are supported?</summary><p>PostgreSQL (including Azure Database for PostgreSQL, AWS RDS / Aurora, Supabase, Neon and TimescaleDB), Microsoft SQL Server, and MySQL / MariaDB, with query windows, a table data editor, CSV import, execution plans, SSH tunnels and query history.</p></details>
-          <details><summary>Can an AI assistant work with my databases and files?</summary><p>The AI Assistant plugin chats with Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen, OpenRouter, Ollama or any OpenAI-compatible server using your own API key. It can list tables and run read-only SQL; statements that change data and every file edit wait for your approval.</p></details>
-          <details><summary>Can I write my own plugin?</summary><p>Yes. Plugins declare connection types, explorer trees, editors, commands, menus and title-bar quick actions in a manifest, and run in their own process. The plugin API is a typed package, @oneclient/plugin-api.</p></details>
+          <details><summary>What is a Fast Aggregate?</summary><p>Right-click a table and oneClient reads your foreign keys to build an editable aggregate: a paged list of the root rows, a form for each row, and its related tables — one-to-many and many-to-many — as tabs that open the same way. For example an Order with its Items, their Notes and its Tags. The configuration is a plain <code>.aggregate.json</code> file you can edit and commit.</p></details>
+          <details><summary>Does oneClient collect telemetry or need an account?</summary><p>No. There is no account and no telemetry. Connection passwords are encrypted with your operating system's keychain, and the AI assistant only talks to the provider you configure with your own API key.</p></details>
+          <details><summary>Does oneClient run in the browser?</summary><p>Yes. Besides the desktop app for Windows, macOS and Linux, there is a self-hosted web version: a small Node server you open from any browser, with a Dockerfile included.</p></details>
+          <details><summary>Which databases are supported?</summary><p>PostgreSQL (including Azure Database for PostgreSQL, AWS RDS / Aurora, Supabase, Neon and TimescaleDB), Microsoft SQL Server, and MySQL / MariaDB, with query windows, a table data editor, CSV import, execution plans and SSH tunnels.</p></details>
+          <details><summary>Can an AI assistant work with my databases and files?</summary><p>The AI Assistant plugin chats with Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen, OpenRouter, Ollama or any OpenAI-compatible server, using your own API key. It can list tables, run read-only SQL and propose file edits — anything that changes data waits for your approval.</p></details>
+          <details><summary>Can I write my own plugin?</summary><p>Yes. Plugins declare connection types, explorer trees, editors, commands, menus and title-bar quick actions in a manifest, and run in their own process. The plugin API is a typed package, <code>@oneclient/plugin-api</code>.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Final CTA ============ -->
+    <section class="final">
+      <div class="wrap final-inner reveal">
+        <h2>Close a few tabs.</h2>
+        <p>Download oneClient, point it at a database, and keep working in one place.</p>
+        <div class="cta">
+          <a class="btn btn-primary btn-lg" href="#download">Download oneClient</a>
+          <a class="btn btn-ghost btn-lg star-btn" href="https://github.com/AhmedKhalil777/OneClient" rel="noopener"><span>Star on GitHub</span><span class="star-count" data-stars hidden></span></a>
         </div>
       </div>
     </section>
@@ -357,12 +501,17 @@
 
   <footer class="footer">
     <div class="wrap footer-inner">
-      <a class="brand" href="#top"><img src="logo.svg" alt="" width="22" height="22" /> oneClient</a>
-      <p>One client for everything. Built in the open on <a href="https://github.com/AhmedKhalil777/OneClient">GitHub</a>.</p>
-      <nav>
-        <a href="https://github.com/AhmedKhalil777/OneClient/blob/main/ARCHITECTURE.md">Architecture</a>
-        <a href="https://github.com/AhmedKhalil777/OneClient/issues">Issues</a>
+      <div class="footer-brand">
+        <a class="brand" href="#top"><img src="logo.svg" alt="" width="22" height="22" /><span>oneClient</span></a>
+        <p>One client for everything. Built in the open under the MIT license.</p>
+      </div>
+      <nav aria-label="Footer">
+        <a href="https://github.com/AhmedKhalil777/OneClient">GitHub</a>
         <a href="https://github.com/AhmedKhalil777/OneClient/releases">Releases</a>
+        <a href="https://github.com/AhmedKhalil777/OneClient/blob/main/ARCHITECTURE.md">Architecture</a>
+        <a href="https://github.com/AhmedKhalil777/OneClient/tree/main/packages/plugin-api">Plugin API</a>
+        <a href="https://github.com/AhmedKhalil777/OneClient/issues">Issues</a>
+        <a href="https://github.com/AhmedKhalil777/OneClient/discussions">Discussions</a>
       </nav>
     </div>
   </footer>

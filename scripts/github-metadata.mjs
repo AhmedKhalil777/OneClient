@@ -5,7 +5,7 @@
 const REPO = process.env.GITHUB_REPOSITORY ?? "AhmedKhalil777/OneClient";
 
 const description =
-  "Free, open-source VS Code-style desktop & web client for PostgreSQL, SQL Server, MySQL, Kafka, Redis, Docker, REST APIs (Postman alternative), Azure Blob & Keycloak — with an AI assistant, Git graph and a plugin API.";
+  "One VS Code-style client for PostgreSQL, SQL Server, MySQL, Kafka, Redis, Docker & REST — Fast Aggregates, test-scenario pipelines, AI assistant, Git graph, plugin API. Free, open source, desktop & self-hosted web.";
 const homepage = "https://ahmedkhalil777.github.io/OneClient/";
 // Lower-case, hyphenated, at most 20 (GitHub's limit). These are what people search the GitHub topic pages for.
 const topics = [
@@ -22,13 +22,13 @@ const topics = [
   "azure-blob-storage",
   "keycloak",
   "ai-assistant",
-  "git-graph",
+  "testcontainers",
   "vscode-like",
   "developer-tools",
   "plugin-system",
   "electron",
   "typescript",
-  "react",
+  "database-client",
 ];
 
 const apply = process.argv.includes("--apply");
@@ -52,6 +52,7 @@ const api = async (method, path, body) => {
   if (!res.ok) throw new Error(`${method} ${path}: ${res.status} ${await res.text()}`);
 };
 
-await api("PATCH", "", { description, homepage });
+// Discussions give questions a home other than Issues (the issue templates link to them); the wiki is unused.
+await api("PATCH", "", { description, homepage, has_discussions: true, has_issues: true, has_wiki: false });
 await api("PUT", "/topics", { names: topics });
 console.log("Updated.");

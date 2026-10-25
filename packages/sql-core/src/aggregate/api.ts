@@ -4,7 +4,7 @@ import { findFiles, freeName, inFolder, type FolderStore } from "../fast-tools/f
 import { EditError, buildStatements, checkWhere, literal } from "../table-editor/sql.js";
 import { MAX_PAGE_SIZE, type PageQuery, type Statement, type TableAccess, type TableColumn, type TableTarget } from "../table-editor/types.js";
 import { sameTable } from "./model.js";
-import { candidateFilter, childFilter, justInsertedFilter, normalizeAggregate, optionLabel, parentFilter, parentLinks, searchFilter, suggestAggregate, validateAggregate } from "./model.js";
+import { candidateFilter, childFilter, justInsertedFilter, normalizeAggregate, optionLabel, parentFilter, parentLinks, parentName, parentValuesFilter, searchFilter, suggestAggregate, validateAggregate } from "./model.js";
 import type { AggregateConfig, AggregatePage, ForeignKey, ParentOption, Relation, TableRef } from "./types.js";
 
 export const AGGREGATE_EXT = ".aggregate.json";
@@ -351,6 +351,29 @@ export function createFastAggregates(
         }
       }
       return parentLinks(table, fks, (t) => columns.get(`${t.schema}.${t.table}`) ?? []);
+    },
+    /** The names of the parent rows a page of foreign key values points at: { "3": "Initech Ltd" }. */
+    async labels(cid, p) {
+      const database = str(p, "database");
+      const refTable = tableOf(p);
+      const column = str(p, "column");
+      const display = typeof p.display === "string" && p.display ? p.display : null;
+      const values = (Array.isArray(p.values) ? p.values : []).map(String);
+      const target: TableTarget = { database, ...refTable };
+      const columns = await columnsOf(cid, target);
+      const link = { column: "", refTable, refColumn: column, display };
+      const where = parentValuesFilter(link, columns, access, values);
+      if (!where) return { labels: {} };
+      const keyIndex = columns.findIndex((c) => c.name === column);
+      const nameIndex = display ? columns.findIndex((c) => c.name === display) : -1;
+      if (keyIndex < 0) throw new EditError(`Unknown column "${column}".`);
+      const rows = await access.fetchPage(cid, target, columns, { limit: 100, offset: 0, orderBy: [{ column, desc: false }], where });
+      const labels: Record<string, string> = {};
+      for (const r of rows) {
+        const name = nameIndex >= 0 ? parentName(r[nameIndex]) : "";
+        if (name) labels[String(r[keyIndex])] = name;
+      }
+      return { labels };
     },
     /** Parent rows to pick from (typed search), or the one row a foreign key value points at (to show its name). */
     async options(cid, p) {

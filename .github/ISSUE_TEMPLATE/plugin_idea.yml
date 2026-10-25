@@ -1,0 +1,31 @@
+name: Plugin idea
+description: A tool or service oneClient should support
+labels: [plugin, enhancement]
+body:
+  - type: input
+    id: tool
+    attributes:
+      label: Which tool or service?
+      placeholder: "MongoDB, RabbitMQ, S3, Elasticsearch, Vault…"
+    validations:
+      required: true
+  - type: textarea
+    id: jobs
+    attributes:
+      label: What do you do with it day to day?
+      description: The five things you'd want in the sidebar and editor first.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What do you use today, and what's missing?
+  - type: dropdown
+    id: build
+    attributes:
+      label: Want to build it?
+      description: A plugin is a manifest plus a small TypeScript entry — see packages/plugin-api.
+      options:
+        - No, just requesting
+        - Yes, I'd like to build it
+        - Yes, with guidance
