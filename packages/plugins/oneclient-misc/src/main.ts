@@ -1,3 +1,4 @@
+import { csharpTokens, cssTokens, javascriptTokens, typescriptTokens, yamlTokens } from "@oneclient/editor-core";
 import type { FileEditorRequest, PluginContext, TransformRequest, TransformResult } from "@oneclient/plugin-api";
 import { formatJson, jsonSymbols, jsonTokens, minifyJson } from "./json.js";
 import { formatSql, lowercaseKeywords, sqlSymbols, sqlTokens, uppercaseKeywords } from "./sql.js";
@@ -6,7 +7,7 @@ import { ensureFinalNewline, removeDuplicateLines, sortLinesAscending, sortLines
 import { formatXml, xmlSymbols, xmlTokens } from "./xml.js";
 
 /**
- * Miscellaneous file-editor support, one extension-host process for five file-type contributions to the Files
+ * Miscellaneous file-editor support, one extension-host process for the file-type contributions to the Files
  * editor's `oneclient.editors` point (declared in oneclient.json): JSON, XML, SQL, Markdown and text utilities.
  * The Files editor calls these commands with one `{ text, fileName, … }` request (see plugin-api/src/file-editor.ts).
  */
@@ -38,6 +39,13 @@ export function activate(context: PluginContext): void {
   on("xml.symbols", (args) => xmlSymbols(request(args).text));
   on("xml.tokens", (args) => xmlTokens(request(args).text));
 
+  // SVG: the text stays editable (XML), the preview shows the picture. Rendered as an <img>, so scripts in it never run.
+  on("svg.preview", (args) => ({
+    ok: true,
+    html: `<img class="svg" alt="SVG preview" src="data:image/svg+xml;base64,${Buffer.from(request(args).text, "utf8").toString("base64")}">`,
+    css: ".svg{display:block;max-width:100%;margin:0 auto;background:repeating-conic-gradient(#808080 0% 25%,#b0b0b0 0% 50%) 50%/16px 16px}",
+  }));
+
   // SQL
   on("sql.format", (args) => {
     const r = request<TransformRequest>(args);
@@ -47,6 +55,16 @@ export function activate(context: PluginContext): void {
   on("sql.tokens", (args) => sqlTokens(request(args).text));
   on("sql.uppercaseKeywords", (args) => uppercaseKeywords(request(args).text));
   on("sql.lowercaseKeywords", (args) => lowercaseKeywords(request(args).text));
+
+  // Code (tokenizers live in @oneclient/editor-core)
+  on("typescript.tokens", (args) => typescriptTokens(request(args).text));
+  on("tsx.tokens", (args) => typescriptTokens(request(args).text, true));
+  on("javascript.tokens", (args) => javascriptTokens(request(args).text));
+  on("jsx.tokens", (args) => javascriptTokens(request(args).text, true));
+  on("css.tokens", (args) => cssTokens(request(args).text));
+  on("scss.tokens", (args) => cssTokens(request(args).text, true));
+  on("yaml.tokens", (args) => yamlTokens(request(args).text));
+  on("csharp.tokens", (args) => csharpTokens(request(args).text));
 
   // Markdown
   on("markdown.symbols", (args) => markdownSymbols(request(args).text));

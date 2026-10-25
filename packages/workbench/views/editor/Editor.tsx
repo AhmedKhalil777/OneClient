@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { FeatureEditor } from "@oneclient/editor-kit/editor";
 import { Icon } from "@oneclient/editor-kit/react";
-import { fileName, filePath, readFile, writeFile } from "./api.js";
+import { fileName, filePath, isImage, readFile, writeFile } from "./api.js";
+import { ImageViewer } from "./ImageViewer.js";
 
 interface RevealMessage {
   type: "reveal";
@@ -24,7 +25,12 @@ type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: Da
  * actions — comes from other plugins through the shared <FeatureEditor> (`oneclient.editors`, see
  * plugin-api/src/file-editor.ts).
  */
+/** Images get a viewer; everything else the text editor. */
 export function Editor() {
+  return isImage ? <ImageViewer /> : <TextEditor />;
+}
+
+function TextEditor() {
   const [load, setLoad] = useState<LoadState>({ kind: "loading" });
   const [text, setText] = useState("");
   const [savedText, setSavedText] = useState("");

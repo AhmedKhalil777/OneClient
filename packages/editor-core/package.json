@@ -1,0 +1,31 @@
+{
+  "name": "@oneclient/editor-core",
+  "version": "0.1.0",
+  "description": "Editor core: dependency-free syntax tokenizers (TypeScript, JavaScript, CSS/SCSS/Less, C#) that produce the editor's token format.",
+  "license": "MIT",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@oneclient/plugin-api": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.11"
+  }
+}

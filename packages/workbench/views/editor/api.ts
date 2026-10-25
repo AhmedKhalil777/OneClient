@@ -3,6 +3,8 @@ export type ReadResult =
   | { ok: true; content: string; eol: "\n" | "\r\n"; bom: boolean; size: number }
   | { ok: false; error: string; reason?: "binary" | "tooLarge" };
 
+export type ImageResult = { ok: true; dataUrl: string; mime: string; size: number } | { ok: false; error: string };
+
 export type WriteResult = { ok: true; size: number } | { ok: false; error: string };
 
 const params = new URLSearchParams(location.search);
@@ -12,6 +14,12 @@ export const filePath = params.get("path") ?? "";
 
 export const readFile = () =>
   window.oneclientView.invokeCommand("files.readFile", [{ connectionId, path: filePath }]) as Promise<ReadResult>;
+
+export const readImage = () =>
+  window.oneclientView.invokeCommand("files.readImage", [{ connectionId, path: filePath }]) as Promise<ImageResult>;
+
+/** Extensions the image viewer opens (the backend decides the MIME type). */
+export const isImage = /.(png|jpe?g|jfif|gif|webp|bmp|ico|cur|avif|apng)$/i.test(filePath);
 
 export const writeFile = (content: string) =>
   window.oneclientView.invokeCommand("files.writeFile", [{ connectionId, path: filePath, content }]) as Promise<WriteResult>;

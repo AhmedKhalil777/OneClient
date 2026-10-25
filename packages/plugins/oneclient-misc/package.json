@@ -1,7 +1,7 @@
 {
   "name": "oneclient-misc",
   "version": "0.1.0",
-  "description": "oneclient built-in plugin: miscellaneous editor and explorer support — JSON, XML and Markdown tools, text utilities and the Material Icon Theme.",
+  "description": "oneclient built-in plugin: miscellaneous editor and explorer support — JSON, XML, Markdown, TypeScript, JavaScript, CSS and C# tools, text utilities and the Material Icon Theme.",
   "license": "MIT",
   "private": true,
   "main": "dist/main.js",
@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@oneclient/editor-core": "workspace:*",
     "@oneclient/plugin-api": "workspace:*",
     "highlight.js": "11.11.1",
     "jsonc-parser": "3.3.1",

@@ -114,6 +114,44 @@ export async function readTextFile(root: string, path: string): Promise<ReadResu
   }
 }
 
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+const IMAGE_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  jfif: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  ico: "image/x-icon",
+  cur: "image/x-icon",
+  avif: "image/avif",
+  apng: "image/apng",
+  svg: "image/svg+xml",
+};
+
+/** The image MIME type for a file name, if it is one the image viewer shows. */
+export function imageType(path: string): string | undefined {
+  return IMAGE_TYPES[path.slice(path.lastIndexOf(".") + 1).toLowerCase()];
+}
+
+export type ImageResult = { ok: true; dataUrl: string; mime: string; size: number } | { ok: false; error: string };
+
+/** An image file as a data: URL (the viewer is a sandboxed frame, so it cannot load the file itself). */
+export async function readImageFile(root: string, path: string): Promise<ImageResult> {
+  try {
+    const mime = imageType(path);
+    if (!mime) return { ok: false, error: "Not an image type the viewer supports." };
+    const absolute = resolveInRoot(root, path);
+    const info = await stat(absolute);
+    if (info.size > MAX_IMAGE_BYTES) return { ok: false, error: `Image is ${formatBytes(info.size)} — too large to preview.` };
+    const buffer = await readFile(absolute);
+    return { ok: true, dataUrl: `data:${mime};base64,${buffer.toString("base64")}`, mime, size: info.size };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 /** Writes the exact text the editor sends (it has already restored the file's line endings and BOM). */
 export async function writeTextFile(root: string, path: string, content: unknown): Promise<WriteResult> {
   if (typeof content !== "string") return { ok: false, error: "Missing file content." };

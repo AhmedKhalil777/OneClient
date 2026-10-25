@@ -1,7 +1,7 @@
 {
   "name": "oneclient-misc",
   "displayName": "Miscellaneous",
-  "description": "Built-in: JSON, XML, SQL and Markdown editor support, text utilities (sort, de-duplicate, trim) and the Material Icon Theme.",
+  "description": "Built-in: JSON, XML, SQL, Markdown, TypeScript, JavaScript, CSS, C# and YAML editor support, text utilities (sort, de-duplicate, trim) and the Material Icon Theme.",
   "version": "0.1.0",
   "publisher": "oneclient",
   "license": "MIT",
@@ -48,6 +48,11 @@
         "hidden": true
       },
       {
+        "id": "svg.preview",
+        "title": "SVG: Preview",
+        "hidden": true
+      },
+      {
         "id": "sql.format",
         "title": "SQL: Format Document",
         "hidden": true
@@ -60,6 +65,46 @@
       {
         "id": "sql.tokens",
         "title": "SQL: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "typescript.tokens",
+        "title": "TypeScript: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "tsx.tokens",
+        "title": "TypeScript React: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "javascript.tokens",
+        "title": "JavaScript: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "jsx.tokens",
+        "title": "JavaScript React: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "css.tokens",
+        "title": "CSS: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "scss.tokens",
+        "title": "SCSS / Less: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "csharp.tokens",
+        "title": "C#: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "yaml.tokens",
+        "title": "YAML: Syntax Tokens",
         "hidden": true
       },
       {
@@ -267,6 +312,87 @@
               "command": "texttools.ensureFinalNewline"
             }
           ]
+        },
+        {
+          "id": "typescript",
+          "label": "TypeScript",
+          "extensions": [
+            "ts",
+            "mts",
+            "cts"
+          ],
+          "tokens": "typescript.tokens"
+        },
+        {
+          "id": "tsx",
+          "label": "TypeScript React",
+          "extensions": [
+            "tsx"
+          ],
+          "tokens": "tsx.tokens"
+        },
+        {
+          "id": "javascript",
+          "label": "JavaScript",
+          "extensions": [
+            "js",
+            "mjs",
+            "cjs"
+          ],
+          "tokens": "javascript.tokens"
+        },
+        {
+          "id": "jsx",
+          "label": "JavaScript React",
+          "extensions": [
+            "jsx"
+          ],
+          "tokens": "jsx.tokens"
+        },
+        {
+          "id": "css",
+          "label": "CSS",
+          "extensions": [
+            "css"
+          ],
+          "tokens": "css.tokens"
+        },
+        {
+          "id": "scss",
+          "label": "SCSS / Less",
+          "extensions": [
+            "scss",
+            "less"
+          ],
+          "tokens": "scss.tokens"
+        },
+        {
+          "id": "csharp",
+          "label": "C#",
+          "extensions": [
+            "cs",
+            "csx",
+            "cake"
+          ],
+          "tokens": "csharp.tokens"
+        },
+        {
+          "id": "yaml",
+          "label": "YAML",
+          "extensions": [
+            "yml",
+            "yaml"
+          ],
+          "tokens": "yaml.tokens"
+        },
+        {
+          "id": "svg",
+          "label": "SVG",
+          "extensions": [
+            "svg"
+          ],
+          "preview": "svg.preview",
+          "previewByDefault": true
         }
       ]
     },

@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { basename, isAbsolute, relative, resolve, sep } from "node:path";
 import type { SearchResult, TreeNode } from "@oneclient/plugin-api";
 import type { ConfigStore } from "../config/config-store.js";
-import { EDITOR_VIEW, type EntryData, deleteEntry, listDirectory, newFile, newFolder, readTextFile, renameEntry, writeTextFile } from "./files.js";
+import { EDITOR_VIEW, type EntryData, deleteEntry, listDirectory, newFile, newFolder, readImageFile, readTextFile, renameEntry, writeTextFile } from "./files.js";
 import type { FindOptions, ReplaceOptions } from "./search.js";
 import type { SearchWorker } from "./search-client.js";
 
@@ -157,6 +157,7 @@ export class WorkspaceService {
     };
     return {
       "files.readFile": async (a) => readTextFile(root(a), path(a)),
+      "files.readImage": async (a) => readImageFile(root(a), path(a)),
       "files.writeFile": async (a) => writeTextFile(root(a), path(a), a.content),
       "files.newFile": async (a) => newFile(root(a), path(a), a.name),
       "files.newFolder": async (a) => newFolder(root(a), path(a), a.name),
