@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { TreeNode } from "@oneclient/plugin-api";
 import type { SearchHit, WorkbenchShortcut, WorkspaceFolderInfo } from "@oneclient/backend/shared/ipc-contract.js";
 import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "@oneclient/backend/shared/types.js";
@@ -75,10 +75,7 @@ function useResizableSidebar() {
     return stored >= SIDEBAR_MIN && stored <= SIDEBAR_MAX ? stored : SIDEBAR_DEFAULT;
   });
 
-  // The layout reads the width from this CSS variable, so a drag can move it frame by frame without re-rendering the
-  // app (and everything in it) on every mouse move; React only learns the final width when the drag ends.
-  useLayoutEffect(() => {
-    document.documentElement.style.setProperty("--sidebar-width", `${width}px`);
+  useEffect(() => {
     localStorage.setItem(SIDEBAR_STORAGE_KEY, String(width));
   }, [width]);
 
@@ -86,14 +83,20 @@ function useResizableSidebar() {
     if (e.button !== 0) return;
     e.preventDefault();
     const handle = e.currentTarget;
+    const wrapper = handle.closest<HTMLElement>(".sidebar-wrapper");
+    const app = wrapper?.parentElement;
+    if (!wrapper || !app) return;
     // Pointer capture: the handle keeps getting the moves when the pointer crosses a view's iframe or leaves the window.
     handle.setPointerCapture(e.pointerId);
     document.body.classList.add("sidebar-resizing");
     let latest = width;
     let frame = 0;
+    // During the drag only these two elements' styles change (not a CSS variable on the root, which would make the
+    // browser re-resolve styles for the whole page), and React isn't involved: it learns the final width at the end.
     const apply = () => {
       frame = 0;
-      document.documentElement.style.setProperty("--sidebar-width", `${latest}px`);
+      app.style.gridTemplateColumns = `var(--activity-bar-width) ${latest}px 1fr`;
+      wrapper.style.width = `${latest}px`;
     };
     const onMove = (ev: PointerEvent) => {
       latest = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, ev.clientX - ACTIVITY_BAR_WIDTH));
@@ -1409,7 +1412,7 @@ export function App() {
       className="app"
       style={{
         gridTemplateColumns: container.visible
-          ? "var(--activity-bar-width) var(--sidebar-width) 1fr"
+          ? `var(--activity-bar-width) ${sidebar.width}px 1fr`
           : "var(--activity-bar-width) 1fr",
       }}
     >
@@ -1424,7 +1427,7 @@ export function App() {
         onManage={openManageMenu}
       />
 
-      <div className="sidebar-wrapper" style={{ width: "var(--sidebar-width)" }} hidden={!container.visible}>
+      <div className="sidebar-wrapper" style={{ width: sidebar.width }} hidden={!container.visible}>
         {/* Search stays mounted once opened, so its query and results survive switching containers. */}
         {(container.active === "search" || searchMounted) && (
           <div hidden={container.active !== "search"} className="sidebar-slot">
