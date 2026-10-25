@@ -467,3 +467,47 @@
 .oce-find-marks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .oce-find-mark { position: absolute; background: var(--oc-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33)); border-radius: 2px; }
 .oce-find-mark.current { background: var(--oc-editor-findMatchBackground, rgba(81, 92, 106, 0.9)); outline: 1px solid var(--oc-editor-findMatchBorder, #f8b24c); }
+
+/* ---- compact icon toolbar ---- */
+.oce-toolbar {
+  gap: 2px;
+  padding: 2px 8px;
+  min-height: 30px;
+}
+.oce-toolbar .oce-file-name {
+  margin-right: 6px;
+}
+.oce-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  color: var(--oce-text);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.oce-icon-btn:hover:not(:disabled) {
+  background: var(--oc-toolbar-hoverBackground, rgba(128, 128, 128, 0.22));
+}
+.oce-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.oce-icon-btn.on {
+  background: var(--oc-list-activeSelectionBackground, #37373d);
+  border-color: var(--oce-accent);
+}
+.oce-icon-btn.primary {
+  color: var(--oce-accent);
+}
+.oce-icon-btn.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--oce-accent) 22%, transparent);
+}
+.oce-menu {
+  right: 0;
+  top: calc(100% + 2px);
+}

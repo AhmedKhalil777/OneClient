@@ -164,6 +164,26 @@ export function App() {
   const welcomeClosed = localStorage.getItem("oneclient.welcomeClosed") === "1";
   const [tabs, setTabs] = useState<Tab[]>(welcomeClosed ? [] : [{ id: "welcome", title: "Welcome", kind: "welcome" }]);
   const [activeTabId, setActiveTabId] = useState(welcomeClosed ? "" : "welcome");
+  // Split editor: the tabs listed in `rightIds` form a second group beside the first (every other tab is in the left
+  // group). All tabs stay in the one `tabs` list, so a view keeps running — and keeps its unsaved edits — when it moves
+  // between groups. `activeTabId` is the left group's active tab.
+  const [rightIds, setRightIds] = useState<string[]>([]);
+  const [rightActiveId, setRightActiveId] = useState("");
+  /** The group that Save, Close, the shortcuts and new tabs act on. */
+  const [focusRight, setFocusRight] = useState(false);
+  const [splitRatio, setSplitRatio] = useState(() => {
+    const stored = Number(localStorage.getItem("oneclient.splitRatio"));
+    return stored >= 0.2 && stored <= 0.8 ? stored : 0.5;
+  });
+  /** The tab being dragged between groups (shows the drop zones). */
+  const [draggingTab, setDraggingTab] = useState<string | null>(null);
+  const leftTabs = tabs.filter((t) => !rightIds.includes(t.id));
+  const rightTabs = tabs.filter((t) => rightIds.includes(t.id));
+  const split = rightTabs.length > 0;
+  const leftActive = leftTabs.find((t) => t.id === activeTabId) ?? leftTabs[0];
+  const rightActive = rightTabs.find((t) => t.id === rightActiveId) ?? rightTabs[0];
+  /** The focused group's active tab: what the menus, Save and Close apply to. */
+  const activeTab = focusRight && rightActive ? rightActive : leftActive;
   const sidebar = useResizableSidebar();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -363,12 +383,26 @@ export function App() {
   // Switching to a plugin tab gives its view keyboard focus — so typing goes to it, and it learns
   // it's the active one (e.g. the query editor tells Query Results which window's results to show).
   useEffect(() => {
-    const tab = tabs.find((t) => t.id === activeTabId);
-    if (tab?.kind !== "tier2-view") return;
-    const timer = setTimeout(() => void window.oneclient.focusView(tab.instanceId), 80);
+    if (activeTab?.kind !== "tier2-view") return;
+    const instanceId = activeTab.instanceId;
+    const timer = setTimeout(() => void window.oneclient.focusView(instanceId), 80);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTabId]);
+  }, [activeTab?.id]);
+
+  // Clicking inside a view's iframe doesn't reach the shell, but the page loses focus to the iframe: that tells which
+  // group the click was in, so Save, Close and the shortcuts then act on that group.
+  useEffect(() => {
+    const onBlur = () =>
+      setTimeout(() => {
+        const el = document.activeElement;
+        if (!(el instanceof HTMLIFrameElement)) return;
+        const group = el.closest<HTMLElement>(".tier2-slot")?.dataset.group;
+        if (group) setFocusRight(group === "right");
+      }, 0);
+    window.addEventListener("blur", onBlur);
+    return () => window.removeEventListener("blur", onBlur);
+  }, []);
 
   function openWelcome() {
     localStorage.removeItem("oneclient.welcomeClosed");
@@ -390,20 +424,113 @@ export function App() {
       .catch((err: unknown) => pushToast("error", `Import: ${err instanceof Error ? err.message : String(err)}`));
   }
 
+  /** Shows a tab and gives its group the focus. */
+  function activateTab(id: string) {
+    if (rightIds.includes(id)) {
+      setRightActiveId(id);
+      setFocusRight(true);
+    } else {
+      setActiveTabId(id);
+      setFocusRight(false);
+    }
+  }
+
   function openTab(tab: Tab) {
-    setTabs((prev) => (prev.some((t) => t.id === tab.id) ? prev : [...prev, tab]));
-    setActiveTabId(tab.id);
+    if (tabs.some((t) => t.id === tab.id)) return activateTab(tab.id);
+    setTabs((prev) => [...prev, tab]);
+    // A new tab opens in the group that has the focus.
+    if (focusRight && split) {
+      setRightIds((prev) => [...prev, tab.id]);
+      setRightActiveId(tab.id);
+    } else {
+      setActiveTabId(tab.id);
+      setFocusRight(false);
+    }
   }
 
   function closeTabs(ids: string[]) {
     const closing = new Set(ids);
-    const index = tabs.findIndex((t) => closing.has(t.id));
-    const remaining = tabs.filter((t) => !closing.has(t.id));
     if (closing.has("welcome")) localStorage.setItem("oneclient.welcomeClosed", "1");
-    setTabs(remaining);
+    const leftBefore = tabs.filter((t) => !rightIds.includes(t.id));
+    const rightBefore = tabs.filter((t) => rightIds.includes(t.id));
+    const leftAfter = leftBefore.filter((t) => !closing.has(t.id));
+    const rightAfter = rightBefore.filter((t) => !closing.has(t.id));
+    // Like VS Code: closing a group's active tab focuses its neighbour, not the first tab.
+    const neighbour = (before: Tab[], after: Tab[]) => after[Math.min(Math.max(0, before.findIndex((t) => closing.has(t.id))), after.length - 1)]?.id ?? "";
+    setTabs(tabs.filter((t) => !closing.has(t.id)));
     setDirtyViews((prev) => new Set([...prev].filter((id) => !closing.has(id))));
-    // Like VS Code: closing the active tab focuses its neighbour, not the first tab.
-    if (closing.has(activeTabId)) setActiveTabId(remaining[Math.min(index, remaining.length - 1)]?.id ?? "");
+    if (leftAfter.length === 0 && rightAfter.length > 0) {
+      // The left group emptied: the right one takes its place.
+      setActiveTabId(closing.has(rightActiveId) || !rightAfter.some((t) => t.id === rightActiveId) ? neighbour(rightBefore, rightAfter) : rightActiveId);
+      setRightIds([]);
+      setFocusRight(false);
+      return;
+    }
+    if (closing.has(activeTabId)) setActiveTabId(neighbour(leftBefore, leftAfter));
+    setRightIds(rightAfter.map((t) => t.id));
+    if (rightAfter.length === 0) setFocusRight(false);
+    else if (closing.has(rightActiveId)) setRightActiveId(neighbour(rightBefore, rightAfter));
+  }
+
+  /** Moves a tab to the right group (creating it) or back to the left one. The view isn't re-created: it keeps its state. */
+  function moveTab(id: string, toRight: boolean) {
+    const inRight = rightIds.includes(id);
+    if (toRight === inRight || !tabs.some((t) => t.id === id)) return;
+    if (toRight) {
+      if (leftTabs.length < 2) return pushToast("info", "Open another editor first — a split needs a tab on each side.");
+      const index = leftTabs.findIndex((t) => t.id === id);
+      const rest = leftTabs.filter((t) => t.id !== id);
+      if (id === leftActive?.id) setActiveTabId(rest[Math.min(index, rest.length - 1)]!.id);
+      setRightIds((prev) => [...prev, id]);
+      setRightActiveId(id);
+      setFocusRight(true);
+    } else {
+      const rest = rightIds.filter((r) => r !== id);
+      setRightIds(rest);
+      if (rest.length && id === rightActive?.id) setRightActiveId(rest[rest.length - 1]!);
+      setActiveTabId(id);
+      setFocusRight(false);
+    }
+  }
+
+  /** Closes tabs, asking first when some have unsaved changes. */
+  async function closeWithConfirm(ids: string[], what: string) {
+    if (ids.length === 0) return;
+    const unsaved = ids.filter((id) => dirtyViews.has(id)).length;
+    if (unsaved > 0) {
+      const ok = await prompts.confirm({
+        title: "Unsaved Changes",
+        message: `${unsaved} editor(s) have unsaved changes. Close ${what} and discard them?`,
+        confirmLabel: "Discard Changes",
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    closeTabs(ids);
+  }
+
+  /** Close Saved: every editor without unsaved changes (in both groups). */
+  const closeSavedTabs = () => closeTabs(tabs.filter((t) => !dirtyViews.has(t.id)).map((t) => t.id));
+
+  /** The menu of a tab (right-click) or of a group's "…" button: closing and moving editors. */
+  function openEditorMenu(x: number, y: number, group: "left" | "right", tab: Tab | undefined) {
+    const inGroup = group === "right" ? rightTabs : leftTabs;
+    const index = tab ? inGroup.findIndex((t) => t.id === tab.id) : -1;
+    const items: ContextMenuItem[] = [];
+    if (tab) items.push({ id: "close", label: "Close", run: () => void requestCloseTab(tab.id) });
+    if (tab) items.push({ id: "others", label: "Close Others", run: () => void closeWithConfirm(inGroup.filter((t) => t.id !== tab.id).map((t) => t.id), "the others") });
+    if (tab) items.push({ id: "right", label: "Close to the Right", run: () => void closeWithConfirm(inGroup.slice(index + 1).map((t) => t.id), "the editors to the right") });
+    items.push({ id: "saved", label: "Close Saved Editors", separator: items.length > 0, run: closeSavedTabs });
+    items.push({ id: "all", label: "Close All Editors", run: () => void closeAllTabs() });
+    const target = tab ?? (group === "right" ? rightActive : leftActive);
+    if (target) {
+      items.push(
+        group === "right"
+          ? { id: "move", label: "Move Editor to Left Group", separator: true, run: () => moveTab(target.id, false) }
+          : { id: "move", label: "Split Editor Right", separator: true, run: () => moveTab(target.id, true) },
+      );
+    }
+    setMenu({ x, y, items });
   }
 
   async function requestCloseTab(id: string) {
@@ -705,6 +832,10 @@ export function App() {
       { id: "git.checkout", title: "Git: Checkout to…", run: () => activeRepoRef.current && void scmActionsRef.current.pickBranch(activeRepoRef.current) },
       { id: "git.branch", title: "Git: Create Branch…", run: () => activeRepoRef.current && scmActionsRef.current.createBranch(activeRepoRef.current) },
       { id: "git.show", title: "View: Show Source Control", description: "Ctrl+Shift+G", run: () => container.show("scm") },
+      { id: "workbench.closeAll", title: "View: Close All Editors", run: () => void closeAllTabs() },
+      { id: "workbench.closeSaved", title: "View: Close Saved Editors", run: closeSavedTabs },
+      { id: "workbench.splitRight", title: "View: Split Editor Right", run: () => activeTab && moveTab(activeTab.id, true) },
+      { id: "workbench.moveLeft", title: "View: Move Editor to Left Group", run: () => activeTab && moveTab(activeTab.id, false) },
       { id: "workbench.welcome", title: "Help: Welcome / Feature Guide", run: openWelcome },
       { id: "workbench.reloadWindow", title: "Reload Window", run: () => location.reload() },
       { id: "workbench.openPluginManager", title: "Open Plugin Manager", run: () => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" }) },
@@ -754,7 +885,6 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [registry.commands, panelViews, panel.toggle, panel.show]);
 
-  const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
   const activeView = activeTab?.kind === "tier2-view" ? activeTab : undefined;
   const terminalView = TERMINAL_VIEW;
 
@@ -1156,7 +1286,11 @@ export function App() {
           },
           { id: "save", label: "Save", accel: "Ctrl+S", separator: true, enabled: hasEditor, run: () => pressInEditor("Ctrl+S") },
           { id: "closeEditor", label: "Close Editor", accel: "Ctrl+W", separator: true, enabled: tabs.length > 0, run: () => shortcutRef.current("closeEditor") },
+          { id: "closeSaved", label: "Close Saved Editors", enabled: tabs.some((t) => !dirtyViews.has(t.id)), run: closeSavedTabs },
           { id: "closeAll", label: "Close All Editors", enabled: tabs.length > 0, run: () => void closeAllTabs() },
+          activeTab && !split
+            ? { id: "splitRight", label: "Split Editor Right", separator: true, enabled: tabs.length > 1, run: () => moveTab(activeTab.id, true) }
+            : { id: "splitRight", label: focusRight ? "Move Editor to Left Group" : "Split Editor Right", separator: true, enabled: !!activeTab && (focusRight || tabs.length > 1), run: () => activeTab && moveTab(activeTab.id, !focusRight) },
           ...withGroup(contributed("file")),
           { id: "import", label: "Import Connections…", separator: true, run: importConnections },
           { id: "export", label: "Export Connections…", run: exportConnections },
@@ -1243,7 +1377,7 @@ export function App() {
           {
             id: "switchEditor",
             label: "Switch Editor",
-            submenu: tabs.map((t) => ({ id: `tab:${t.id}`, label: t.title, checked: t.id === activeTab?.id, run: () => setActiveTabId(t.id) })),
+            submenu: tabs.map((t) => ({ id: `tab:${t.id}`, label: t.title, checked: t.id === activeTab?.id, run: () => activateTab(t.id) })),
           },
           ...withGroup(contributed("go")),
         ],
@@ -1386,10 +1520,10 @@ export function App() {
         if (activeTab) void requestCloseTab(activeTab.id);
         return;
       case "nextEditor":
-        if (tabs.length > 1) setActiveTabId(tabs[(index + 1) % tabs.length]!.id);
+        if (tabs.length > 1) activateTab(tabs[(index + 1) % tabs.length]!.id);
         return;
       case "previousEditor":
-        if (tabs.length > 1) setActiveTabId(tabs[(index - 1 + tabs.length) % tabs.length]!.id);
+        if (tabs.length > 1) activateTab(tabs[(index - 1 + tabs.length) % tabs.length]!.id);
         return;
       case "zoomIn":
       case "zoomOut":
@@ -1406,6 +1540,154 @@ export function App() {
     const style = getComputedStyle(bar);
     void window.oneclient.setTitleBarColors(toHex(style.backgroundColor), toHex(style.color));
   }, [theme]);
+
+  /** A drop target for a dragged tab: dropping moves it to that group. */
+  const dropOn = (toRight: boolean) => ({
+    onDragOver: (e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData("text/plain") || draggingTab;
+      setDraggingTab(null);
+      if (id) moveTab(id, toRight);
+    },
+  });
+
+  /** Drag the divider between the two groups: the ratio is written straight to the area (one layout per frame), and React learns it at the end. */
+  function startSplitResize(e: React.PointerEvent<HTMLElement>) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const handle = e.currentTarget;
+    const area = handle.parentElement as HTMLElement;
+    handle.setPointerCapture(e.pointerId);
+    document.body.classList.add("group-resizing");
+    const rect = area.getBoundingClientRect();
+    let latest = splitRatio;
+    let frame = 0;
+    const apply = () => {
+      frame = 0;
+      area.style.setProperty("--split", String(latest));
+    };
+    const onMove = (ev: PointerEvent) => {
+      latest = Math.min(0.8, Math.max(0.2, (ev.clientX - rect.left) / rect.width));
+      if (!frame) frame = requestAnimationFrame(apply);
+    };
+    const onEnd = () => {
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onEnd);
+      handle.removeEventListener("pointercancel", onEnd);
+      if (frame) cancelAnimationFrame(frame);
+      document.body.classList.remove("group-resizing");
+      localStorage.setItem("oneclient.splitRatio", String(latest));
+      setSplitRatio(latest);
+    };
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onEnd);
+    handle.addEventListener("pointercancel", onEnd);
+  }
+
+  /** One group's tab strip with its compact action buttons (split / move, and a menu for closing). */
+  function renderGroupBar(group: "left" | "right", groupTabs: Tab[], groupActiveId: string | undefined) {
+    const target = groupTabs.find((t) => t.id === groupActiveId);
+    return (
+      <div
+        key={group}
+        className={`group-bar ${group} ${focusRight === (group === "right") && split ? "focused" : ""}`}
+        onMouseDownCapture={() => setFocusRight(group === "right")}
+        {...dropOn(group === "right")}
+      >
+        <div className="tab-bar">
+          {groupTabs.map((t) => {
+            const dirty = dirtyViews.has(t.id);
+            return (
+              <div
+                key={t.id}
+                className={`tab ${t.id === groupActiveId ? "active" : ""}`}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("text/plain", t.id);
+                  e.dataTransfer.effectAllowed = "move";
+                  setDraggingTab(t.id);
+                }}
+                onDragEnd={() => setDraggingTab(null)}
+                onClick={() => activateTab(t.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  openEditorMenu(e.clientX, e.clientY, group, t);
+                }}
+                onAuxClick={(e) => {
+                  if (e.button === 1) void requestCloseTab(t.id);
+                }}
+              >
+                {t.kind === "tier2-view" && t.resource && <TabIcon resource={t.resource} />}
+                {t.kind === "tier2-view" && !t.resource && t.icon && <AssetIcon pluginId={t.pluginId} icon={t.icon} size={14} />}
+                {t.title}
+                <span
+                  className={`tab-close ${dirty ? "dirty" : ""}`}
+                  title={dirty ? "Unsaved changes — close" : "Close"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void requestCloseTab(t.id);
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <div className="tab-actions">
+          {group === "left" ? (
+            <button className="icon-button" title="Split Editor Right" aria-label="Split Editor Right" disabled={!target || tabs.length < 2} onClick={() => target && moveTab(target.id, true)}>
+              <ThemeIcon id="split-right" size={15} />
+            </button>
+          ) : (
+            <button className="icon-button" title="Move Editor to Left Group" aria-label="Move Editor to Left Group" disabled={!target} onClick={() => target && moveTab(target.id, false)}>
+              <ThemeIcon id="split-right" size={15} />
+            </button>
+          )}
+          <button
+            className="icon-button"
+            title="More Actions — Close All, Close Saved…"
+            aria-label="More Actions"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              openEditorMenu(r.right - 200, r.bottom + 2, group, undefined);
+            }}
+          >
+            <ThemeIcon id="ellipsis" size={15} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /** What a group shows for a tab that isn't a view (views are drawn by their slots above the pane). */
+  function renderPane(group: "left" | "right", tab: Tab | undefined) {
+    return (
+      <div key={`pane-${group}`} className={`group-pane ${group} ${tab?.kind === "tier2-view" ? "bleed" : ""}`} onMouseDownCapture={() => setFocusRight(group === "right")}>
+        {tab?.kind === "welcome" && (
+          <WelcomePage
+            plugins={plugins}
+            onNewConnection={() => setNewConnectionFor({ pluginId: null })}
+            onCommandPalette={() => setPaletteOpen(true)}
+            onPlugins={() => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" })}
+            onColorTheme={() => void openThemePicker("color")}
+            onIconTheme={() => void openThemePicker("icon")}
+            onImportConnections={importConnections}
+          />
+        )}
+        {!tab && (
+          <div className="welcome-empty">
+            <p>No editors are open.</p>
+            <button className="welcome-action" onClick={openWelcome}>Open the Feature Guide</button>
+          </div>
+        )}
+        {tab?.kind === "plugin-manager" && <PluginManagerPanel plugins={plugins} />}
+        {tab?.kind === "command-result" && <pre className="result">{JSON.stringify(tab.result, null, 2)}</pre>}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -1468,72 +1750,42 @@ export function App() {
       </div>
 
       <div className="main-area">
-        <div className="tab-bar">
-          {tabs.map((t) => {
-            const dirty = dirtyViews.has(t.id);
-            return (
-              <div
-                key={t.id}
-                className={`tab ${t.id === activeTabId ? "active" : ""}`}
-                onClick={() => setActiveTabId(t.id)}
-                onAuxClick={(e) => {
-                  if (e.button === 1) void requestCloseTab(t.id);
-                }}
-              >
-                {t.kind === "tier2-view" && t.resource && <TabIcon resource={t.resource} />}
-                {t.kind === "tier2-view" && !t.resource && t.icon && <AssetIcon pluginId={t.pluginId} icon={t.icon} size={14} />}
-                {t.title}
-                <span
-                  className={`tab-close ${dirty ? "dirty" : ""}`}
-                  title={dirty ? "Unsaved changes — close" : "Close"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void requestCloseTab(t.id);
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
+        <div className={`editor-area ${split ? "split" : ""}`} style={{ "--split": splitRatio } as React.CSSProperties}>
+          <div className="editor-head">
+            {renderGroupBar("left", leftTabs, leftActive?.id)}
+            {split && renderGroupBar("right", rightTabs, rightActive?.id)}
+          </div>
 
-        <div className={`tab-content ${activeTab?.kind === "tier2-view" ? "tab-content-bleed" : ""}`}>
-          {activeTab?.kind === "welcome" && (
-            <WelcomePage
-              plugins={plugins}
-              onNewConnection={() => setNewConnectionFor({ pluginId: null })}
-              onCommandPalette={() => setPaletteOpen(true)}
-              onPlugins={() => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" })}
-              onColorTheme={() => void openThemePicker("color")}
-              onIconTheme={() => void openThemePicker("icon")}
-              onImportConnections={importConnections}
-            />
-          )}
-          {!activeTab && (
-            <div className="welcome-empty">
-              <p>No editors are open.</p>
-              <button className="welcome-action" onClick={openWelcome}>Open the Feature Guide</button>
-            </div>
-          )}
-          {activeTab?.kind === "plugin-manager" && <PluginManagerPanel plugins={plugins} />}
-          {activeTab?.kind === "command-result" && (
-            <pre className="result">{JSON.stringify(activeTab.result, null, 2)}</pre>
-          )}
-          {/* Every Tier 2 tab stays mounted (just hidden) so its view keeps its state across tab switches. */}
-          {tabs.map(
-            (t) =>
-              t.kind === "tier2-view" && (
-                <div key={t.instanceId} className="tier2-slot" hidden={t.id !== activeTab?.id}>
+          <div className="tab-content">
+            {renderPane("left", leftActive)}
+            {split && renderPane("right", rightActive)}
+            {/* Every Tier 2 tab stays mounted (just hidden) so its view keeps its state across tab switches and across groups. */}
+            {tabs.map((t) => {
+              if (t.kind !== "tier2-view") return null;
+              const group = rightIds.includes(t.id) ? "right" : "left";
+              const groupActive = group === "right" ? rightActive : leftActive;
+              return (
+                <div key={t.instanceId} className={`tier2-slot g-${group}`} data-group={group} hidden={t.id !== groupActive?.id}>
                   <Tier2ViewHost
                     instanceId={t.instanceId}
                     pluginId={t.pluginId}
                     viewId={t.viewId}
                     connectionId={t.connectionId}
                     params={t.params}
-                    active={t.id === activeTab?.id && !overlayOpen}
+                    active={t.id === groupActive?.id && !overlayOpen}
                   />
                 </div>
-              ),
-          )}
+              );
+            })}
+            {/* While a tab is being dragged: drop on a side to put it in that group (a view's iframe would swallow the drop). */}
+            {draggingTab && (
+              <>
+                {split && <div className="drop-zone left" {...dropOn(false)}>Left group</div>}
+                <div className={`drop-zone right ${split ? "" : "alone"}`} {...dropOn(true)}>{split ? "Right group" : "Split editor right"}</div>
+              </>
+            )}
+          </div>
+          {split && <div className="group-divider" onPointerDown={startSplitResize} title="Drag to resize the groups" />}
         </div>
 
         <Panel state={panel} overlayOpen={overlayOpen} onRunTask={() => void pickTask()} />

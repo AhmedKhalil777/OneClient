@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { FeatureEditor } from "@oneclient/editor-kit/editor";
+import { Icon } from "@oneclient/editor-kit/react";
 import { fileName, filePath, readFile, writeFile } from "./api.js";
 
 interface RevealMessage {
@@ -118,11 +119,11 @@ export function Editor() {
       }
       toolbarEnd={
         <>
-          <button className="oce-btn" disabled={!dirty || save.kind === "saving"} onClick={() => void reload()} title="Discard changes and reload from disk">
-            Revert
+          <button className="oce-icon-btn" disabled={!dirty || save.kind === "saving"} onClick={() => void reload()} title="Revert — discard changes and reload from disk" aria-label="Revert">
+            <Icon id="discard" size={15} />
           </button>
-          <button className="oce-btn oce-btn-primary" disabled={!dirty || save.kind === "saving"} onClick={() => void doSave()} title="Save (Ctrl+S)">
-            {save.kind === "saving" ? "Saving…" : "Save"}
+          <button className={`oce-icon-btn ${dirty ? "primary" : ""}`} disabled={!dirty || save.kind === "saving"} onClick={() => void doSave()} title={save.kind === "saving" ? "Saving…" : "Save (Ctrl+S)"} aria-label="Save">
+            <Icon id={save.kind === "saving" ? "refresh" : "save"} size={15} />
           </button>
         </>
       }

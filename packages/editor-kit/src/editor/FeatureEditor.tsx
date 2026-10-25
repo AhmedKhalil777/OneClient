@@ -284,14 +284,14 @@ export function FeatureEditor({
         {toolbarStart ?? <span className="oce-file-name">{fileName}</span>}
         <span className="oce-spacer" />
         {features?.format && !readOnly && (
-          <button className="oce-btn" disabled={busy !== null} onClick={() => void runTransform(features.format!, "Format")} title="Format Document (Shift+Alt+F)">
-            {busy === "Format" ? "Formatting…" : "Format"}
+          <button className="oce-icon-btn" disabled={busy !== null} onClick={() => void runTransform(features.format!, "Format")} title={busy === "Format" ? "Formatting…" : "Format Document (Shift+Alt+F)"} aria-label="Format Document">
+            <Icon id={busy === "Format" ? "refresh" : "format"} size={15} />
           </button>
         )}
         {actions.length > 0 && !readOnly && (
           <div className="oce-menu-anchor" ref={actionsRef}>
-            <button className="oce-btn" onClick={() => setActionsOpen((v) => !v)} aria-haspopup="menu" aria-expanded={actionsOpen}>
-              Actions <Icon id="chevron-down" size={12} />
+            <button className={`oce-icon-btn ${actionsOpen ? "on" : ""}`} onClick={() => setActionsOpen((v) => !v)} aria-haspopup="menu" aria-expanded={actionsOpen} title="Actions" aria-label="Actions">
+              <Icon id="ellipsis" size={15} />
             </button>
             {actionsOpen && (
               <div className="oce-menu" role="menu">
@@ -314,8 +314,8 @@ export function FeatureEditor({
           </div>
         )}
         {features?.preview && !large && (
-          <button className={`oce-btn ${showPreview ? "oce-btn-on" : ""}`} onClick={() => setPreviewChoice(!showPreview)} title="Toggle preview" aria-pressed={showPreview}>
-            <Icon id="preview" size={14} /> Preview
+          <button className={`oce-icon-btn ${showPreview ? "on" : ""}`} onClick={() => setPreviewChoice(!showPreview)} title={showPreview ? "Hide preview" : "Show preview"} aria-label="Toggle preview" aria-pressed={showPreview}>
+            <Icon id="preview" size={15} />
           </button>
         )}
         {toolbarEnd}

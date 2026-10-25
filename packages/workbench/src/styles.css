@@ -1388,3 +1388,137 @@ pre.result {
 .form-note-warn {
   color: var(--oc-warningForeground, #cca700);
 }
+
+/* ---- editor groups (split editor) ---- */
+.main-area .editor-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.editor-head {
+  display: flex;
+  flex: none;
+  background: var(--oc-editorGroupHeader-tabsBackground, #252526);
+}
+.group-bar {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 0;
+  min-width: 0;
+  border-bottom: 1px solid var(--oc-tab-border, #252526);
+}
+.editor-area.split .group-bar.left {
+  flex: 0 0 calc(var(--split) * 100%);
+}
+.editor-area.split .group-bar.right {
+  border-left: 1px solid var(--border);
+}
+.group-bar .tab-bar {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+/* In a split, the group that has the focus keeps the accent; the other one's active tab is quieter. */
+.editor-area.split .group-bar:not(.focused) .tab.active {
+  border-top-color: var(--border);
+  color: var(--text-dim);
+}
+.tab-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  flex: none;
+}
+.tab-actions .icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.editor-area .tab-content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.group-pane {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  overflow: auto;
+  padding: 16px;
+}
+.group-pane.bleed {
+  padding: 0;
+  overflow: hidden;
+}
+/* A view's slot sits over its group's pane; the view is drawn inside it (an iframe in the browser, a native view on desktop). */
+.editor-area .tier2-slot {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+}
+.editor-area .tier2-slot[hidden] {
+  display: none;
+}
+.editor-area.split .group-pane.left,
+.editor-area.split .tier2-slot.g-left {
+  right: auto;
+  width: calc(var(--split) * 100%);
+}
+.editor-area.split .group-pane.right,
+.editor-area.split .tier2-slot.g-right {
+  left: calc(var(--split) * 100%);
+  border-left: 1px solid var(--border);
+}
+.group-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--split) * 100%);
+  width: 6px;
+  margin-left: -3px;
+  z-index: 6;
+  cursor: col-resize;
+  touch-action: none;
+}
+.group-divider:hover,
+body.group-resizing .group-divider {
+  background: var(--accent);
+  opacity: 0.6;
+}
+body.group-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+body.group-resizing iframe {
+  pointer-events: none;
+}
+.drop-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  font-size: 13px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 2px dashed var(--accent);
+  box-sizing: border-box;
+}
+.drop-zone.left {
+  left: 0;
+  width: calc(var(--split) * 100%);
+}
+.drop-zone.right {
+  left: calc(var(--split) * 100%);
+  right: 0;
+}
+.drop-zone.right.alone {
+  left: 50%;
+}
