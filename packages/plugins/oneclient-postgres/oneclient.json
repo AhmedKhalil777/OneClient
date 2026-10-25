@@ -358,6 +358,14 @@
       {
         "id": "postgres.backgroundTask",
         "parentNodeType": "postgres.backgroundRoot"
+      },
+      {
+        "id": "postgres.fastAggregatesRoot",
+        "parentNodeType": "postgres.fastToolsRoot"
+      },
+      {
+        "id": "postgres.fastAggregate",
+        "parentNodeType": "postgres.fastAggregatesRoot"
       }
     ],
     "views": [
@@ -415,6 +423,14 @@
         "location": "editor",
         "entry": "background-task.html",
         "icon": "$(clock)"
+      },
+      {
+        "id": "postgres.aggregate",
+        "title": "Fast Aggregate",
+        "tier": 2,
+        "location": "editor",
+        "entry": "aggregate.html",
+        "icon": "$(cube)"
       }
     ],
     "commands": [
@@ -728,6 +744,40 @@
       {
         "id": "postgres.ai.execute",
         "title": "AI: Run Statement",
+        "hidden": true
+      },
+      {
+        "id": "postgres.newFastAggregate",
+        "title": "PostgreSQL: New Fast Aggregate…",
+        "when": "contextValue == 'postgres.table'"
+      },
+      {
+        "id": "postgres.renameFastAggregate",
+        "title": "PostgreSQL: Rename Fast Aggregate…",
+        "when": "contextValue == 'postgres.fastAggregate'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "newName"
+          ],
+          "properties": {
+            "newName": {
+              "type": "string",
+              "title": "New name",
+              "default": "{label}"
+            }
+          }
+        }
+      },
+      {
+        "id": "postgres.deleteFastAggregate",
+        "title": "PostgreSQL: Delete Fast Aggregate",
+        "when": "contextValue == 'postgres.fastAggregate'",
+        "confirm": "Delete fast aggregate \"{label}\" (its .aggregate.json file)?"
+      },
+      {
+        "id": "postgres.aggregate",
+        "title": "PostgreSQL: Fast Aggregate API",
         "hidden": true
       }
     ],

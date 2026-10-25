@@ -25,7 +25,7 @@ export function AssetIcon({
   if (iconId) return <ThemeIcon id={iconId} size={size} />;
   if (!icon) {
     return (
-      <span style={{ fontSize: size, lineHeight: 1, display: "inline-block", width: size, textAlign: "center" }}>
+      <span style={{ fontSize: size, lineHeight: 1, display: "inline-block", width: size, textAlign: "center", flexShrink: 0 }}>
         {fallback}
       </span>
     );

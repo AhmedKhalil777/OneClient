@@ -49,10 +49,51 @@ function selectExpr(c: TableColumn): string {
   return name;
 }
 
+/**
+ * A text[] column as a JS array. The pool can be set to return arrays as their text form ("{a,b}"), so both are accepted;
+ * quoted elements ("a b", "a\\"b") are unescaped.
+ */
+export function textArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value !== "string") return [];
+  const inner = value.trim().replace(/^\{/, "").replace(/\}$/, "");
+  if (!inner) return [];
+  const out: string[] = [];
+  let cur = "";
+  let quoted = false;
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i]!;
+    if (quoted) {
+      if (ch === "\\") cur += inner[++i] ?? "";
+      else if (ch === '"') quoted = false;
+      else cur += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ",") (out.push(cur), (cur = ""));
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+
 export const postgresTableAccess: TableAccess = {
   quote: quoteIdent,
   qualify: (t) => qualified(t.schema, t.table),
   literals: { string: "", bool: { true: "true", false: "false" } },
+
+  /** pg_constraint: every foreign key of user tables, with its columns in constraint order. */
+  async foreignKeys(connectionId, database) {
+    const r = await poolFor(connectionId, database).query<{ name: string; schema: string; table: string; ref_schema: string; ref_table: string; columns: unknown; ref_columns: unknown }>(
+      `SELECT c.conname::text AS name, ns.nspname::text AS schema, cl.relname::text AS "table", rns.nspname::text AS ref_schema, rcl.relname::text AS ref_table,
+              ARRAY(SELECT a.attname::text FROM unnest(c.conkey) WITH ORDINALITY k(attnum, ord) JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum ORDER BY k.ord) AS columns,
+              ARRAY(SELECT a.attname::text FROM unnest(c.confkey) WITH ORDINALITY k(attnum, ord) JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = k.attnum ORDER BY k.ord) AS ref_columns
+         FROM pg_constraint c
+         JOIN pg_class cl ON cl.oid = c.conrelid JOIN pg_namespace ns ON ns.oid = cl.relnamespace
+         JOIN pg_class rcl ON rcl.oid = c.confrelid JOIN pg_namespace rns ON rns.oid = rcl.relnamespace
+        WHERE c.contype = 'f' AND ns.nspname NOT IN ('pg_catalog', 'information_schema') AND ns.nspname NOT LIKE 'pg_toast%'
+        ORDER BY ns.nspname, cl.relname, c.conname`,
+    );
+    return r.rows.map((x) => ({ name: x.name, table: { schema: x.schema, table: x.table }, columns: textArray(x.columns), refTable: { schema: x.ref_schema, table: x.ref_table }, refColumns: textArray(x.ref_columns) }));
+  },
 
   async describe(connectionId, target) {
     return (await listColumns(poolFor(connectionId, target.database), target.schema, target.table)).map(toColumn);

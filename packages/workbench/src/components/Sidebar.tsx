@@ -307,7 +307,7 @@ export function SidebarSection({
     <div className="sidebar-section">
       <div className="sidebar-section-title" onClick={toggle}>
         <span className="tree-caret"><ThemeIcon id={expanded ? "chevron-down" : "chevron-right"} /></span>
-        <span>{title.toUpperCase()}</span>
+        <span className="section-label" title={title}>{title.toUpperCase()}</span>
         {count !== undefined && <span className="section-count">{count}</span>}
         {actions && (
           <span className="section-actions" onClick={(e) => e.stopPropagation()}>

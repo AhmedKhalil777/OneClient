@@ -89,6 +89,7 @@ export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenVi
         }}
         title={node.tooltip ?? (node.description ? `${node.label} — ${node.description}` : node.label)}
       >
+        <IndentGuides depth={depth} />
         <span className="tree-caret">{canExpand && <ThemeIcon id={expanded ? "chevron-down" : "chevron-right"} />}</span>
         <AssetIcon pluginId={pluginId} icon={resourceIcon ?? node.icon} size={14} fallback={canExpand ? "📁" : "•"} />
         <span className="tree-label">{node.label}</span>
@@ -96,6 +97,7 @@ export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenVi
       </div>
       {expanded && error && (
         <div className="tree-row tree-row-error" style={{ paddingLeft: 12 + (depth + 1) * 14 }}>
+          <IndentGuides depth={depth + 1} />
           {error}
         </div>
       )}
@@ -114,6 +116,21 @@ export function ExplorerTreeNode({ connectionId, pluginId, node, depth, onOpenVi
           />
         ))}
     </div>
+  );
+}
+
+/**
+ * Vertical rulers for a nested row, one per ancestor level, centred under that ancestor's chevron — like VS Code's indent
+ * guides. Each row draws its own full-height segments, so together they read as one continuous line down the children.
+ */
+export function IndentGuides({ depth }: { depth: number }) {
+  if (depth <= 0) return null;
+  return (
+    <>
+      {Array.from({ length: depth }, (_, level) => (
+        <span key={level} className="tree-guide" style={{ left: 12 + level * 14 + 5 }} aria-hidden />
+      ))}
+    </>
   );
 }
 

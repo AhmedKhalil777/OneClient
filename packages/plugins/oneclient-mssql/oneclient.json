@@ -341,6 +341,14 @@
       {
         "id": "mssql.faker",
         "parentNodeType": "mssql.fakerGroup"
+      },
+      {
+        "id": "mssql.fastAggregatesRoot",
+        "parentNodeType": "mssql.fastToolsRoot"
+      },
+      {
+        "id": "mssql.fastAggregate",
+        "parentNodeType": "mssql.fastAggregatesRoot"
       }
     ],
     "views": [
@@ -406,6 +414,14 @@
         "location": "editor",
         "entry": "background-task.html",
         "icon": "$(clock)"
+      },
+      {
+        "id": "mssql.aggregate",
+        "title": "Fast Aggregate",
+        "tier": 2,
+        "location": "editor",
+        "entry": "aggregate.html",
+        "icon": "$(cube)"
       }
     ],
     "commands": [
@@ -754,6 +770,40 @@
       {
         "id": "mssql.ai.execute",
         "title": "AI: Run Statement",
+        "hidden": true
+      },
+      {
+        "id": "mssql.newFastAggregate",
+        "title": "SQL Server: New Fast Aggregate…",
+        "when": "contextValue == 'mssql.table'"
+      },
+      {
+        "id": "mssql.renameFastAggregate",
+        "title": "SQL Server: Rename Fast Aggregate…",
+        "when": "contextValue == 'mssql.fastAggregate'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "newName"
+          ],
+          "properties": {
+            "newName": {
+              "type": "string",
+              "title": "New name",
+              "default": "{label}"
+            }
+          }
+        }
+      },
+      {
+        "id": "mssql.deleteFastAggregate",
+        "title": "SQL Server: Delete Fast Aggregate",
+        "when": "contextValue == 'mssql.fastAggregate'",
+        "confirm": "Delete fast aggregate \"{label}\" (its .aggregate.json file)?"
+      },
+      {
+        "id": "mssql.aggregate",
+        "title": "SQL Server: Fast Aggregate API",
         "hidden": true
       }
     ],

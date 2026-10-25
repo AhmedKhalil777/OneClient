@@ -25,6 +25,7 @@ export default defineConfig({
         faker: resolve(__dirname, "src-ui/faker.html"),
         diagram: resolve(__dirname, "src-ui/diagram.html"),
         tableEditor: resolve(__dirname, "src-ui/table-editor.html"),
+        aggregate: resolve(__dirname, "src-ui/aggregate.html"),
         importCsv: resolve(__dirname, "src-ui/import-csv.html"),
         plan: resolve(__dirname, "src-ui/plan.html"),
         backgroundTask: resolve(__dirname, "src-ui/background-task.html"),

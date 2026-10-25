@@ -1,6 +1,6 @@
 import type { PageQuery, Statement, TableAccess, TableColumn, TableTarget, WriteSession } from "@oneclient/sql-core";
 import sql from "mssql";
-import { CUT_MARKER, LOB_LIMIT, LOB_PREVIEW, cutValue } from "@oneclient/sql-core";
+import { CUT_MARKER, LOB_LIMIT, LOB_PREVIEW, cutValue, groupForeignKeys } from "@oneclient/sql-core";
 import { quoteIdent } from "./config.js";
 import { type ColumnRow, formatType, listColumns, qualified } from "./metadata.js";
 import { requireSession } from "./sessions.js";
@@ -63,6 +63,22 @@ export const mssqlTableAccess: TableAccess = {
   quote: quoteIdent,
   qualify: (t) => qualified(t.database, t.schema, t.table),
   literals: { string: "N", bool: { true: "1", false: "0" } },
+
+  /** sys.foreign_keys of the database, one row per column, grouped into keys. */
+  async foreignKeys(connectionId, database) {
+    const db = quoteIdent(database);
+    const r = await requireSession(connectionId).pool.request().query<{ name: string; schema: string; table: string; refSchema: string; refTable: string; column: string; refColumn: string }>(
+      `SELECT fk.name AS name, s.name AS [schema], t.name AS [table], rs.name AS refSchema, rt.name AS refTable, pc.name AS [column], rc.name AS refColumn
+         FROM ${db}.sys.foreign_keys fk
+         JOIN ${db}.sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+         JOIN ${db}.sys.tables t ON t.object_id = fk.parent_object_id JOIN ${db}.sys.schemas s ON s.schema_id = t.schema_id
+         JOIN ${db}.sys.tables rt ON rt.object_id = fk.referenced_object_id JOIN ${db}.sys.schemas rs ON rs.schema_id = rt.schema_id
+         JOIN ${db}.sys.columns pc ON pc.object_id = fkc.parent_object_id AND pc.column_id = fkc.parent_column_id
+         JOIN ${db}.sys.columns rc ON rc.object_id = fkc.referenced_object_id AND rc.column_id = fkc.referenced_column_id
+        ORDER BY s.name, t.name, fk.name, fkc.constraint_column_id`,
+    );
+    return groupForeignKeys(r.recordset);
+  },
 
   async describe(connectionId, target) {
     const rows = await listColumns(requireSession(connectionId).pool, target.database, target.schema, target.table);

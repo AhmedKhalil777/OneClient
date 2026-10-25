@@ -1,5 +1,5 @@
 import type { PageQuery, Statement, TableAccess, TableColumn, TableTarget, WriteSession } from "@oneclient/sql-core";
-import { CUT_MARKER, EditError, LOB_LIMIT, LOB_PREVIEW, cutValue } from "@oneclient/sql-core";
+import { CUT_MARKER, EditError, LOB_LIMIT, LOB_PREVIEW, cutValue, groupForeignKeys } from "@oneclient/sql-core";
 import type mysql from "mysql2/promise";
 import { qualified, quoteIdent } from "./config.js";
 import { batchPoolFor, poolFor } from "./sessions.js";
@@ -71,6 +71,18 @@ export const mysqlTableAccess: TableAccess = {
   qualify: (t) => qualified(t.database, t.table),
   // MySQL reads \ inside a string as an escape character, so it is doubled as well as the quote.
   literals: { string: "", bool: { true: "TRUE", false: "FALSE" }, escape: (s) => s.replace(/\\/g, "\\\\").replace(/'/g, "''") },
+
+  /** information_schema.KEY_COLUMN_USAGE: foreign keys inside this database (a MySQL database is the "schema"). */
+  async foreignKeys(connectionId, database) {
+    const [rows] = (await poolFor(connectionId).query(
+      `SELECT CONSTRAINT_NAME AS name, TABLE_NAME AS tbl, COLUMN_NAME AS col, REFERENCED_TABLE_SCHEMA AS refSchema, REFERENCED_TABLE_NAME AS refTbl, REFERENCED_COLUMN_NAME AS refCol
+         FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = ? AND REFERENCED_TABLE_SCHEMA = ? AND REFERENCED_TABLE_NAME IS NOT NULL
+        ORDER BY TABLE_NAME, CONSTRAINT_NAME, ORDINAL_POSITION`,
+      [database, database],
+    )) as unknown as [Array<{ name: string; tbl: string; col: string; refSchema: string; refTbl: string; refCol: string }>];
+    return groupForeignKeys(rows.map((r) => ({ name: r.name, schema: database, table: r.tbl, refSchema: r.refSchema, refTable: r.refTbl, column: r.col, refColumn: r.refCol })));
+  },
 
   async describe(connectionId, target) {
     const [rows] = (await poolFor(connectionId).query(

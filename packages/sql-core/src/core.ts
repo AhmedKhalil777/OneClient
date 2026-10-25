@@ -1,6 +1,7 @@
 import type { CommandHandler, TreeNode, ViewMessageHandler } from "@oneclient/plugin-api";
 import { type Background, type BackgroundHost, createBackground } from "./background/manager.js";
 import { createBackgroundStore } from "./background/store.js";
+import { type FastAggregates, createFastAggregates } from "./aggregate/api.js";
 import { type FastQueries, createFastQueries } from "./fast-queries/api.js";
 import { type FastTool, type FastToolsSection, createFastToolsSection } from "./fast-tools/index.js";
 import { type FolderStore, createFolderStore } from "./fast-tools/folder.js";
@@ -25,6 +26,8 @@ export interface SqlCoreFeatures {
   fastTools?: boolean;
   /** Fast Queries in FAST TOOLS (`<prefix>.newFastQuery`, `.runFastQuery`, …). Needs `fastTools`. */
   fastQueries?: boolean;
+  /** Fast Aggregates in FAST TOOLS (`<prefix>.newFastAggregate`, `.aggregate`). Needs `fastTools`, the table editor and `TableAccess.foreignKeys`. */
+  fastAggregates?: boolean;
   /** Edit Data on tables (`<prefix>.editData`, `.tableData`): staged changes, SQL review, one-transaction apply. Needs `tableAccess`. */
   tableEditor?: boolean;
   /** Import CSV into a table (`<prefix>.importCsv`, `.importData`): streamed, validated, one transaction. Needs `tableAccess`. */
@@ -89,6 +92,7 @@ export interface SqlCore {
   /** The FAST TOOLS section's tree, for the plugin's explorer provider; undefined when `fastTools` is off. */
   fastTools: FastToolsSection | undefined;
   fastQueries: FastQueries | undefined;
+  fastAggregates: FastAggregates | undefined;
   /** FAST TOOLS, QUERY HISTORY and BACKGROUND TASKS as one: hand it to the plugin's explorer provider. */
   sections: ReturnType<typeof combineSections>;
   background: Background | undefined;
@@ -122,7 +126,7 @@ export function createSqlCore(rawOptions: SqlCoreOptions): SqlCore {
   // Every query (editor, background tasks, FAST TOOLS, AI tools) goes through this one wrapper, so all get logged.
   const options: SqlCoreOptions = { ...rawOptions, executeQuery: withQueryLog(rawOptions.executeQuery, rawOptions.host?.createOutputChannel?.("Queries"), describeForLog) };
   const { prefix } = options;
-  const features = { history: true, fastTools: true, fastQueries: true, tableEditor: true, importCsv: true, plan: true, createDatabase: true, background: true, aiTools: true, ...options.features };
+  const features = { history: true, fastTools: true, fastQueries: true, fastAggregates: true, tableEditor: true, importCsv: true, plan: true, createDatabase: true, background: true, aiTools: true, ...options.features };
   const dataDir = options.dataDir ?? prefix;
   const describe = options.describeError ?? ((err: unknown) => (err instanceof Error ? err.message : String(err)));
   const queryWindow = createQueryWindowFactory(prefix, options.untitledQuery);
@@ -131,6 +135,11 @@ export function createSqlCore(rawOptions: SqlCoreOptions): SqlCore {
   const fastQueries = features.fastTools && features.fastQueries ? createFastQueries(prefix, folders, queryWindow) : undefined;
 
   const tableEditor = features.tableEditor && options.tableAccess ? createTableEditor(prefix, options.tableAccess, describe) : undefined;
+
+  const fastAggregates =
+    features.fastTools && features.fastAggregates && tableEditor && options.tableAccess?.foreignKeys
+      ? createFastAggregates(prefix, folders, options.tableAccess, tableEditor.columns, describe)
+      : undefined;
 
   const csvImporter = features.importCsv && tableEditor && options.tableAccess ? createCsvImporter(prefix, options.tableAccess, describe, tableEditor.columns) : undefined;
 
@@ -145,6 +154,16 @@ export function createSqlCore(rawOptions: SqlCoreOptions): SqlCore {
       rootNodeType: `${prefix}.fastQueriesRoot`,
       nodeTypes: [`${prefix}.fastQueryGroup`],
       children: (_cid, folder, node) => fastQueries.nodes(folder, node),
+    });
+  }
+  if (fastAggregates) {
+    tools.push({
+      id: "fastAggregates",
+      label: "Fast Aggregates",
+      icon: "$(cube)",
+      rootNodeType: `${prefix}.fastAggregatesRoot`,
+      nodeTypes: [],
+      children: (_cid, folder) => fastAggregates.nodes(folder),
     });
   }
   tools.push(...(options.tools ?? []));
@@ -405,6 +424,35 @@ export function createSqlCore(rawOptions: SqlCoreOptions): SqlCore {
     );
   }
 
+  if (fastAggregates) {
+    commands.push(
+      fastAggregates.command,
+      cmd("newFastAggregate", (args) =>
+        action(async () => {
+          const { connectionId, database, schema, name } = arg<NodeArg>(args);
+          options.ensureConnected(connectionId);
+          if (!database || !schema || !name) throw new Error("Which table?");
+          const made = await fastAggregates.create(connectionId, { database, schema, table: name });
+          return { ok: true, openNode: fastAggregates.tab(made.file, made.name) };
+        }),
+      ),
+      cmd("renameFastAggregate", (args) =>
+        action(async () => {
+          const { connectionId, aggregateFile, newName } = arg<NodeArg & { aggregateFile?: string; newName?: string }>(args);
+          await fastAggregates.rename(connectionId, String(aggregateFile ?? ""), String(newName ?? ""));
+          return { ok: true };
+        }),
+      ),
+      cmd("deleteFastAggregate", (args) =>
+        action(async () => {
+          const { connectionId, aggregateFile } = arg<NodeArg & { aggregateFile?: string }>(args);
+          await fastAggregates.remove(connectionId, String(aggregateFile ?? ""));
+          return { ok: true };
+        }),
+      ),
+    );
+  }
+
   if (csvImporter) {
     commands.push(
       csvImporter.command,
@@ -439,5 +487,5 @@ export function createSqlCore(rawOptions: SqlCoreOptions): SqlCore {
 
   if (features.aiTools) commands.push(...createAiCommands({ prefix, executeQuery: options.executeQuery, ensureConnected: options.ensureConnected, releaseWindow: options.releaseWindow, describeError: describe }));
 
-  return { prefix, queryWindow, folders, history, commands, views: createQueryViews(options.executeQuery, history), fastTools, fastQueries, sections, background, tableEditor, csvImporter, planner, action };
+  return { prefix, queryWindow, folders, history, commands, views: createQueryViews(options.executeQuery, history), fastTools, fastQueries, fastAggregates, sections, background, tableEditor, csvImporter, planner, action };
 }

@@ -332,6 +332,14 @@
       {
         "id": "mysql.backgroundTask",
         "parentNodeType": "mysql.backgroundRoot"
+      },
+      {
+        "id": "mysql.fastAggregatesRoot",
+        "parentNodeType": "mysql.fastToolsRoot"
+      },
+      {
+        "id": "mysql.fastAggregate",
+        "parentNodeType": "mysql.fastAggregatesRoot"
       }
     ],
     "views": [
@@ -389,6 +397,14 @@
         "location": "editor",
         "entry": "background-task.html",
         "icon": "$(clock)"
+      },
+      {
+        "id": "mysql.aggregate",
+        "title": "Fast Aggregate",
+        "tier": 2,
+        "location": "editor",
+        "entry": "aggregate.html",
+        "icon": "$(cube)"
       }
     ],
     "commands": [
@@ -707,6 +723,40 @@
       {
         "id": "mysql.ai.execute",
         "title": "AI: Run Statement",
+        "hidden": true
+      },
+      {
+        "id": "mysql.newFastAggregate",
+        "title": "MySQL: New Fast Aggregate…",
+        "when": "contextValue == 'mysql.table'"
+      },
+      {
+        "id": "mysql.renameFastAggregate",
+        "title": "MySQL: Rename Fast Aggregate…",
+        "when": "contextValue == 'mysql.fastAggregate'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "newName"
+          ],
+          "properties": {
+            "newName": {
+              "type": "string",
+              "title": "New name",
+              "default": "{label}"
+            }
+          }
+        }
+      },
+      {
+        "id": "mysql.deleteFastAggregate",
+        "title": "MySQL: Delete Fast Aggregate",
+        "when": "contextValue == 'mysql.fastAggregate'",
+        "confirm": "Delete fast aggregate \"{label}\" (its .aggregate.json file)?"
+      },
+      {
+        "id": "mysql.aggregate",
+        "title": "MySQL: Fast Aggregate API",
         "hidden": true
       }
     ],

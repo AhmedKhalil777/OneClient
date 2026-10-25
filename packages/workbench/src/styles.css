@@ -206,6 +206,22 @@ body.panel-resizing iframe {
   user-select: none;
 }
 
+/* A narrow sidebar must not wrap the title onto a second line (the header is a fixed 22px) — it shortens with an ellipsis. */
+.section-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-section-title .section-count,
+.sidebar-section-title .tree-caret {
+  flex: none;
+}
+.sidebar-section-title .section-actions {
+  flex: none;
+}
+
 .section-count {
   font-size: 10px;
   font-weight: 400;
@@ -257,6 +273,7 @@ body.panel-resizing iframe {
 }
 
 .tree-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -269,12 +286,27 @@ body.panel-resizing iframe {
   background: #2a2d2e;
 }
 .tree-caret {
+  /* flex: none — a row whose label overflows must not squeeze the chevron, or its icon shifts out of line with the rows around it. */
+  flex: none;
   width: 12px;
   display: inline-block;
   color: var(--text-dim);
 }
 .tree-row-error {
   color: var(--danger);
+}
+/* Indent guides: a hairline per ancestor level, only as bright as the user's theme says. */
+.tree-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px solid var(--oc-tree-indentGuidesStroke, rgba(128, 128, 128, 0.28));
+  pointer-events: none;
+}
+.sidebar:hover .tree-guide,
+.sidebar-section:hover .tree-guide {
+  border-left-color: var(--oc-tree-indentGuidesStroke, rgba(128, 128, 128, 0.5));
 }
 
 .main-area {

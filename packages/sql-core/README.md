@@ -14,6 +14,7 @@ same for every SQL database:
 | FAST TOOLS     | the section's tree, `<prefix>.attach/detachFastToolsFolder` | —                                         |
 | Create Database | `<prefix>.createDatabase` (name checked by the core; the dialect supplies `createDatabase(connectionId, name, options)`) | form on the Databases folder (from the manifest's `inputSchema`) |
 | Fast Queries   | `<prefix>.newFastQuery` / `.runFastQuery` / `.runFastQueryOn` / `.saveFastQuery` / `.renameFastQuery` / `.deleteFastQuery` | ★ Save as Fast Query (Ctrl+S) |
+| Fast Aggregates | `<prefix>.newFastAggregate` / `.renameFastAggregate` / `.deleteFastAggregate`, `<prefix>.aggregate` (the view's API) | the `<prefix>.aggregate` view (`Aggregate` in `@oneclient/sql-core/ui`) |
 
 Every feature is on by default and can be turned off: on the backend with `createSqlCore({ features: { history, fastTools, fastQueries } })`,
 in the views with `SqlDialectUi.features` (`history`, `fastQueries`, `safeMode`, `resultExport`, `cellViewer`). The grid, export,
@@ -66,3 +67,18 @@ Copy the entries from `oneclient-postgres/oneclient.json` and change the prefix.
 A `FastTool` is a folder in FAST TOOLS: `rootNodeType`, the node types below it that have children, and
 `children(connectionId, folder, node)`. Its files live in the attached folder (`findFiles`, `inFolder` and `freeName`
 help). A tool for every dialect goes into `createSqlCore`. A dialect-specific one is passed in `tools`.
+
+## Fast Aggregates
+
+Right-click a table → **New Fast Aggregate…** and the table becomes the *root* of an editable aggregate: a paged list of its
+rows; a row opens into a form with its children below — one-to-many tables as lists you can add to, edit and delete from,
+many-to-many tables (through a join table) as links you add and remove — and each child opens the same way, so an Order,
+its Items and the notes on each item are one screen. The configuration is a `*.aggregate.json` file in the connection's Fast
+Tools folder, suggested from the database's foreign keys (join tables are recognised: two foreign keys covering the whole
+key) and editable in the **Configure** panel — rename relations, drop the ones you don't need, pick the columns each list shows,
+or edit the JSON.
+
+A dialect turns it on by implementing the optional `TableAccess.foreignKeys(connectionId, database)`; reads and writes reuse the
+table data editor's access (so edits are checked, one transaction, row-count verified). Filters that select a parent's children
+are built from the configuration with every column name checked against the real table and every value typed as its column
+(`aggregate/model.ts`), never from text typed in the view. Many-to-many relations need a single-column key on the related side.

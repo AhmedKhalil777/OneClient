@@ -97,6 +97,11 @@ export interface TableAccess {
     escape?: (text: string) => string;
   };
   describe(connectionId: string, target: TableTarget): Promise<TableColumn[]>;
+  /**
+   * Every foreign key of the database (user tables only) — what Fast Aggregates build their suggestions from. Optional:
+   * without it the aggregate tool is off.
+   */
+  foreignKeys?(connectionId: string, database: string): Promise<import("../aggregate/types.js").ForeignKey[]>;
   /** One page of rows, as arrays in `columns` order, with values over LOB_LIMIT as CutValue. Exact numbers (bigint, decimal) as strings. */
   fetchPage(connectionId: string, target: TableTarget, columns: TableColumn[], query: PageQuery): Promise<unknown[][]>;
   /** Roughly how many rows, from the catalog's statistics (never COUNT(*) on a big table); null when unknown. */

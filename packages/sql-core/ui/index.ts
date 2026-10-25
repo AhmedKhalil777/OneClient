@@ -6,6 +6,7 @@
 export { QueryWindow } from "./QueryWindow.js";
 export { ResultsPanel } from "./ResultsPanel.js";
 export { TableEditor } from "./TableEditor.js";
+export { Aggregate } from "./Aggregate.js";
 export { ImportCsv } from "./ImportCsv.js";
 export { PlanView } from "./PlanView.js";
 export { BackgroundTaskView } from "./BackgroundTaskView.js";
