@@ -6,61 +6,251 @@
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",
-  "engines": { "oneclient": "^0.1.0" },
+  "features": [
+    {
+      "category": "Requests",
+      "items": [
+        "Collections and folders",
+        "Params, headers, body and authentication",
+        "Response viewer with status, time, size and colored JSON",
+        "Request history"
+      ]
+    },
+    {
+      "category": "Variables & environments",
+      "items": [
+        "Environments with {{variables}}",
+        "Dynamic values like {{$guid}} and {{$timestamp}}"
+      ]
+    },
+    {
+      "category": "Import & export",
+      "items": [
+        "Paste Copy as cURL, PowerShell or fetch from the browser's dev tools",
+        "Import Postman collections and environments",
+        "Export collections to Postman",
+        "Copy a request as cURL"
+      ]
+    },
+    {
+      "category": ".http files",
+      "items": [
+        "Open .http and .rest files and run any request from the gutter (Ctrl+Alt+R)",
+        "Chain requests: use a response in the next request",
+        "Convert a pasted command into a request in the file"
+      ]
+    }
+  ],
+  "engines": {
+    "oneclient": "^0.1.0"
+  },
   "main": "dist/main.js",
   "ui": "dist/ui",
   "contributes": {
     "connectionTypes": [
-      { "id": "http", "connectionLabel": "Workspace", "label": "HTTP Workspace", "description": "Collections, environments and history for HTTP / REST requests (Postman-compatible).", "category": "API", "icon": "icon.svg" }
+      {
+        "id": "http",
+        "connectionLabel": "Workspace",
+        "label": "HTTP Workspace",
+        "description": "Collections, environments and history for HTTP / REST requests (Postman-compatible).",
+        "category": "API",
+        "icon": "icon.svg"
+      }
     ],
     "explorerNodes": [
-      { "id": "http.collection", "connectionType": "http" },
-      { "id": "http.environments", "connectionType": "http" },
-      { "id": "http.history", "connectionType": "http" },
-      { "id": "http.import", "connectionType": "http" },
-      { "id": "http.folder", "parentNodeType": "http.collection" },
-      { "id": "http.request", "parentNodeType": "http.folder" }
+      {
+        "id": "http.collection",
+        "connectionType": "http"
+      },
+      {
+        "id": "http.environments",
+        "connectionType": "http"
+      },
+      {
+        "id": "http.history",
+        "connectionType": "http"
+      },
+      {
+        "id": "http.import",
+        "connectionType": "http"
+      },
+      {
+        "id": "http.folder",
+        "parentNodeType": "http.collection"
+      },
+      {
+        "id": "http.request",
+        "parentNodeType": "http.folder"
+      }
     ],
     "views": [
-      { "id": "http.request", "title": "Request", "tier": 2, "location": "editor", "entry": "request.html" },
-      { "id": "http.workspace", "title": "HTTP Workspace", "tier": 2, "location": "editor", "entry": "workspace.html", "connectionType": "http" }
+      {
+        "id": "http.request",
+        "title": "Request",
+        "tier": 2,
+        "location": "editor",
+        "entry": "request.html"
+      },
+      {
+        "id": "http.workspace",
+        "title": "HTTP Workspace",
+        "tier": 2,
+        "location": "editor",
+        "entry": "workspace.html",
+        "connectionType": "http"
+      }
     ],
-    "menus": [{ "menu": "run", "title": "Send Request", "keybinding": "Ctrl+Enter", "when": "activeView == 'http.request'" }],
+    "menus": [
+      {
+        "menu": "run",
+        "title": "Send Request",
+        "keybinding": "Ctrl+Enter",
+        "when": "activeView == 'http.request'"
+      }
+    ],
     "commands": [
-      { "id": "http.api", "title": "HTTP: API", "hidden": true },
+      {
+        "id": "http.api",
+        "title": "HTTP: API",
+        "hidden": true
+      },
       {
         "id": "http.newCollection",
         "title": "HTTP: New Collection…",
         "when": "contextValue == 'connection' && connectionType == 'http'",
-        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "Collection name" } } }
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Collection name"
+            }
+          }
+        }
       },
-      { "id": "http.openImport", "title": "HTTP: Import from Postman / cURL…", "when": "contextValue == 'connection' && connectionType == 'http'" },
+      {
+        "id": "http.openImport",
+        "title": "HTTP: Import from Postman / cURL / PowerShell / fetch…",
+        "when": "contextValue == 'connection' && connectionType == 'http'"
+      },
       {
         "id": "http.newRequest",
         "title": "HTTP: New Request…",
         "when": "contextValue == 'http.collection' || contextValue == 'http.folder'",
-        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "Request name" } } }
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Request name"
+            }
+          }
+        }
       },
       {
         "id": "http.newFolder",
         "title": "HTTP: New Folder…",
         "when": "contextValue == 'http.collection' || contextValue == 'http.folder'",
-        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "Folder name" } } }
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Folder name"
+            }
+          }
+        }
       },
       {
         "id": "http.rename",
         "title": "HTTP: Rename…",
         "when": "contextValue == 'http.collection' || contextValue == 'http.folder' || contextValue == 'http.request'",
-        "inputSchema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "title": "New name" } } }
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "New name"
+            }
+          }
+        }
       },
-      { "id": "http.duplicate", "title": "HTTP: Duplicate", "when": "contextValue == 'http.collection' || contextValue == 'http.folder' || contextValue == 'http.request'" },
-      { "id": "http.exportCollection", "title": "HTTP: Export as Postman Collection…", "when": "contextValue == 'http.collection'" },
+      {
+        "id": "http.duplicate",
+        "title": "HTTP: Duplicate",
+        "when": "contextValue == 'http.collection' || contextValue == 'http.folder' || contextValue == 'http.request'"
+      },
+      {
+        "id": "http.exportCollection",
+        "title": "HTTP: Export as Postman Collection…",
+        "when": "contextValue == 'http.collection'"
+      },
       {
         "id": "http.delete",
         "title": "HTTP: Delete",
         "when": "contextValue == 'http.collection' || contextValue == 'http.folder' || contextValue == 'http.request'",
         "confirm": "Delete \"{label}\" and everything inside it? This can't be undone."
+      },
+      {
+        "id": "http.file.tokens",
+        "title": "HTTP file: Syntax Tokens",
+        "hidden": true
+      },
+      {
+        "id": "http.file.symbols",
+        "title": "HTTP file: Requests Outline",
+        "hidden": true
+      },
+      {
+        "id": "http.file.lenses",
+        "title": "HTTP file: Send Request Buttons",
+        "hidden": true
+      },
+      {
+        "id": "http.file.run",
+        "title": "HTTP file: Send Request",
+        "hidden": true
+      },
+      {
+        "id": "http.file.fromCommand",
+        "title": "HTTP file: Convert cURL / PowerShell / fetch to Request",
+        "hidden": true
       }
-    ]
+    ],
+    "extensions": {
+      "oneclient.editors": [
+        {
+          "id": "http-file",
+          "label": "HTTP",
+          "extensions": [
+            "http",
+            "rest"
+          ],
+          "tokens": "http.file.tokens",
+          "symbols": "http.file.symbols",
+          "lenses": "http.file.lenses",
+          "actions": [
+            {
+              "id": "fromCommand",
+              "label": "Convert cURL / PowerShell / fetch to request",
+              "command": "http.file.fromCommand",
+              "title": "Turn the selected command copied from the browser into a request in this file"
+            }
+          ]
+        }
+      ]
+    }
   }
 }

@@ -495,13 +495,21 @@ function ImportExport({ overview, reload, say, presetId }: Ctx & { presetId: str
     <div>
       <h2 className="kc-h" style={{ marginTop: 0 }}>Import</h2>
       <div className="kc-muted" style={{ marginBottom: 8 }}>
-        Postman <strong>collections</strong> (v2.0 / v2.1), Postman <strong>environments</strong> and “Export Data” dumps, or a <strong>cURL</strong> command (copy it from browser dev tools: Network → right-click → Copy as cURL).
+        Postman <strong>collections</strong> (v2.0 / v2.1), Postman <strong>environments</strong> and “Export Data” dumps, or a request copied from the browser — in dev tools open <em>Network</em>, right-click a request and choose <strong>Copy as cURL</strong> (bash or cmd), <strong>Copy as PowerShell</strong> or <strong>Copy as fetch</strong>, then paste it below.
       </div>
       <div className="kc-row" style={{ marginBottom: 8 }}>
         <input ref={fileRef} type="file" accept=".json,application/json,.txt" multiple onChange={(e) => void onFiles(e.target.files)} disabled={busy} />
       </div>
-      <textarea className="kc-textarea" rows={6} placeholder={"…or paste JSON or a curl command here"} value={text} onChange={(e) => setText(e.target.value)} />
+      <textarea className="kc-textarea" rows={6} placeholder={"Paste a cURL / PowerShell / fetch command or Postman JSON here"} value={text} onChange={(e) => setText(e.target.value)} />
       <div className="kc-row" style={{ margin: "8px 0 14px" }}>
+        <button
+          className="oce-btn"
+          disabled={busy}
+          title="Paste what you copied (needs permission to read the clipboard)"
+          onClick={() => void navigator.clipboard?.readText().then((t) => t && setText(t)).catch(() => say("The browser did not allow reading the clipboard — paste into the box with Ctrl+V.", true))}
+        >
+          Paste from clipboard
+        </button>
         <button
           className="oce-btn oce-btn-primary"
           disabled={!text.trim() || busy}

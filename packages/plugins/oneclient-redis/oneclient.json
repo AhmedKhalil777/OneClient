@@ -6,6 +6,35 @@
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",
+  "features": [
+    {
+      "category": "Browse",
+      "items": [
+        "Key tree grouped by namespace"
+      ]
+    },
+    {
+      "category": "Edit",
+      "items": [
+        "Strings and JSON, hashes, lists, sets, sorted sets and streams",
+        "TTL, rename and delete"
+      ]
+    },
+    {
+      "category": "Monitor & tools",
+      "items": [
+        "Server info and slow log",
+        "Built-in command line"
+      ]
+    },
+    {
+      "category": "Connectivity & testing",
+      "items": [
+        "Works with Redis and Valkey",
+        "Docker template: Redis 7 with a password and a ready connection"
+      ]
+    }
+  ],
   "engines": { "oneclient": "^0.1.0" },
   "main": "dist/main.js",
   "ui": "dist/ui",

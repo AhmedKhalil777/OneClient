@@ -6,6 +6,35 @@
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",
+  "features": [
+    {
+      "category": "Browse",
+      "items": [
+        "Containers and folders"
+      ]
+    },
+    {
+      "category": "Transfer & edit",
+      "items": [
+        "Upload and download",
+        "View and edit text blobs"
+      ]
+    },
+    {
+      "category": "Manage",
+      "items": [
+        "Properties, metadata and access tiers",
+        "SAS links for sharing a blob"
+      ]
+    },
+    {
+      "category": "Testing",
+      "items": [
+        "Works with Azurite",
+        "Docker template: Azurite with a ready connection"
+      ]
+    }
+  ],
   "engines": { "oneclient": "^0.1.0" },
   "main": "dist/main.js",
   "ui": "dist/ui",

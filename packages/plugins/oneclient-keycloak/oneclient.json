@@ -6,6 +6,36 @@
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",
+  "features": [
+    {
+      "category": "Manage",
+      "items": [
+        "Realms, users, groups and roles",
+        "Clients and client scopes",
+        "Identity providers, sessions and events"
+      ]
+    },
+    {
+      "category": "Edit",
+      "items": [
+        "Edit any resource as JSON",
+        "Role mapping"
+      ]
+    },
+    {
+      "category": "Developer tools",
+      "items": [
+        "Decode a JWT",
+        "Get a token, introspect it, evaluate what a user receives"
+      ]
+    },
+    {
+      "category": "Testing",
+      "items": [
+        "Docker template: Keycloak in start-dev mode with an admin user"
+      ]
+    }
+  ],
   "engines": { "oneclient": "^0.1.0" },
   "main": "dist/main.js",
   "ui": "dist/ui",

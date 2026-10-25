@@ -6,6 +6,32 @@
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",
+  "features": [
+    {
+      "category": "Browse",
+      "items": [
+        "Brokers, topics and partitions",
+        "Consumer groups",
+        "Topic configuration"
+      ]
+    },
+    {
+      "category": "Messages",
+      "items": [
+        "Browse and filter messages by partition and offset",
+        "Inspect headers and JSON values",
+        "Produce messages"
+      ]
+    },
+    {
+      "category": "Connectivity & testing",
+      "items": [
+        "SASL plain and SCRAM, TLS",
+        "Works with Apache Kafka, Redpanda, Confluent Cloud and Azure Event Hubs",
+        "Docker template: a local Kafka broker with a ready connection"
+      ]
+    }
+  ],
   "engines": { "oneclient": "^0.1.0" },
   "main": "dist/main.js",
   "ui": "dist/ui",

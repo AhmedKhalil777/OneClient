@@ -23,6 +23,34 @@
     },
     "publisher": { "type": "string", "maxLength": 64 },
     "icon": { "type": "string" },
+    "features": {
+      "type": "array",
+      "description": "What the plugin can do, grouped by category — shown on its card in the Plugins view.",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["category", "items"],
+        "additionalProperties": false,
+        "properties": {
+          "category": { "type": "string", "maxLength": 40 },
+          "items": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "oneOf": [
+                { "type": "string", "maxLength": 200 },
+                {
+                  "type": "object",
+                  "required": ["title"],
+                  "additionalProperties": false,
+                  "properties": { "title": { "type": "string", "maxLength": 120 }, "description": { "type": "string", "maxLength": 300 } }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
     "license": { "type": "string" },
     "repository": { "type": "string", "format": "uri" },
 

@@ -1,38 +1,59 @@
-# oneClient
+# oneClient — a VS Code-style desktop & web client for SQL, Kafka, Redis, APIs and Docker
 
 [![CI](https://github.com/AhmedKhalil777/OneClient/actions/workflows/ci.yml/badge.svg)](https://github.com/AhmedKhalil777/OneClient/actions/workflows/ci.yml)
 [![Release](https://github.com/AhmedKhalil777/OneClient/actions/workflows/release.yml/badge.svg)](https://github.com/AhmedKhalil777/OneClient/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./package.json)
 
-**One client for everything.** oneClient is a desktop console for the infrastructure you work with every day:
-databases, message brokers, caches, REST APIs, containers and identity providers. It runs in one window and looks and
-works like VS Code.
+**One client for everything.** oneClient is a free, open-source developer console that puts your **PostgreSQL,
+SQL Server and MySQL client**, a **Kafka UI**, a **Redis browser**, an **HTTP / REST client (Postman alternative)**,
+**Docker** management, **Azure Blob Storage**, **Keycloak** admin and an **AI coding assistant** in one window that looks
+and works like VS Code. Run it as a **desktop app** (Windows, macOS, Linux) or **self-host it in the browser**.
 
-The core is a full workbench: Explorer, Search, editor, Git, Terminal and background tasks. Every integration is a
-plugin. Plugins add connection types, explorer trees, editors and commands at runtime, with no rebuild or restart.
+Every integration is a plugin. Plugins add connection types, explorer trees, editors, commands and title-bar actions at
+runtime, with no rebuild or restart, and each runs in its own process.
 
 ![The oneClient workbench: Explorer, editor and terminal](docs/images/workbench.png)
 
 **[Download the latest release →](https://github.com/AhmedKhalil777/OneClient/releases/latest)** (Windows, macOS, Linux) ·
-**[Website](https://ahmedkhalil777.github.io/OneClient/)**
+**[Website](https://ahmedkhalil777.github.io/OneClient/)** · **[Run it in a browser](#run-it-in-a-browser-self-hosted-no-electron)**
+
+## What do you want to do?
+
+| I'm looking for… | oneClient has |
+| --- | --- |
+| A free **PostgreSQL GUI** / **SQL Server GUI** / **MySQL & MariaDB GUI** | Object explorer, query windows with IntelliSense, result grids you can sort, filter and export, a table data editor with staged changes, CSV import, execution plans, query history, SSH tunnels |
+| A **Kafka UI** / Kafka topic browser | Brokers, topics, consumer groups, message browser with filters, producer — Apache Kafka, Redpanda, Confluent Cloud, Azure Event Hubs |
+| A **Redis GUI** / Redis key browser | Namespace tree, editors for strings, hashes, lists, sets, sorted sets, streams and JSON, TTL, rename, delete |
+| A **Postman alternative** / REST API client, or a way to **run `.http` files** | Collections, environments, variables, auth, history, import from Postman, or paste **Copy as cURL / PowerShell / fetch** straight from the browser's dev tools, export to Postman — and `.http` / `.rest` files open in the editor with a ▶ **Send Request** button per endpoint, chained requests and a response viewer |
+| A **Docker** UI and quick **test databases** | Containers, images, volumes, networks; one-click templates for PostgreSQL, SQL Server, Redis, Kafka, Azurite and Keycloak, each with a ready connection |
+| **Azure Blob Storage** explorer / **Azurite** client | Containers and blobs, upload, download, edit, SAS links |
+| A **Keycloak** admin console for developers | Realms, users, roles, clients and token tools |
+| An **AI assistant** that sees your databases and files | Chat with Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen, OpenRouter, Ollama or any OpenAI-compatible server using **your own API key** — it can list tables, run read-only SQL and propose file edits you approve |
+| A **Git GUI** with a commit graph, **terminal** and **file editor** | Source Control, a full Git Graph tab, integrated terminal, task runner, multi-folder search |
 
 ## Features
 
 ### A real workbench
 
 You get the Explorer, multi-folder workspaces, a shared editor (find / replace, go to line, format, breadcrumbs), an
-integrated terminal (PowerShell, cmd, Git Bash, WSL, bash/zsh), title-bar menus and a command palette. Everything has
-a keyboard shortcut you already know.
+integrated terminal (PowerShell, cmd, Git Bash, WSL, bash/zsh), title-bar menus, **quick-access icons** and a command
+palette. Everything has a keyboard shortcut you already know. A **secondary side bar** on the right keeps a chat or any
+view next to your editors, and editors can be **split** side by side.
 
 | Search across every open folder | Command palette |
 | --- | --- |
 | ![Search](docs/images/search.png) | ![Command palette](docs/images/command-palette.png) |
 | Match case, whole word, regex, include / exclude globs, and replace per file or everywhere. | Every core and plugin command, filtered as you type (`Ctrl+Shift+P`). |
 
-### Source Control
+The editor colors **TypeScript, JavaScript, CSS / SCSS / Less, C#, YAML, JSON, XML, SQL and Markdown** (Markdown and SVG
+have a live preview), and opens **images** (PNG, JPEG, GIF, WebP, BMP, ICO, AVIF) in a viewer with zoom and pan.
+
+### Source Control and Git Graph
 
 The Source Control view works like VS Code's: staged and unstaged changes, a commit box with Commit / Amend / Push /
-Sync, side-by-side or inline diffs, branch checkout and creation, and a commit **graph** with branch lanes and refs. It
-uses your own `git`, so hooks, credentials and config just work.
+Sync, side-by-side or inline diffs, branch checkout and creation. The **Git Graph** tab (title bar → graph icon) shows
+the whole history as a searchable table with branch lanes, refs, authors and dates; pick a commit to see its message and
+changed files and open any file's diff. It uses your own `git`, so hooks, credentials and config just work.
 
 ![Source Control with a side-by-side diff and the commit graph](docs/images/source-control.png)
 
@@ -44,7 +65,17 @@ Git fetch / pull / push and long plugin jobs show up here too.
 
 ![The Tasks panel with a running build and finished test and lint tasks](docs/images/tasks.png)
 
-### Plugins for your infrastructure
+### SQL plugins: PostgreSQL, SQL Server and MySQL / MariaDB
+
+The three SQL plugins share one core (`@oneclient/sql-core`), so they all get the same tools:
+
+- **Query windows** with IntelliSense, multiple result sets, messages, cancel, and results you can sort, filter,
+  multi-select, copy and export as CSV, TSV, JSON, Markdown or SQL `INSERT`s.
+- **Query history** per connection, searchable, with one-click re-run; **Fast Tools** — saved queries per database and
+  generators like the SQL Server fake-data tool.
+- **Background queries:** mark a long query to run in the background, leave the tab, and watch it finish.
+- **Table data editor** with staged changes and a SQL review before anything is written; **CSV import** into a table;
+  **execution plans**; **Create Database**; **SSH tunnels** for every connection; **ER diagrams**.
 
 | PostgreSQL & SQL Server | Apache Kafka |
 | --- | --- |
@@ -56,13 +87,50 @@ Git fetch / pull / push and long plugin jobs show up here too.
 | ![HTTP client request and response](docs/images/http-client.png) | ![Redis key browser](docs/images/redis.png) |
 | Collections, folders, environments and history. Import from Postman or cURL. | Key tree grouped by namespace; editors for strings, hashes, lists, sets, sorted sets, streams and JSON; TTL, rename and delete. |
 
+### AI assistant (bring your own key)
+
+Add one **AI Assistant** connection, paste the API keys of the providers you use, and pick any model from one table in the
+chat — prices shown, providers without a key dimmed. The chat lives in the secondary side bar (or a tab), keeps your
+conversations, renders **Markdown tables, code and Mermaid diagrams**, and can work with your setup:
+
+- **Your folders:** list, read and search files; every edit or write waits for your approval.
+- **Your databases:** list connections, read the schema, run read-only SQL; anything that changes data shows the
+  statement and waits for your approval. Other plugins can offer tools the same way (`oneclient.aiTools`).
+
+Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen, OpenRouter, Ollama (local) and any OpenAI-compatible
+server work. Keys are stored encrypted (OS keychain on the desktop).
+
+### Plugins for your infrastructure
+
 Docker, Azure Blob Storage and Keycloak are included too. Docker's **Templates** start any of these servers in a
 container for local testing (PostgreSQL, SQL Server, Redis, Kafka, Azurite, Keycloak). Each one gets a ready connection
 in its plugin, and every container shows which plugin and connection it belongs to. The Miscellaneous plugin adds
-JSON / XML / SQL / Markdown editor support and Material file icons. The Plugins view shows what is installed. You can enable or disable
-any plugin live.
+editor support (syntax coloring, outlines, previews) and Material file icons. The Plugins view shows what is installed and, for each plugin, what it can do grouped by category (Explore, Query, Edit data…), searchable and with a **Try it** button. Plugin authors fill it in with the manifest's `features` list.
+You can enable or disable any plugin live.
 
 ![The Plugins view](docs/images/plugins.png)
+
+## FAQ
+
+**Is there a free, open-source alternative to a separate database client, Kafka UI, Redis GUI and Postman?**
+oneClient combines them in one app: PostgreSQL, SQL Server and MySQL / MariaDB clients, Apache Kafka, Redis, an HTTP
+client with Postman import, Docker, Azure Blob Storage and Keycloak, in one VS Code-style window. It is MIT-licensed.
+
+**Does it run in the browser?** Yes. The web version is a self-hosted Node server you open from a browser; see
+[Run it in a browser](#run-it-in-a-browser-self-hosted-no-electron). The desktop app uses Electron.
+
+**Which databases does it support?** PostgreSQL (including Azure Database for PostgreSQL, AWS RDS / Aurora, Supabase,
+Neon, TimescaleDB), Microsoft SQL Server, and MySQL / MariaDB. Redis and Kafka have their own plugins.
+
+**Can an AI assistant query my database?** The AI Assistant plugin can list your connections, read schemas and run
+read-only SQL, using your own provider API key. Statements that change data, and every file edit, wait for your
+approval. You can turn the database and file access off per connection.
+
+**Can I write my own plugin?** Yes — see [`packages/plugin-api`](./packages/plugin-api) and
+[`ARCHITECTURE.md`](./ARCHITECTURE.md). A plugin is a manifest plus a Node entry point and optional web views.
+
+**Where are my passwords stored?** Encrypted: in the OS keychain on the desktop, and with a server-side key in the web
+version.
 
 ## For developers
 
@@ -80,8 +148,9 @@ version is a self-hosted **plain Node** server that you use from a browser.
 | `packages/workbench` | The UI (React + Vite): title bar menus, Explorer, Search, editor, Source Control, Terminal, Tasks, Output | no |
 | `packages/server` | **Web runtime:** an HTTP + WebSocket server for the backend, serving the workbench to a browser | no |
 | `packages/core` | **Desktop runtime:** the Electron shell (main process, preloads, native windows and views) | yes |
-| `packages/plugins/*` | SQL Server, PostgreSQL, Redis, Kafka, Azure Blob Storage, Docker, Keycloak, HTTP client, Miscellaneous | no |
+| `packages/plugins/*` | SQL Server, PostgreSQL, MySQL / MariaDB, Redis, Kafka, Azure Blob Storage, Docker, Keycloak, HTTP client, AI Assistant, Miscellaneous | no |
 | `packages/plugin-api`, `packages/editor-kit` | What plugins depend on, and the shared editor | no |
+| `packages/sql-core`, `packages/editor-core` | The shared base of the SQL plugins, and the editor's syntax tokenizers (TypeScript, JavaScript, CSS, C#, YAML) | no |
 
 Plugins run unchanged in both runtimes.
 

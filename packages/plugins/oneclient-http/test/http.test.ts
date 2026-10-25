@@ -296,7 +296,7 @@ describe("api (workspace + send)", () => {
     expect(r.kind).toBe("curl");
     const o = await api(cid, "overview");
     expect(o.collections[0].name).toBe("Imported requests");
-    await expect(api(cid, "importText", { text: "hello" })).rejects.toThrow(/JSON or a curl/);
+    await expect(api(cid, "importText", { text: "hello" })).rejects.toThrow(/curl \/ PowerShell \/ fetch/);
   });
 
   it("creates, renames, duplicates and deletes items", async () => {

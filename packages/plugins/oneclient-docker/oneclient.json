@@ -6,6 +6,25 @@
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",
+  "features": [
+    {
+      "category": "Manage",
+      "items": [
+        "Containers: start, stop, restart, logs, remove",
+        "Images: pull",
+        "Volumes and networks",
+        "Local engine or a remote one over tcp"
+      ]
+    },
+    {
+      "category": "Test infrastructure",
+      "items": [
+        "Templates: PostgreSQL, MySQL, SQL Server, Redis, Kafka, Azurite and Keycloak in one click",
+        "Each one gets a ready connection in its plugin",
+        "Every container shows which plugin and connection it belongs to"
+      ]
+    }
+  ],
   "engines": { "oneclient": "^0.1.1" },
   "main": "dist/main.js",
   "ui": "dist/ui",

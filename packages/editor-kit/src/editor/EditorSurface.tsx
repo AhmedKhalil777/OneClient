@@ -21,7 +21,12 @@ export function EditorSurface({
   onScrollFraction,
   readOnly = false,
   underlay,
+  lenses,
+  onLens,
 }: {
+  /** ▶ buttons in the gutter (0-based `line`), e.g. "Send Request". */
+  lenses?: ReadonlyArray<{ line: number; title: string }>;
+  onLens?: (index: number) => void;
   /** Drawn between the highlight layer and the textarea (e.g. find-match marks). */
   underlay?: ReactNode;
   text: string;
@@ -64,6 +69,11 @@ export function EditorSurface({
       <div className="oce-gutter" ref={gutterRef} aria-hidden>
         <div className="oce-gutter-inner">
           <pre className="oce-gutter-numbers">{numbers}</pre>
+          {lenses?.map((l, i) => (
+            <button key={`${l.line}-${i}`} className="oce-lens" style={{ top: 8 + l.line * LINE_HEIGHT }} title={l.title} aria-label={l.title} onClick={() => onLens?.(i)}>
+              ▶
+            </button>
+          ))}
           <div className="oce-gutter-current" style={{ top: (cursorLine - 1) * LINE_HEIGHT }}>
             {cursorLine}
           </div>

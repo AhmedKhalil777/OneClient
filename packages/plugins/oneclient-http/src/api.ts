@@ -1,4 +1,4 @@
-import { toCurl, parseCurl } from "./curl.js";
+import { detectCommand, parseCommand, toCurl } from "./curl.js";
 import { type AuthDef, type Collection, type Environment, type HistoryEntry, type KV, type RequestDef, emptyRequest } from "./model.js";
 import { exportCollection, exportEnvironment, importCollection, importEnvironment, isPostmanCollection, isPostmanEnvironment, type ImportReport } from "./postman.js";
 import { prepare, send, type HttpResponse } from "./runner.js";
@@ -252,13 +252,18 @@ export const API: Record<string, Handler> = {
   clearHistory: (cid) => void workspaceFor(cid).update((ws) => void (ws.history = [])),
 
   // -- import / export
+  /** A pasted browser command → a request definition, without saving it (the request editor fills itself from it). */
+  parseCommand: (_cid, p) => {
+    const { request, notes, flavor } = parseCommand(needS(p, "text"));
+    return { request, notes, flavor };
+  },
   importText: (cid, p) => {
     const text = needS(p, "text").trim();
     const store = workspaceFor(cid);
     const result: { kind: string; name: string; report?: ImportReport; notes?: string[]; id?: string; items: Array<{ kind: string; name: string; id: string }> } = { kind: "", name: "", items: [] };
 
-    if (/^curl\b/i.test(text)) {
-      const { request, notes } = parseCurl(text);
+    if (detectCommand(text)) {
+      const { request, notes, flavor } = parseCommand(text);
       store.update((ws) => {
         let col = ws.collections.find((c) => c.name === "Imported requests");
         if (!col) col = addCollection(ws, "Imported requests");
@@ -270,7 +275,7 @@ export const API: Record<string, Handler> = {
           /* keep the raw name */
         }
         const item = addRequest(ws, col.id, name, request);
-        result.kind = "curl";
+        result.kind = flavor;
         result.name = name;
         result.id = item.id;
         result.notes = notes;
@@ -283,7 +288,7 @@ export const API: Record<string, Handler> = {
     try {
       doc = JSON.parse(text);
     } catch (err) {
-      throw new HttpPluginError(`That isn't JSON or a curl command: ${err instanceof Error ? err.message : String(err)}`);
+      throw new HttpPluginError(`That isn't a curl / PowerShell / fetch command or Postman JSON: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     const docs: unknown[] = typeof doc === "object" && doc !== null && Array.isArray((doc as Json).collections) ? [...((doc as Json).collections as unknown[]), ...(Array.isArray((doc as Json).environments) ? ((doc as Json).environments as unknown[]) : [])] : [doc];
@@ -307,7 +312,7 @@ export const API: Record<string, Handler> = {
         }
       }
     });
-    if (result.items.length === 0) throw new HttpPluginError("Nothing to import — that doesn't look like a Postman collection (v2.0 / v2.1), a Postman environment, or a curl command.");
+    if (result.items.length === 0) throw new HttpPluginError("Nothing to import — that doesn't look like a Postman collection (v2.0 / v2.1), a Postman environment, or a curl / PowerShell / fetch command.");
     result.kind = result.items.length === 1 ? result.items[0]!.kind : "mixed";
     result.name = result.items.map((i) => i.name).join(", ");
     result.report = total;

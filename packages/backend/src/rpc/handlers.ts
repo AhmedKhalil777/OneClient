@@ -6,7 +6,7 @@ import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } f
 import type { ConfigStore } from "../config/config-store.js";
 import type { ConnectionManager } from "../connections/connection-manager.js";
 import type { ExtensionHostSupervisor } from "../plugins/extension-host-supervisor.js";
-import type { PluginManager } from "../plugins/plugin-manager.js";
+import { type PluginManager, summarizePlugin } from "../plugins/plugin-manager.js";
 import type { ContributionRegistry } from "../plugins/registry.js";
 import type { ThemeService } from "../themes/theme-service.js";
 import type { SearchService } from "../search/search-service.js";
@@ -110,17 +110,7 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 
   rpc.handle(IpcChannel.RegistryGet, () => registry.snapshot());
 
-  rpc.handle(IpcChannel.PluginList, (): PluginSummary[] =>
-    pluginManager.getRecords().map((r) => ({
-      id: r.id,
-      displayName: r.manifest?.displayName,
-      description: r.manifest?.description,
-      version: r.manifest?.version ?? "0.0.0",
-      state: r.state,
-      error: r.error,
-      icon: r.manifest?.icon,
-    })),
-  );
+  rpc.handle(IpcChannel.PluginList, (): PluginSummary[] => pluginManager.getRecords().map(summarizePlugin));
 
   rpc.handle(IpcChannel.PluginSetEnabled, async (_event, pluginId: string, enabled: boolean) => {
     pluginManager.setEnabled(pluginId, enabled);

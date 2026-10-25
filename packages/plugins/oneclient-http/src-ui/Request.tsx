@@ -259,6 +259,20 @@ export function RequestView() {
           value={req.url}
           placeholder="https://api.example.com/items — {{variables}} are replaced when you send"
           onChange={(e) => patch({ url: e.target.value })}
+          onPaste={(e) => {
+            // Paste "Copy as cURL / PowerShell / fetch" from the browser's dev tools and the whole request fills in.
+            const pasted = e.clipboardData.getData("text");
+            if (pasted.length < 12 || !/curl|Invoke-(?:Web|Rest)|\b(?:iwr|irm)\b|fetch\s*\(/i.test(pasted)) return;
+            e.preventDefault();
+            void api<{ request: RequestDef; notes: string[]; flavor: string }>("parseCommand", { text: pasted }).then((r) => {
+              if (r.ok) {
+                const d = r.data as unknown as { request: RequestDef; notes: string[]; flavor: string };
+                setReq(d.request);
+                setDisabledParams([]);
+                say(`Filled in from the ${d.flavor === "powershell" ? "PowerShell" : d.flavor === "fetch" ? "fetch" : "cURL"} command${d.notes.length ? ` — ${d.notes[0]}` : "."}`, d.notes.length > 0);
+              } else patch({ url: req.url + pasted });
+            });
+          }}
           spellCheck={false}
         />
         {sending ? (

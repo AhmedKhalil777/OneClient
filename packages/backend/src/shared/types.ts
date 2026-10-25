@@ -55,6 +55,13 @@ export interface PluginSummary {
   error?: string;
   /** Manifest `icon` path. Render via `oneclient-asset://<id>/<icon>` — never a raw filesystem path. */
   icon?: string;
+  /** What it can do, by category (manifest `features`, normalised). */
+  features?: PluginFeatureGroup[];
+}
+
+export interface PluginFeatureGroup {
+  category: string;
+  items: Array<{ title: string; description?: string }>;
 }
 
 export interface ConnectionSummary {

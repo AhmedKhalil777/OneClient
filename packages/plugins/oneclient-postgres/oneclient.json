@@ -6,6 +6,66 @@
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",
+  "features": [
+    {
+      "category": "Explore",
+      "items": [
+        "Databases, schemas, tables, views, stored procedures and functions",
+        "Columns, primary and foreign keys, indexes",
+        "Go to any object with Ctrl+P",
+        "ER diagrams of a database"
+      ]
+    },
+    {
+      "category": "Query",
+      "items": [
+        "Query windows with IntelliSense",
+        "Several result sets and server messages per run",
+        "Cancel a running query",
+        "Result grids: sort, filter, multi-select, copy",
+        "Export as CSV, TSV, JSON, Markdown or SQL INSERTs",
+        "JSON cell viewer"
+      ]
+    },
+    {
+      "category": "Edit data",
+      "items": [
+        "Table data editor with staged changes and a SQL review before anything is written",
+        "Import a CSV file into a table",
+        "Create database from the sidebar"
+      ]
+    },
+    {
+      "category": "Performance & history",
+      "items": [
+        "Execution plans",
+        "Searchable query history with one-click re-run",
+        "Run a long query in the background and watch its clock — leave the tab and come back"
+      ]
+    },
+    {
+      "category": "Productivity",
+      "items": [
+        "Fast Tools: save queries per database and run them on any database",
+        "Safe mode warns before UPDATE or DELETE without a WHERE"
+      ]
+    },
+    {
+      "category": "Connectivity",
+      "items": [
+        "SSH tunnels",
+        "SSL modes",
+        "Works with Azure Database for PostgreSQL, AWS RDS and Aurora, Supabase, Neon and TimescaleDB"
+      ]
+    },
+    {
+      "category": "AI & testing",
+      "items": [
+        "The AI Assistant can read the schema and run read-only queries; anything that changes data waits for your approval",
+        "Docker template: start PostgreSQL in one click with a ready connection"
+      ]
+    }
+  ],
   "engines": {
     "oneclient": "^0.1.0"
   },

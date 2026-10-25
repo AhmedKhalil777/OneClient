@@ -29,6 +29,7 @@ export function sanitizeContributions(raw: ReadonlyArray<Record<string, unknown>
     const symbols = str(item.symbols);
     const tokens = str(item.tokens);
     const preview = str(item.preview);
+    const lenses = str(item.lenses);
     out.push({
       id,
       label,
@@ -39,6 +40,7 @@ export function sanitizeContributions(raw: ReadonlyArray<Record<string, unknown>
       ...(symbols ? { symbols } : {}),
       ...(tokens ? { tokens } : {}),
       ...(preview ? { preview } : {}),
+      ...(lenses ? { lenses } : {}),
       ...(item.previewByDefault === true ? { previewByDefault: true } : {}),
       ...(actions.length ? { actions } : {}),
     });

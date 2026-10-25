@@ -511,3 +511,58 @@
   right: 0;
   top: calc(100% + 2px);
 }
+
+/* ---- lenses: ▶ buttons in the gutter, and the result pane ---- */
+.oce-lens {
+  position: absolute;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--oc-button-background, #0e639c) 85%, transparent);
+  color: var(--oc-button-foreground, #fff);
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0.85;
+}
+.oce-lens:hover {
+  opacity: 1;
+}
+.oce-result-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.oce-result-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 8px 0 12px;
+  flex: none;
+  border-bottom: 1px solid var(--oc-panel-border, rgba(128, 128, 128, 0.3));
+  font-size: 12px;
+}
+.oce-result-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.oce-result-busy {
+  color: var(--oc-descriptionForeground, #858585);
+}
+.oce-result-pane iframe {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+}

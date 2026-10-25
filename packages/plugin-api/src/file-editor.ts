@@ -57,6 +57,12 @@ export interface FileEditorContribution {
   readonly tokens?: string;
   /** Command: {@link FileEditorRequest} → {@link PreviewResult}. Enables the Preview pane. */
   readonly preview?: string;
+  /**
+   * Command: {@link FileEditorRequest} → {@link LensesResult}. Puts a ▶ button in the gutter at each returned line
+   * (e.g. "Send Request" in an .http file). Clicking it calls the lens's own command with a {@link RunRequest}; the
+   * {@link PreviewResult} it returns is shown in a result pane beside the editor.
+   */
+  readonly lenses?: string;
   /** Open the preview pane automatically (e.g. Markdown). */
   readonly previewByDefault?: boolean;
   /** Extra transforms in the editor's Actions menu. */
@@ -74,6 +80,7 @@ export interface FileEditorFeatures {
   readonly symbols?: string | undefined;
   readonly tokens?: string | undefined;
   readonly preview?: string | undefined;
+  readonly lenses?: string | undefined;
   readonly previewByDefault: boolean;
   readonly actions: ReadonlyArray<FileEditorAction & { readonly pluginId: string }>;
 }
@@ -108,7 +115,7 @@ export function matchFileEditors(contributions: readonly ResolvedFileEditorContr
     .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index);
 
-  const first = <K extends "format" | "symbols" | "tokens" | "preview">(key: K): string | undefined =>
+  const first = <K extends "format" | "symbols" | "tokens" | "preview" | "lenses">(key: K): string | undefined =>
     matches.find((m) => m.c[key])?.c[key];
 
   const actions: Array<FileEditorAction & { pluginId: string }> = [];
@@ -130,6 +137,7 @@ export function matchFileEditors(contributions: readonly ResolvedFileEditorContr
     symbols: first("symbols"),
     tokens: first("tokens"),
     preview: first("preview"),
+    lenses: first("lenses"),
     previewByDefault: matches.some((m) => m.c.previewByDefault && m.c.preview),
     actions,
   };
@@ -149,6 +157,27 @@ export interface TransformRequest extends FileEditorRequest {
   readonly insertSpaces: boolean;
   /** Current selection (offsets into `text`), if non-empty. Selection-aware actions limit themselves to it; others ignore it. */
   readonly selection?: { readonly start: number; readonly end: number };
+}
+
+/** One runnable place in a document: the editor shows a ▶ in the gutter at `line`. */
+export interface FileLens {
+  /** 0-based line of the ▶. */
+  readonly line: number;
+  /** 0-based last line of the block the lens belongs to — "Run at cursor" picks the lens whose block holds the cursor. */
+  readonly endLine: number;
+  /** Tooltip, e.g. "Send Request (login)". */
+  readonly title: string;
+  /** Command of the contributing plugin that runs it: {@link RunRequest} → {@link PreviewResult}. */
+  readonly command: string;
+  /** Handed back to `command` untouched (an index, an id…). */
+  readonly args?: unknown;
+}
+
+export type LensesResult = { readonly ok: true; readonly lenses: readonly FileLens[] } | { readonly ok: false; readonly error: FileEditorError };
+
+/** What a lens's command receives: the document, and the lens's `args`. */
+export interface RunRequest extends FileEditorRequest {
+  readonly args?: unknown;
 }
 
 export interface FileEditorError {

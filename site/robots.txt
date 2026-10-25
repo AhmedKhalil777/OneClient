@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ahmedkhalil777.github.io/OneClient/sitemap.xml

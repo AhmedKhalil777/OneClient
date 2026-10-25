@@ -6,6 +6,35 @@
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",
+  "features": [
+    {
+      "category": "Chat",
+      "items": [
+        "Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen, OpenRouter, Ollama or any OpenAI-compatible server",
+        "One model table with prices; switch model per conversation",
+        "Chat in the secondary side bar or a tab",
+        "Conversation list with search, rename, delete and export to Markdown",
+        "Markdown tables, code and Mermaid diagrams"
+      ]
+    },
+    {
+      "category": "Works with your setup",
+      "items": [
+        "Reads, searches and proposes edits in your open folders — you approve each one",
+        "Lists your connections and queries your databases read-only",
+        "Statements that change data show the SQL and wait for approval",
+        "Other plugins can offer their own tools"
+      ]
+    },
+    {
+      "category": "Setup & privacy",
+      "items": [
+        "Bring your own API key, stored encrypted",
+        "Run models locally with Ollama",
+        "Turn folder and database access off per connection"
+      ]
+    }
+  ],
   "engines": {
     "oneclient": "^0.1.0"
   },

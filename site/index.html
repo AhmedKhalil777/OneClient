@@ -3,11 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>oneClient — one desktop client for all your infrastructure</title>
-  <meta name="description" content="oneClient is a free desktop console for PostgreSQL, SQL Server, Kafka, Redis, Docker, REST APIs, Azure Blob Storage and Keycloak — with a VS Code-style workbench, Git and a terminal built in." />
+  <title>oneClient — free PostgreSQL, SQL Server, MySQL, Kafka, Redis &amp; REST client</title>
+  <meta name="description" content="oneClient is a free, open-source desktop and web client for PostgreSQL, SQL Server, MySQL, Kafka, Redis, Docker, REST APIs (Postman alternative), Azure Blob Storage and Keycloak, with an AI assistant, Git graph and terminal in one VS Code-style window." />
+  <link rel="canonical" href="https://ahmedkhalil777.github.io/OneClient/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:site_name" content="oneClient" />
+  <meta property="og:url" content="https://ahmedkhalil777.github.io/OneClient/" />
+  <meta property="og:image:alt" content="The oneClient workbench with the Explorer, a JSON editor and the integrated terminal" />
   <meta property="og:title" content="oneClient — one client for everything" />
   <meta property="og:description" content="Databases, brokers, caches, APIs and containers in one VS Code-style window. Every integration is a plugin." />
-  <meta property="og:image" content="images/workbench.png" />
+  <meta property="og:image" content="https://ahmedkhalil777.github.io/OneClient/images/workbench.png" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="logo.svg" type="image/svg+xml" />
@@ -15,6 +20,88 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "oneClient",
+        "alternateName": "OneClient",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Windows, macOS, Linux, Web",
+        "description": "A free, open-source desktop and web client for PostgreSQL, SQL Server, MySQL, Apache Kafka, Redis, Docker, REST APIs, Azure Blob Storage and Keycloak, with an AI assistant, Git graph and terminal in one VS Code-style window.",
+        "url": "https://ahmedkhalil777.github.io/OneClient/",
+        "downloadUrl": "https://github.com/AhmedKhalil777/OneClient/releases/latest",
+        "codeRepository": "https://github.com/AhmedKhalil777/OneClient",
+        "license": "https://opensource.org/licenses/MIT",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "screenshot": "https://ahmedkhalil777.github.io/OneClient/images/workbench.png",
+        "featureList": [
+          "PostgreSQL, SQL Server and MySQL clients",
+          "Apache Kafka UI",
+          "Redis browser",
+          "HTTP / REST client with Postman import",
+          "Docker management and test containers",
+          "Azure Blob Storage explorer",
+          "Keycloak admin",
+          "AI assistant with your own API key",
+          "Git graph and source control",
+          "Plugin API"
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is there a free, open-source alternative to a separate database client, Kafka UI, Redis GUI and Postman?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "oneClient combines them in one VS Code-style app: PostgreSQL, SQL Server and MySQL / MariaDB clients, Apache Kafka, Redis, an HTTP client with Postman import, Docker, Azure Blob Storage and Keycloak. It is MIT-licensed and free."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does oneClient run in the browser?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Besides the desktop app for Windows, macOS and Linux, there is a self-hosted web version: a small Node server you open from any browser."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which databases are supported?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "PostgreSQL (including Azure Database for PostgreSQL, AWS RDS / Aurora, Supabase, Neon and TimescaleDB), Microsoft SQL Server, and MySQL / MariaDB, with query windows, a table data editor, CSV import, execution plans, SSH tunnels and query history."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can an AI assistant work with my databases and files?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The AI Assistant plugin chats with Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen, OpenRouter, Ollama or any OpenAI-compatible server using your own API key. It can list tables and run read-only SQL; statements that change data and every file edit wait for your approval."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I write my own plugin?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Plugins declare connection types, explorer trees, editors, commands, menus and title-bar quick actions in a manifest, and run in their own process. The plugin API is a typed package, @oneclient/plugin-api."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <header class="nav">
@@ -25,6 +112,7 @@
         <a href="#plugins">Plugins</a>
         <a href="#extend">Extend</a>
         <a href="#download">Download</a>
+        <a href="#faq">FAQ</a>
       </nav>
       <a class="btn btn-ghost btn-sm" href="https://github.com/AhmedKhalil777/OneClient">
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
@@ -58,6 +146,7 @@
         <ul class="logos" aria-label="Supported tools">
           <li><img src="icons/postgres.svg" alt="" /> PostgreSQL</li>
           <li><img src="icons/mssql.svg" alt="" /> SQL Server</li>
+          <li><img src="icons/mysql.svg" alt="" /> MySQL</li>
           <li><img src="icons/kafka.svg" alt="" /> Apache Kafka</li>
           <li><img src="icons/redis.svg" alt="" /> Redis</li>
           <li><img src="icons/docker.svg" alt="" /> Docker</li>
@@ -133,8 +222,8 @@
 
         <div class="tab-panel" data-panel="postgres">
           <div class="tab-text">
-            <h3>PostgreSQL &amp; SQL Server</h3>
-            <p>Browse databases, schemas, tables, views, functions, procedures and sequences — with columns, keys and indexes. Query windows have IntelliSense, multiple result sets and server messages.</p>
+            <h3>PostgreSQL, SQL Server &amp; MySQL</h3>
+            <p>Browse databases, schemas, tables, views, functions, procedures and sequences — with columns, keys and indexes. Query windows have IntelliSense, multiple result sets and server messages; a table data editor, CSV import, execution plans, query history and SSH tunnels come with every SQL plugin.</p>
           </div>
           <div class="shot"><img src="images/postgres.png" alt="A PostgreSQL query window with results" loading="lazy" width="1440" height="900" /></div>
         </div>
@@ -169,6 +258,8 @@
           <li><img src="icons/http.svg" alt="" /><div><strong>HTTP client</strong><span>Collections, environments, Postman import</span></div></li>
           <li><img src="icons/azure-blob.svg" alt="" /><div><strong>Azure Blob Storage</strong><span>Upload, download, edit, SAS links; works with Azurite</span></div></li>
           <li><img src="icons/keycloak.svg" alt="" /><div><strong>Keycloak</strong><span>Realms, users, roles, clients, plus token tools</span></div></li>
+          <li><img src="icons/mysql.svg" alt="" /><div><strong>MySQL &amp; MariaDB</strong><span>Query windows, table editor, CSV import, plans, SSH tunnels</span></div></li>
+          <li><img src="icons/ai.svg" alt="" /><div><strong>AI Assistant</strong><span>Claude, OpenAI, Gemini, DeepSeek, Kimi and more — your key, your approval</span></div></li>
         </ul>
       </div>
     </section>
@@ -243,6 +334,23 @@
           </div>
         </div>
         <p class="dl-note">The installers aren't code-signed yet, so Windows SmartScreen and macOS Gatekeeper will ask you to confirm the first launch. Every release lists SHA-256 checksums. <a href="https://github.com/AhmedKhalil777/OneClient/releases">All releases →</a></p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section section-alt" id="faq">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">Questions</p>
+          <h2>Frequently asked questions</h2>
+        </div>
+        <div class="faq">
+          <details><summary>Is there a free, open-source alternative to a separate database client, Kafka UI, Redis GUI and Postman?</summary><p>oneClient combines them in one VS Code-style app: PostgreSQL, SQL Server and MySQL / MariaDB clients, Apache Kafka, Redis, an HTTP client with Postman import, Docker, Azure Blob Storage and Keycloak. It is MIT-licensed and free.</p></details>
+          <details><summary>Does oneClient run in the browser?</summary><p>Yes. Besides the desktop app for Windows, macOS and Linux, there is a self-hosted web version: a small Node server you open from any browser.</p></details>
+          <details><summary>Which databases are supported?</summary><p>PostgreSQL (including Azure Database for PostgreSQL, AWS RDS / Aurora, Supabase, Neon and TimescaleDB), Microsoft SQL Server, and MySQL / MariaDB, with query windows, a table data editor, CSV import, execution plans, SSH tunnels and query history.</p></details>
+          <details><summary>Can an AI assistant work with my databases and files?</summary><p>The AI Assistant plugin chats with Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen, OpenRouter, Ollama or any OpenAI-compatible server using your own API key. It can list tables and run read-only SQL; statements that change data and every file edit wait for your approval.</p></details>
+          <details><summary>Can I write my own plugin?</summary><p>Yes. Plugins declare connection types, explorer trees, editors, commands, menus and title-bar quick actions in a manifest, and run in their own process. The plugin API is a typed package, @oneclient/plugin-api.</p></details>
+        </div>
       </div>
     </section>
   </main>

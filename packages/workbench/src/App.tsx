@@ -1828,7 +1828,7 @@ export function App() {
             <button className="welcome-action" onClick={openWelcome}>Open the Feature Guide</button>
           </div>
         )}
-        {tab?.kind === "plugin-manager" && <PluginManagerPanel plugins={plugins} />}
+        {tab?.kind === "plugin-manager" && <PluginManagerPanel plugins={plugins} hasConnections={(id) => registry.connectionTypes.some((t) => t.pluginId === id)} onTry={(id) => setNewConnectionFor({ pluginId: id })} />}
         {tab?.kind === "command-result" && <pre className="result">{JSON.stringify(tab.result, null, 2)}</pre>}
       </div>
     );

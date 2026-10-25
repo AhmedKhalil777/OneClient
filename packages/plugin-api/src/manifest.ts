@@ -14,6 +14,18 @@ import type { ColorThemeContribution, IconContribution, IconThemeContribution } 
  * code is only activated lazily, the first time one of its contributions
  * is actually used (see `activationEvents`).
  */
+export interface PluginFeatureCategory {
+  /** "Explore", "Query", "Edit data"… */
+  readonly category: string;
+  readonly items: ReadonlyArray<string | PluginFeature>;
+}
+
+export interface PluginFeature {
+  readonly title: string;
+  /** One more sentence, shown under the title. */
+  readonly description?: string;
+}
+
 export interface PluginManifest {
   /** Unique id, conventionally `oneclient-<tool>` (e.g. "oneclient-postgres"). */
   readonly name: string;
@@ -22,6 +34,11 @@ export interface PluginManifest {
   readonly version: string;
   readonly publisher?: string;
   readonly icon?: string;
+  /**
+   * What the plugin can do, grouped by category — shown on its card in the Plugins view so people can tell at a glance
+   * whether it is worth trying. Keep items short and true: "Execution plans", not "Powerful performance tooling".
+   */
+  readonly features?: PluginFeatureCategory[];
   readonly license?: string;
   readonly repository?: string;
 

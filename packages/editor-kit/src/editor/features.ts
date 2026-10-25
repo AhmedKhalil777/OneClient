@@ -4,6 +4,8 @@ import {
   type DocumentSymbol,
   type FileEditorError,
   type FileEditorFeatures,
+  type FileLens,
+  type LensesResult,
   type SymbolsResult,
   type TokenClass,
   type TokensResult,
@@ -48,6 +50,27 @@ export function useFileFeatures(fileName: string): FileEditorFeatures | null {
     };
   }, [fileName]);
   return features;
+}
+
+/** The runnable places of the document (`lenses` command), refreshed shortly after typing stops. */
+export function useLenses(text: string, command: string | undefined, fileName: string, enabled: boolean): readonly FileLens[] {
+  const [lenses, setLenses] = useState<readonly FileLens[]>([]);
+  const request = useRef(0);
+  useEffect(() => {
+    if (!command || !enabled) {
+      setLenses([]);
+      return;
+    }
+    const id = ++request.current;
+    const timer = setTimeout(async () => {
+      const r = await callFeature<LensesResult>(command, { text, fileName });
+      if (id === request.current && r.ok && "lenses" in r) setLenses(r.lenses);
+    }, lenses.length ? DEBOUNCE_MS : 0);
+    return () => clearTimeout(timer);
+    // `lenses` is read only to skip the debounce on the first request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, command, fileName, enabled]);
+  return lenses;
 }
 
 export interface TokenSnapshot {

@@ -152,15 +152,28 @@ export class PluginManager extends EventEmitter {
   }
 
   private emitChanged(): void {
-    const summaries: PluginSummary[] = this.getRecords().map((r) => ({
-      id: r.id,
-      displayName: r.manifest?.displayName,
-      description: r.manifest?.description,
-      version: r.manifest?.version ?? "0.0.0",
-      state: r.state,
-      error: r.error,
-      icon: r.manifest?.icon,
-    }));
-    this.emit("changed", summaries);
+    this.emit("changed", this.getRecords().map(summarizePlugin));
   }
+}
+
+/** What the UI is told about a plugin: identity, state, and its manifest's feature list (normalised to titles). */
+export function summarizePlugin(r: ReturnType<PluginManager["getRecords"]>[number]): PluginSummary {
+  const features = r.manifest?.features;
+  return {
+    id: r.id,
+    displayName: r.manifest?.displayName,
+    description: r.manifest?.description,
+    version: r.manifest?.version ?? "0.0.0",
+    state: r.state,
+    error: r.error,
+    icon: r.manifest?.icon,
+    ...(features?.length
+      ? {
+          features: features.map((g) => ({
+            category: g.category,
+            items: g.items.map((it) => (typeof it === "string" ? { title: it } : { title: it.title, ...(it.description ? { description: it.description } : {}) })),
+          })),
+        }
+      : {}),
+  };
 }

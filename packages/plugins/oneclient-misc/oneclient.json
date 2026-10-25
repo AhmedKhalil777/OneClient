@@ -6,6 +6,31 @@
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "$(extensions)",
+  "features": [
+    {
+      "category": "Editor support",
+      "items": [
+        "Syntax coloring for TypeScript, JavaScript, CSS / SCSS / Less, C#, YAML, JSON, XML, SQL and Markdown",
+        "Format JSON, XML and SQL",
+        "Breadcrumb outline for JSON, XML, SQL and Markdown",
+        "Live preview for Markdown and SVG"
+      ]
+    },
+    {
+      "category": "Text utilities",
+      "items": [
+        "Sort lines, remove duplicates",
+        "Trim trailing whitespace, ensure a final newline",
+        "Uppercase or lowercase SQL keywords"
+      ]
+    },
+    {
+      "category": "Icons",
+      "items": [
+        "Material Icon Theme: 1,300+ file types"
+      ]
+    }
+  ],
   "engines": {
     "oneclient": "^0.1.0"
   },

@@ -1,6 +1,6 @@
 export { PLUGIN_API_VERSION } from "./version.js";
 export type { AiToolContribution, AiTools } from "./ai-tools.js";
-export type { QuickActionContribution } from "./manifest.js";
+export type { PluginFeature, PluginFeatureCategory, QuickActionContribution } from "./manifest.js";
 export { AI_TOOLS_POINT } from "./ai-tools.js";
 
 export type { JsonSchemaObject, JsonSchemaType, UiSchema } from "./json-schema.js";
@@ -24,6 +24,9 @@ export type {
   FileEditorError,
   FileEditorFeatures,
   FileEditorRequest,
+  FileLens,
+  LensesResult,
+  RunRequest,
   PreviewResult,
   ResolvedFileEditorContribution,
   SymbolsResult,

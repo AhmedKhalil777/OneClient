@@ -1,12 +1,13 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CompletionProvider, DocumentSymbol, FileEditorAction, TransformRequest, TransformResult } from "@oneclient/plugin-api";
+import type { CompletionProvider, DocumentSymbol, FileEditorAction, FileLens, PreviewResult, RunRequest, TransformRequest, TransformResult } from "@oneclient/plugin-api";
 import { wordsProvider } from "../providers/words.js";
 import { Icon, useAutocomplete } from "../react.js";
 import { Breadcrumbs } from "./Breadcrumbs.js";
 import { EditorSurface } from "./EditorSurface.js";
 import { type PreviewHandle, PreviewPane } from "./PreviewPane.js";
+import { type RunOutcome, ResultPane } from "./ResultPane.js";
 import { caretAfterReplace, diffEdit, lineOf, mapBack, mapForward, shiftTokens } from "./edit.js";
-import { FEATURE_TEXT_LIMIT, callFeature, useAnalysis, useFileFeatures } from "./features.js";
+import { FEATURE_TEXT_LIMIT, callFeature, useAnalysis, useFileFeatures, useLenses } from "./features.js";
 import { buildHighlightHtml } from "./highlight.js";
 import { symbolPath } from "./symbols.js";
 import { type FindMatch, FindMarks, type FindMode, FindWidget, type Geometry, GoToLine } from "./find.js";
@@ -86,6 +87,9 @@ export function FeatureEditor({
   const [findMarks, setFindMarks] = useState<{ matches: FindMatch[]; current: number }>({ matches: [], current: -1 });
   const onFindMatches = useCallback((matches: FindMatch[], current: number) => setFindMarks({ matches, current }), []);
   const [goToLine, setGoToLine] = useState(false);
+  /** The latest run of a lens (e.g. an HTTP request): shown in a pane beside the editor until closed. */
+  const [outcome, setOutcome] = useState<RunOutcome | null>(null);
+  const runId = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<PreviewHandle>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -95,7 +99,8 @@ export function FeatureEditor({
   const large = text.length > FEATURE_TEXT_LIMIT;
   const analysis = useAnalysis(text, features, fileName, !large);
   const indent = useMemo(() => detectIndent(indentSource ?? text), [indentSource, text]);
-  const showPreview = Boolean(features?.preview) && !large && (previewChoice ?? features?.previewByDefault ?? false);
+  const lenses = useLenses(text, features?.lenses, fileName, !large);
+  const showPreview = Boolean(features?.preview) && !large && !outcome && (previewChoice ?? features?.previewByDefault ?? false);
 
   // ---- derived editor state -------------------------------------------------------------------
 
@@ -221,6 +226,24 @@ export function FeatureEditor({
     [busy, indent, readOnly, fileName],
   );
 
+  /** Run one lens: its command gets the document and the lens's args; what it returns opens in the result pane. */
+  const runLens = useCallback(
+    async (lens: FileLens) => {
+      const id = ++runId.current;
+      setOutcome({ title: lens.title, html: null, css: "" });
+      const request: RunRequest = { text: textareaRef.current?.value ?? text, fileName, args: lens.args };
+      const r = await callFeature<PreviewResult>(lens.command, request);
+      if (id !== runId.current) return;
+      if (r.ok && "html" in r) setOutcome({ title: lens.title, html: r.html, css: r.css ?? "" });
+      else setOutcome({ title: lens.title, html: "", css: "", error: !r.ok ? r.error.message : "The command returned nothing." });
+    },
+    [text, fileName],
+  );
+  /** The lens whose block holds the caret, else the first one. */
+  const lensAtCursor = useMemo(() => lenses.find((l) => cursor.line - 1 >= l.line && cursor.line - 1 <= l.endLine) ?? lenses[0], [lenses, cursor.line]);
+  const lensRef = useRef<{ lens: FileLens | undefined; run: (l: FileLens) => Promise<void> }>({ lens: undefined, run: runLens });
+  lensRef.current = { lens: lensAtCursor, run: runLens };
+
   // ---- keyboard -------------------------------------------------------------------------------
 
   const format = features?.format;
@@ -245,6 +268,9 @@ export function FeatureEditor({
       } else if (e.key === "Escape" && document.activeElement === textareaRef.current && (find || goToLine)) {
         setFind(null);
         setGoToLine(false);
+      } else if (mod && e.altKey && !e.shiftKey && key === "r" && lensRef.current.lens) {
+        e.preventDefault();
+        void lensRef.current.run(lensRef.current.lens);
       } else if (e.shiftKey && e.altKey && e.key.toLowerCase() === "f" && format) {
         e.preventDefault();
         void runTransform(format, "Format");
@@ -313,6 +339,11 @@ export function FeatureEditor({
             )}
           </div>
         )}
+        {lensAtCursor && (
+          <button className="oce-icon-btn oce-run-btn" onClick={() => void runLens(lensAtCursor)} title={`${lensAtCursor.title} (Ctrl+Alt+R)`} aria-label={lensAtCursor.title}>
+            <Icon id="play" size={15} />
+          </button>
+        )}
         {features?.preview && !large && (
           <button className={`oce-icon-btn ${showPreview ? "on" : ""}`} onClick={() => setPreviewChoice(!showPreview)} title={showPreview ? "Hide preview" : "Show preview"} aria-label="Toggle preview" aria-pressed={showPreview}>
             <Icon id="preview" size={15} />
@@ -323,7 +354,7 @@ export function FeatureEditor({
 
       <Breadcrumbs filePath={displayPath ?? fileName} path={structure?.path ?? []} symbols={structure?.symbols ?? []} onGoTo={goToSymbol} />
 
-      <div className={`oce-body ${showPreview ? "split" : ""}`}>
+      <div className={`oce-body ${showPreview || outcome ? "split" : ""}`}>
         <div className="oce-pane-editor">
           {find && (
             <FindWidget
@@ -358,6 +389,8 @@ export function FeatureEditor({
             />
           )}
           <EditorSurface
+            lenses={lenses}
+            onLens={(i) => lenses[i] && void runLens(lenses[i]!)}
             underlay={find ? <FindMarks textareaRef={textareaRef} text={text} matches={findMarks.matches} current={findMarks.current} geometry={GEOMETRY} /> : null}
             text={text}
             textareaRef={textareaRef}
@@ -373,6 +406,11 @@ export function FeatureEditor({
             onScrollFraction={showPreview ? (f) => previewRef.current?.scrollToFraction(f) : undefined}
           />
         </div>
+        {outcome && (
+          <div className="oce-pane-preview">
+            <ResultPane outcome={outcome} onClose={() => (runId.current++, setOutcome(null))} />
+          </div>
+        )}
         {showPreview && features?.preview && (
           <div className="oce-pane-preview">
             <PreviewPane ref={previewRef} text={text} command={features.preview} fileName={fileName} />
