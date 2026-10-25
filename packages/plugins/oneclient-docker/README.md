@@ -29,6 +29,20 @@ Azurite (Azure Blob Storage) and Keycloak. Clicking one opens a small form with 
 If the container exits, the task fails with its last log lines. If it doesn't become reachable within the template's
 `startupSeconds`, the task fails too, and the container is left running so you can inspect it.
 
+## Test containers: any image, for special scenarios
+
+The **Test Containers** tab (and sidebar node) runs a throwaway container from any image, in the spirit of
+Testcontainers, when no template fits:
+
+- **Image, name, command** — the command overrides the image default (quotes are honoured).
+- **Ports** — `8080` publishes on a random free host port, `9090:8080` on a fixed one, `53/udp` for UDP. The endpoint
+  Docker picked is reported when the container is ready.
+- **Environment** — `KEY=VALUE` per line.
+- **Wait until ready** — a published port accepts connections, a log line appears, or the image's health check passes.
+  If the container exits or the timeout passes, the task fails with the last log lines.
+- **Cleanup** — remove after N minutes, remove as soon as it exits, or **Remove all**. Every one is labelled
+  `oneclient.testcontainer`; expired ones are removed while a Docker connection is open.
+
 ## Containers know their plugin
 
 Every container whose image a template recognises shows its product and its connection:

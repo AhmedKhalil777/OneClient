@@ -7,6 +7,9 @@ import { modelTable, providerOf, sessionFor } from "./sessions.js";
 import { exportMarkdown, store, titleFrom, transcript, validId } from "./store.js";
 import type { Conversation, ToolCall } from "./types.js";
 
+/** An answer that took this long is worth a notification: the user has probably switched to something else. */
+const NOTIFY_AFTER_MS = 8000;
+
 const BASE_PROMPT = [
   "You are an AI assistant built into oneClient, a desktop and web developer console (databases, files, APIs, containers, queues).",
   "Be direct and concise. When you change files, make the smallest edit that does the job and explain it in a sentence.",
@@ -76,6 +79,7 @@ export function createChatHandler(context: PluginContext): ViewMessageHandler {
     store.save(connectionId, conv);
     if (isNew) context.refreshExplorer(connectionId);
 
+    const startedAt = Date.now();
     const run: Run = { abort: new AbortController(), reply: (m) => ctx.reply(m), pending: new Map() };
     runs.set(k, run);
     run.reply({ type: "running", c, running: true });
@@ -100,11 +104,18 @@ export function createChatHandler(context: PluginContext): ViewMessageHandler {
               if (run.abort.signal.aborted) return resolve(false);
               run.pending.set(call.id, { call, summary, resolve });
               run.reply({ type: "approval", c, id: call.id, name: call.name, summary });
+              // The agent is stuck until the user answers — say so, in case the chat tab isn't in front.
+              void context.notifications.warning(`The assistant needs your approval: ${call.name}`, { detail: summary, key: `approval:${call.id}` }).catch(() => undefined);
             }),
         },
       });
       const note = STOP_NOTES[stop];
       if (note) run.reply({ type: "note", c, text: note });
+      if (Date.now() - startedAt >= NOTIFY_AFTER_MS && !run.abort.signal.aborted) {
+        void context.notifications
+          .success(note ? `Assistant stopped: ${conv.title || "chat"}` : `Assistant finished: ${conv.title || "chat"}`, { ...(note ? { detail: note } : {}), key: `done:${k}` })
+          .catch(() => undefined);
+      }
     } catch (err) {
       // Keep the conversation consistent: a user message with no answer is fine, a dangling tool call is not.
       const last = conv.messages[conv.messages.length - 1];
@@ -113,6 +124,9 @@ export function createChatHandler(context: PluginContext): ViewMessageHandler {
       }
       store.save(connectionId, conv);
       run.reply({ type: "error", c, message: run.abort.signal.aborted ? "Stopped." : describeError(err) });
+      if (!run.abort.signal.aborted) {
+        void context.notifications.error(`The assistant hit an error: ${conv.title || "chat"}`, { detail: describeError(err), key: `done:${k}` }).catch(() => undefined);
+      }
     } finally {
       for (const p of run.pending.values()) p.resolve(false);
       runs.delete(k);
@@ -157,6 +171,7 @@ export function createChatHandler(context: PluginContext): ViewMessageHandler {
           if (p) {
             run?.pending.delete(m.id);
             p.resolve(m.allow === true);
+            void context.notifications.dismiss(`${context.pluginId}:approval:${m.id}`).catch(() => undefined);
           }
         }
       } catch (err) {

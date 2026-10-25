@@ -5,6 +5,7 @@ import { IpcChannel, type OneClientApi, type ViewKey, type WindowAction, type Wo
 import { workbenchShortcut } from "@oneclient/backend/shared/shortcuts.js";
 import { ASSET_PREFIX, type ClientMessage, type ServerMessage, type ViewEventKind, WS_PATH } from "@oneclient/backend/shared/web-protocol.js";
 import { pickFolder } from "./folder-picker.js";
+import { takeOverContextMenu } from "./app-context-menu.js";
 
 /**
  * The web runtime's side of the shell: what the desktop gets from its preloads and Electron, built on the server's
@@ -86,6 +87,10 @@ export async function installWebBridge(): Promise<void> {
   });
   viewTheme = forViews((await invoke(IpcChannel.ThemeGetState)) as ThemeState);
 
+  // ---- right click: oneClient's own menu instead of the browser's (Shift+right-click still gets the browser's) ----
+  // Bubble phase: a component that handled the click itself (tree rows, tabs…) has already called preventDefault.
+  document.addEventListener("contextmenu", (e) => void takeOverContextMenu(e, window, { x: 0, y: 0 }));
+
   // ---- views: iframes mounted inside each Tier2ViewHost's placeholder ----
   (window as unknown as { __oneclientViewHost: { attach(win: Window): ViewHostApi } }).__oneclientViewHost = {
     attach(win: Window): ViewHostApi {
@@ -93,6 +98,11 @@ export async function installWebBridge(): Promise<void> {
       if (!view) throw new Error("Unknown view frame.");
       const inst = view.instanceId;
       if (viewTheme) applyTheme(win, viewTheme);
+      // Same for a right click inside a view: the shell shows the menu, placed where the click was on screen.
+      win.addEventListener("contextmenu", (e) => {
+        const rect = view.frame.getBoundingClientRect();
+        takeOverContextMenu(e, win, { x: rect.left, y: rect.top }, inst, view.frame);
+      });
       // A focused iframe gets every key press: hand workbench shortcuts to the shell, as the desktop does.
       win.addEventListener(
         "keydown",

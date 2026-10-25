@@ -62,6 +62,13 @@ export function createClientApi(t: ClientTransport): OneClientApi {
     onOutputReveal: on(IpcChannel.OutputReveal),
     clearOutput: (channelId) => call(IpcChannel.OutputClear, channelId),
 
+    listNotifications: () => call(IpcChannel.NotificationsList),
+    onNotificationAdded: on(IpcChannel.NotificationAdded),
+    onNotificationDismissed: on(IpcChannel.NotificationDismissed),
+    onNotificationsCleared: on(IpcChannel.NotificationsCleared),
+    dismissNotification: (id) => call(IpcChannel.NotificationDismiss, id),
+    clearNotifications: () => call(IpcChannel.NotificationsClear),
+
     workspaceFolders: () => call(IpcChannel.WorkspaceFolders),
     addWorkspaceFolder: (path) => call(IpcChannel.WorkspaceAddFolder, path),
     removeWorkspaceFolder: (id) => call(IpcChannel.WorkspaceRemoveFolder, id),

@@ -9,6 +9,8 @@ import type { BackgroundResult, BackgroundTaskDetail, BackgroundTaskInfo } from 
 export interface BackgroundHost {
   tasks: Tasks;
   refreshExplorer(connectionId: string): void;
+  /** Present on a real plugin context; lets the core write every query to the plugin's Output "Queries" channel. */
+  createOutputChannel?(name: string): { log(level: "debug" | "info" | "warn" | "error", message: string, detail?: string): void };
 }
 
 export interface BackgroundOptions {

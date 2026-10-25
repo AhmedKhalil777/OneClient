@@ -138,7 +138,7 @@ export function Panel({ state, overlayOpen, onRunTask }: { state: PanelState; ov
   if (views.length === 0) return null;
 
   return (
-    <div className="panel" style={{ height: open ? height : 0 }} hidden={!open}>
+    <div className="panel" data-ctx="panel" style={{ height: open ? height : 0 }} hidden={!open}>
       <div className="panel-resize-handle" onPointerDown={startResize} />
       <div className="panel-header">
         {/* Icon navigator: one button per plugin panel view; the active one's title is spelled out. */}
@@ -176,20 +176,20 @@ export function Panel({ state, overlayOpen, onRunTask }: { state: PanelState; ov
           const visible = open && key === activeKey;
           if (v.pluginId === OUTPUT_VIEW.pluginId && v.id === OUTPUT_VIEW.id) {
             return (
-              <div key={key} className="tier2-slot" hidden={!visible}>
+              <div key={key} className="tier2-slot" data-ctx="panel-view" data-ctx-key={key} hidden={!visible}>
                 <OutputView visible={visible} />
               </div>
             );
           }
           if (v.pluginId === TASKS_VIEW.pluginId && v.id === TASKS_VIEW.id) {
             return (
-              <div key={key} className="tier2-slot" hidden={!visible}>
+              <div key={key} className="tier2-slot" data-ctx="panel-view" data-ctx-key={key} hidden={!visible}>
                 <TasksView visible={visible} onRunTask={onRunTask} />
               </div>
             );
           }
           return (
-            <div key={key} className="tier2-slot" hidden={!visible}>
+            <div key={key} className="tier2-slot" data-ctx="panel-view" data-ctx-key={key} hidden={!visible}>
               <Tier2ViewHost instanceId={instanceOf(key)} pluginId={v.pluginId} viewId={v.id} active={visible && !overlayOpen} />
             </div>
           );

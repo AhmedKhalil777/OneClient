@@ -8,6 +8,7 @@ import type { Workspace } from "./workspace.js";
 import type { Tasks } from "./tasks.js";
 import type { Connections, Contributions } from "./connections.js";
 import type { AiTools } from "./ai-tools.js";
+import type { Notifications } from "./notifications.js";
 import type { ViewMessageHandler } from "./ui.js";
 
 export interface Disposable {
@@ -59,6 +60,9 @@ export interface PluginContext {
 
   /** Other plugins' `contributes.extensions` entries — see connections.ts. */
   readonly contributions: Contributions;
+
+  /** Toasts and the Notification Center — "this finished", "this needs attention" — see notifications.ts. */
+  readonly notifications: Notifications;
 
   /** Runs the commands plugins list in `oneclient.aiTools` — see ai-tools.ts. */
   readonly aiTools: AiTools;

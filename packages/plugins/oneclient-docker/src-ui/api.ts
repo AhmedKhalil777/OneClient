@@ -63,6 +63,52 @@ export const runTemplate = (args: { template: string; name: string; ports: Recor
   invoke<RunResult>("docker.runTemplate", args);
 export const connectContainer = (containerId: string) => invoke<RunResult>("docker.connectContainer", { containerId });
 
+export type WaitStrategy = { kind: "none" } | { kind: "port" } | { kind: "log"; message: string } | { kind: "healthy" };
+
+export interface TestContainerRequest {
+  image: string;
+  name: string;
+  ports: string[];
+  env: string;
+  cmd: string;
+  wait: WaitStrategy;
+  timeoutSeconds: number;
+  ttlMinutes: number;
+  autoRemove: boolean;
+}
+
+export interface TestContainerRow {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  endpoints: Record<string, string>;
+}
+
+export interface TestRunResult extends CommandResult {
+  message?: string;
+  endpoints?: Record<string, string>;
+}
+
+export interface ImageSearch {
+  /** `icon` is a registry icon (`$(postgresql)`) when a plugin recognises the image, else empty. */
+  local: Array<{ name: string; icon: string }>;
+  hub: Array<{ name: string; description: string; stars: number; official: boolean; icon: string }>;
+  error?: string;
+}
+export interface ImageTags {
+  tags: Array<{ name: string; size: number | null; updated: string | null }>;
+  note?: string;
+  error?: string;
+}
+export const searchImages = (term: string) => invoke<ImageSearch>("docker.searchImages", { term });
+export const imageTags = (image: string) => invoke<ImageTags>("docker.imageTags", { image });
+
+export const listTestContainers = () => invoke<TestContainerRow[]>("docker.listTestContainers", {});
+export const runTestContainer = (request: TestContainerRequest) => invoke<TestRunResult>("docker.runTestContainer", { request });
+export const cleanupTestContainers = () => invoke<TestRunResult>("docker.cleanupTestContainers", {});
+
 /** Tab and template the view was opened for (a Templates node passes them). */
 export const initialParams = {
   tab: new URLSearchParams(location.search).get("tab"),

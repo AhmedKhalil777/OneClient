@@ -175,7 +175,7 @@ export class Infrastructure {
   }
 }
 
-async function hasImage(client: Docker, image: string): Promise<boolean> {
+export async function hasImage(client: Docker, image: string): Promise<boolean> {
   try {
     await client.getImage(image).inspect();
     return true;
@@ -229,9 +229,9 @@ export async function pull(client: Docker, image: string, task: Task): Promise<v
   });
 }
 
-async function tailLogs(container: Docker.Container): Promise<string> {
+export async function tailLogs(container: Docker.Container, lineCount = 20): Promise<string> {
   try {
-    const buffer = (await container.logs({ stdout: true, stderr: true, tail: 20 })) as unknown as Buffer;
+    const buffer = (await container.logs({ stdout: true, stderr: true, tail: lineCount })) as unknown as Buffer;
     // Multiplexed stream frames: 8-byte headers before each chunk.
     const lines: string[] = [];
     for (let i = 0; i + 8 <= buffer.length; ) {

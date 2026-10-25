@@ -348,3 +348,22 @@ await context.tasks.run({ title: "Import customers", cancellable: true }, async 
 
 Resolving ends the task successfully; throwing marks it failed (the error is shown and rethrown). `task.onCancel(fn)`
 runs `fn` when the user presses Stop.
+
+A task that **fails**, or that finishes after more than a few seconds, also raises a notification (below) with a
+**Show output** button — you don't need to announce your own tasks.
+
+## Notifications
+
+Tell the user that something finished or needs them — toasts at the bottom right, kept in the **Notification Center**
+(the bell in the status bar, with a Do Not Disturb switch):
+
+```ts
+context.notifications.success("Import finished: 2,000 rows", {
+  actions: [{ label: "Open table", commandId: "postgres.openTable", args: [{ connectionId }] }],
+});
+context.notifications.error("The backup failed", { detail: err.stack }); // errors stay until closed
+context.notifications.info("3 files processed", { key: "progress" });     // same key = replaces the earlier one
+```
+
+Options: `severity` (via `info` / `success` / `warning` / `error`), `detail` (expandable text), up to three `actions`
+(each runs a command), `sticky`, `silent` (Notification Center only) and `key`. Don't put secrets in them.

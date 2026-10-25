@@ -51,7 +51,7 @@ export function OutputView({ visible }: { visible: boolean }) {
     };
   }, []);
 
-  const nameOf = (pluginId: string) => plugins.find((p) => p.id === pluginId)?.displayName ?? pluginId;
+  const nameOf = (pluginId: string) => (pluginId === "core" ? "oneClient" : (plugins.find((p) => p.id === pluginId)?.displayName ?? pluginId));
   const list = useMemo(
     () => [...channels.values()].sort((a, b) => nameOf(a.pluginId).localeCompare(nameOf(b.pluginId)) || a.name.localeCompare(b.name)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,7 +75,7 @@ export function OutputView({ visible }: { visible: boolean }) {
   }, [shown, follow, visible]);
 
   return (
-    <div className="output-view">
+    <div className="output-view" data-ctx="output" data-ctx-channel={current?.id ?? ""}>
       <div className="output-bar">
         <select key={`${current?.id}:${list.length}:${plugins.length}`} className="output-select" value={current?.id ?? ""} onChange={(e) => setSelected(e.target.value)} disabled={list.length === 0} title="Choose an output channel">
           {list.length === 0 && <option value="">No output yet</option>}
@@ -101,14 +101,14 @@ export function OutputView({ visible }: { visible: boolean }) {
           Clear
         </button>
       </div>
-      <div className="output-body" ref={bodyRef}>
+      <div className="output-body" ref={bodyRef} data-ctx="output-log" data-ctx-copy="">
         {!current ? (
           <div className="output-empty">Nothing has been logged yet. Plugins write here as they work — for example the Keycloak plugin logs every request it sends.</div>
         ) : shown.length === 0 ? (
           <div className="output-empty">{current.entries.length === 0 ? "This channel is empty." : "No entries match the filter."}</div>
         ) : (
           shown.map((e) => (
-            <div key={e.id} className={`output-line level-${e.level}`}>
+            <div key={e.id} className={`output-line level-${e.level}`} data-ctx="output-line" data-ctx-copy="">
               <div className="output-row" onClick={() => e.detail && setOpen(open === e.id ? null : e.id)} style={{ cursor: e.detail ? "pointer" : "default" }}>
                 <span className="output-time">{timeText(e.time)}</span>
                 <span className="output-level">{e.level}</span>

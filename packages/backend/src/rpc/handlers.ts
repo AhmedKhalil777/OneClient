@@ -15,6 +15,7 @@ import type { ViewHost } from "../views/view-host.js";
 import type { WorkspaceService } from "../workspace/workspace-service.js";
 import { TERMINAL_VIEW, type TerminalService } from "../terminal/terminal-service.js";
 import type { TaskService } from "../tasks/task-service.js";
+import type { NotificationService } from "../notifications/notification-service.js";
 import type { TaskRunner } from "../tasks/task-runner.js";
 import type { GitService } from "../git/git-service.js";
 import type { Platform } from "../platform/platform.js";
@@ -40,6 +41,7 @@ export interface IpcDeps {
   supervisor: ExtensionHostSupervisor;
   views: ViewHost;
   output: OutputService;
+  notifications: NotificationService;
   ensureActivated: (pluginId: string) => Promise<void>;
   workspace: WorkspaceService;
   /** Commands core implements itself (files.*, terminal.*), by id. */
@@ -60,7 +62,7 @@ export interface IpcDeps {
  * dialog and native-view ones; web: server/server-handlers.ts adds its own), and the events broadcast to every shell.
  */
 export function registerIpcHandlers(deps: IpcDeps): void {
-  const { rpc, platform, registry, pluginManager, connections, search, config, supervisor, views, output, ensureActivated, themes, workspace, openWorkspaceFile, coreCommands, coreViewPage, terminal, tasks, taskRunner, gitService } = deps;
+  const { rpc, platform, registry, pluginManager, connections, search, config, supervisor, views, output, notifications, ensureActivated, themes, workspace, openWorkspaceFile, coreCommands, coreViewPage, terminal, tasks, taskRunner, gitService } = deps;
   const broadcast = (channel: string, payload: unknown) => rpc.broadcast(channel, payload);
 
   // Every add / remove — from the UI, an import or a plugin (context.connections.create) — reaches the shell.
@@ -103,6 +105,14 @@ export function registerIpcHandlers(deps: IpcDeps): void {
   output.onEntry((channel, entry) => broadcast(IpcChannel.OutputEntry, { channel, entry }));
   output.onCleared((channelId) => broadcast(IpcChannel.OutputCleared, channelId));
   output.onReveal((channelId) => broadcast(IpcChannel.OutputReveal, channelId));
+
+  // Notifications: the recent ones on demand, then live adds / dismissals.
+  rpc.handle(IpcChannel.NotificationsList, () => notifications.list());
+  rpc.handle(IpcChannel.NotificationDismiss, (_e, id: unknown) => typeof id === "string" && notifications.dismiss(id));
+  rpc.handle(IpcChannel.NotificationsClear, () => notifications.clear());
+  notifications.onAdded((n) => broadcast(IpcChannel.NotificationAdded, n));
+  notifications.onDismissed((id) => broadcast(IpcChannel.NotificationDismissed, id));
+  notifications.onCleared(() => broadcast(IpcChannel.NotificationsCleared, null));
 
   views.onRefreshExplorer((connectionId) => broadcast(IpcChannel.ExplorerRefresh, connectionId));
   supervisor.onExplorerRefresh((connectionId) => broadcast(IpcChannel.ExplorerRefresh, connectionId));

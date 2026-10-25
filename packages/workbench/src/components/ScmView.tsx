@@ -55,7 +55,7 @@ export function ScmView({ repos, folders, actions }: { repos: RepoState[]; folde
   const graphRepo = repos.find((r) => r.root === actions.activeRoot) ?? repos[0];
 
   return (
-    <div className="sidebar scm-view">
+    <div className="sidebar scm-view" data-ctx="scm">
       <div className="sidebar-header">
         <span>SOURCE CONTROL</span>
         <span className="sidebar-header-actions">

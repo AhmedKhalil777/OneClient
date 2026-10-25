@@ -12,6 +12,7 @@ import type { PlanAccess } from "./plan/types.js";
 import { type SqlSection, combineSections, createBackgroundSection, createHistorySection } from "./sections.js";
 import { type TableEditor, createTableEditor } from "./table-editor/api.js";
 import type { TableAccess } from "./table-editor/types.js";
+import { withQueryLog } from "./query-log.js";
 import type { ExecuteQuery } from "./types.js";
 import { createQueryViews } from "./views.js";
 import { createAiCommands } from "./ai-tools.js";
@@ -116,7 +117,10 @@ export function commandArg<T>(args: unknown[]): T {
   return value;
 }
 
-export function createSqlCore(options: SqlCoreOptions): SqlCore {
+export function createSqlCore(rawOptions: SqlCoreOptions): SqlCore {
+  const describeForLog = rawOptions.describeError ?? ((err: unknown) => (err instanceof Error ? err.message : String(err)));
+  // Every query (editor, background tasks, FAST TOOLS, AI tools) goes through this one wrapper, so all get logged.
+  const options: SqlCoreOptions = { ...rawOptions, executeQuery: withQueryLog(rawOptions.executeQuery, rawOptions.host?.createOutputChannel?.("Queries"), describeForLog) };
   const { prefix } = options;
   const features = { history: true, fastTools: true, fastQueries: true, tableEditor: true, importCsv: true, plan: true, createDatabase: true, background: true, aiTools: true, ...options.features };
   const dataDir = options.dataDir ?? prefix;

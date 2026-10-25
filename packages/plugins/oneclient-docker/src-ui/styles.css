@@ -403,3 +403,101 @@ input {
 .icon-btn-accent:hover {
   background: var(--accent);
 }
+
+.test-form {
+  max-width: 640px;
+}
+.test-form textarea {
+  width: 100%;
+  min-height: 56px;
+  font-family: monospace;
+  font-size: 12px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+.test-form select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+.check-row {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px;
+}
+.endpoint-list {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.image-picker {
+  position: relative;
+  width: 100%;
+}
+.image-picker-row {
+  display: flex;
+  gap: 6px;
+}
+.image-picker-row input {
+  flex: 1;
+}
+.image-picker-row select {
+  max-width: 180px;
+  font: inherit;
+  color: inherit;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.image-picker-note {
+  font-size: 11px;
+  margin-top: 2px;
+}
+.image-picker-list {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 2px;
+  max-height: 280px;
+  overflow: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+.image-picker-head {
+  padding: 4px 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: var(--bg-card);
+}
+.image-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.image-picker-item:hover {
+  background: var(--bg-card);
+}
+
+.image-picker-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}

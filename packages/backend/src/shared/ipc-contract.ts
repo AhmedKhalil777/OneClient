@@ -4,6 +4,7 @@ import type { TaskDefinition } from "../tasks/task-runner.js";
 import type { RepoState } from "../git/git-service.js";
 import type { Change, ChangeStatus, Commit, Ref } from "../git/git.js";
 import type { OutputChannelInfo, OutputChannelState, OutputEntry } from "./output.js";
+import type { NotificationInfo } from "./notifications.js";
 import type {
   ConnectionSummary,
   ConnectionTestResult,
@@ -56,6 +57,13 @@ export const IpcChannel = {
   OutputCleared: "oneclient:output:cleared",
   OutputReveal: "oneclient:output:reveal",
   OutputClear: "oneclient:output:clear",
+
+  NotificationsList: "oneclient:notifications:list",
+  NotificationAdded: "oneclient:notifications:added",
+  NotificationDismissed: "oneclient:notifications:dismissed",
+  NotificationsCleared: "oneclient:notifications:cleared",
+  NotificationDismiss: "oneclient:notifications:dismiss",
+  NotificationsClear: "oneclient:notifications:clear",
 
   SearchProviders: "oneclient:search:providers",
   SearchRun: "oneclient:search:run",
@@ -333,6 +341,14 @@ export interface OneClientApi {
   /** A plugin asked to show a channel (`OutputChannel.show()`). */
   onOutputReveal(listener: (channelId: string) => void): () => void;
   clearOutput(channelId: string): Promise<void>;
+
+  /** Notifications (toasts and the Notification Center): the recent ones, then live updates. */
+  listNotifications(): Promise<NotificationInfo[]>;
+  onNotificationAdded(listener: (notification: NotificationInfo) => void): () => void;
+  onNotificationDismissed(listener: (id: string) => void): () => void;
+  onNotificationsCleared(listener: () => void): () => void;
+  dismissNotification(id: string): Promise<void>;
+  clearNotifications(): Promise<void>;
 
   /** Native "select folder" dialog; resolves to the chosen absolute path, or null if cancelled. */
   pickDirectory(defaultPath?: string): Promise<string | null>;

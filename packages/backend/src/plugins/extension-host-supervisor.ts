@@ -103,10 +103,19 @@ export class ExtensionHostSupervisor {
     const handle: HostHandle = { pluginId: record.id, process: child, pending: new Map() };
     this.hosts.set(record.id, handle);
 
-    child.stdout?.on("data", (d: Buffer) => this.log(record.id, "debug", d.toString().trimEnd()));
-    child.stderr?.on("data", (d: Buffer) => this.log(record.id, "error", d.toString().trimEnd()));
+    // What a plugin process prints (a crash's stack trace goes to stderr) belongs in its Output "Log" channel too.
+    child.stdout?.on("data", (d: Buffer) => {
+      this.log(record.id, "debug", d.toString().trimEnd());
+      this.output.append(record.id, "Log", "debug", d.toString().trimEnd());
+    });
+    child.stderr?.on("data", (d: Buffer) => {
+      this.log(record.id, "error", d.toString().trimEnd());
+      this.output.append(record.id, "Log", "error", "Plugin process wrote to stderr", d.toString().trimEnd());
+    });
 
     child.on("exit", (code: number) => {
+      const planned = this.hosts.get(record.id)?.deactivation !== undefined;
+      this.output.append(record.id, "Log", code === 0 || planned ? "info" : "error", `Extension host exited (code ${code})${planned ? " after being stopped" : ""}.`);
       this.hosts.delete(record.id);
       for (const { reject } of handle.pending.values()) {
         reject(new Error(`Plugin "${record.id}" process exited (code ${code}) before responding.`));
@@ -184,6 +193,7 @@ export class ExtensionHostSupervisor {
         handle.activation?.resolve();
         break;
       case "activate:error":
+        this.output.append(handle.pluginId, "Log", "error", `Activation failed: ${msg.error}`);
         handle.activation?.reject(new Error(msg.error));
         break;
       case "registered":

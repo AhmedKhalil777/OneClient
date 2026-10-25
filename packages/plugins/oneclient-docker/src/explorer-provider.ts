@@ -1,9 +1,10 @@
 import type { ExplorerProvider, TreeNode } from "@oneclient/plugin-api";
 import type { Infrastructure } from "./infra.js";
+import type { TestContainers } from "./test-runner.js";
 import { requireSession } from "./sessions.js";
 import { templateKey } from "./templates.js";
 
-const ROOT_NODE_TYPES = ["docker.containers", "docker.images", "docker.volumes", "docker.networks", "docker.templates"];
+const ROOT_NODE_TYPES = ["docker.containers", "docker.images", "docker.volumes", "docker.networks", "docker.templates", "docker.testcontainers"];
 
 /**
  * Registry icons. "folder" is core's; the docker-* ids are registered by this plugin
@@ -17,9 +18,9 @@ const ICON = {
   network: "$(docker-network)",
 };
 
-export function createExplorerProvider(infra: Infrastructure): ExplorerProvider {
+export function createExplorerProvider(infra: Infrastructure, tests: TestContainers): ExplorerProvider {
   return {
-    nodeTypes: [...ROOT_NODE_TYPES, "docker.container", "docker.image", "docker.volume", "docker.network", "docker.template"],
+    nodeTypes: [...ROOT_NODE_TYPES, "docker.container", "docker.image", "docker.volume", "docker.network", "docker.template", "docker.testcontainer"],
 
     async getChildren(node, ctx): Promise<TreeNode[]> {
       const client = requireSession(ctx.connectionId);
@@ -43,6 +44,38 @@ export function createExplorerProvider(infra: Infrastructure): ExplorerProvider 
       }
 
       switch (node.nodeType) {
+        // The "Test Containers" sidebar section (contributes.explorerSections): a way in, then the live test containers.
+        case "docker.testcontainers": {
+          const rows = await tests.list(ctx.connectionId);
+          return [
+            {
+              id: "run-test-container",
+              label: "Run a test container…",
+              description: "any image",
+              tooltip: "Run a throwaway container from any image — your own ports, environment and readiness check",
+              nodeType: "docker.testcontainer",
+              collapsible: "none",
+              icon: "$(play)",
+              openView: { viewId: "docker.dashboard", title: "Docker Test Containers", icon: ICON.container, params: { tab: "tests" } },
+            },
+            ...rows.map(
+              (r) =>
+                ({
+                  id: r.id,
+                  label: r.name,
+                  description: `${r.state}${Object.values(r.endpoints)[0] ? ` · ${Object.values(r.endpoints)[0]}` : ""}`,
+                  tooltip: `${r.name}
+${r.image} — ${r.status}${Object.entries(r.endpoints).map(([p, w]) => `
+${w} → ${p}`).join("")}`,
+                  nodeType: "docker.testcontainer",
+                  collapsible: "none",
+                  icon: ICON.container,
+                  contextValue: r.state === "running" ? "docker.container.running" : "docker.container.stopped",
+                  data: { containerId: r.id },
+                }) satisfies TreeNode,
+            ),
+          ];
+        }
         case "docker.containers": {
           const containers = await client.listContainers({ all: true });
           // Which plugin each container belongs to, and whether a saved connection points at it.

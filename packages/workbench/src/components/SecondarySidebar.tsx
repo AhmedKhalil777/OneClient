@@ -105,7 +105,7 @@ export function SecondarySidebar({ state, overlayOpen, onMoveToEditor }: { state
   if (!state.open) return null;
   const view = state.view;
   return (
-    <aside className="secondary-sidebar" style={{ width: state.width }} aria-label="Secondary Side Bar">
+    <aside className="secondary-sidebar" data-ctx="secondary" style={{ width: state.width }} aria-label="Secondary Side Bar">
       <div className="secondary-resize" onPointerDown={(e) => startResizing(e, state)} title="Drag to resize" />
       <div className="secondary-head">
         {view?.icon && <AssetIcon pluginId={view.pluginId} icon={view.icon} size={14} />}

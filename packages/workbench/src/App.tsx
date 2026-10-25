@@ -27,6 +27,9 @@ import { SearchView, type SearchViewHandle } from "./components/SearchView.js";
 import { ExplorerView, FILE_NODE, FOLDER_NODE } from "./components/ExplorerView.js";
 import { ScmView, type ScmActions } from "./components/ScmView.js";
 import { TASKS_SELECT_EVENT, STATE_ICON } from "./components/TasksView.js";
+import { NotificationBell } from "./components/NotificationCenter.js";
+import { APP_CONTEXT_MENU_EVENT, type AppContextMenuRequest } from "./web/app-context-menu.js";
+import type { NotificationAction } from "@oneclient/backend/shared/notifications.js";
 import type { RepoState, TaskInfo } from "@oneclient/backend/shared/ipc-contract.js";
 import { CORE_PLUGIN_ID } from "@oneclient/backend/shared/core.js";
 import { type MenuItem, TitleBar, type TopMenu } from "./components/TitleBar.js";
@@ -1328,6 +1331,159 @@ export function App() {
     setTimeout(() => window.dispatchEvent(new CustomEvent(TASKS_SELECT_EVENT, { detail: id })), 50);
   }
 
+  /**
+   * The web app's own right-click menu (the browser's is suppressed — see web/app-context-menu.ts). What it offers
+   * depends on the panel the click was in (areas are marked with data-ctx in the shell); editing, link and
+   * navigation items follow. Rebuilt every render so it always sees current state.
+   */
+  const contextMenuRef = useRef<(r: AppContextMenuRequest) => ContextMenuItem[]>(() => []);
+  contextMenuRef.current = (r) => {
+    const items: ContextMenuItem[] = [];
+    const add = (item: ContextMenuItem) => void items.push({ ...item, separator: Boolean(item.separator) && items.length > 0 });
+    const area = (name: string) => r.areas.find((a) => a.name === name);
+    const copy = (text: string) => () => void navigator.clipboard?.writeText(text).catch(() => undefined);
+    const edit = (role: "cut" | "copy" | "paste" | "selectAll") => () => {
+      r.target?.focus();
+      void window.oneclient.editAction(role, r.instanceId);
+    };
+    const go = (id: string, label: string, shortcut: WorkbenchShortcut, separator = false): ContextMenuItem => ({ id, label, separator, run: () => shortcutRef.current(shortcut) });
+
+    // -- the panel that was clicked --
+    const line = area("output-line");
+    const log = area("output-log");
+    const output = area("output");
+    if (line) add({ id: "copyLine", label: "Copy Line", run: copy(line.text.trim()) });
+    if (log) add({ id: "copyAll", label: "Copy All", run: copy(log.text.trim()) });
+    if (output) {
+      const channel = output.data.channel;
+      if (channel) add({ id: "clearOutput", label: "Clear Output", separator: true, run: () => void window.oneclient.clearOutput(channel) });
+    }
+
+    const task = area("task");
+    if (task) {
+      const taskId = task.data.id ?? "";
+      add({ id: "taskShow", label: "Show Output", run: () => showTask(taskId) });
+      if (task.data.state === "running") add({ id: "taskStop", label: "Stop Task", run: () => void window.oneclient.cancelTask(taskId) });
+      else if (task.data.definition) add({ id: "taskAgain", label: "Run Again", run: () => void window.oneclient.runTask(task.data.definition ?? "").catch((err: unknown) => pushToast("error", err instanceof Error ? err.message : String(err))) });
+    }
+    if (area("tasks")) {
+      add({ id: "tasksRun", label: "Run Task…", separator: Boolean(task), run: () => void pickTask() });
+      add({ id: "tasksClear", label: "Clear Finished Tasks", run: () => void window.oneclient.clearFinishedTasks() });
+    }
+
+    if (area("panel")) {
+      for (const v of panelViews) {
+        const key = `${v.pluginId}:${v.id}`;
+        if (key !== panel.activeKey) add({ id: `panel:${key}`, label: `Show ${v.title}`, separator: items.length > 0 && !items.some((i) => i.id.startsWith("panel:")), run: () => panel.show(key) });
+      }
+      add({ id: "panelMax", label: "Maximize Panel", separator: true, run: () => panel.setHeight(window.innerHeight - 160) });
+      add({ id: "panelClose", label: "Close Panel", run: () => panel.setOpen(false) });
+    }
+
+    const scm = area("scm");
+    if (scm) {
+      add({ id: "scmRefresh", label: "Refresh", run: () => void scmActions.git("refresh").catch(() => undefined) });
+      if (activeRepo?.branch) add({ id: "scmSync", label: activeRepo.upstream ? "Synchronize Changes" : "Publish Branch", run: () => void scmActions.git(activeRepo.upstream ? "sync" : "push", activeRepo.root).catch(() => undefined) });
+    }
+
+    const sidebarArea = area("sidebar");
+    if (sidebarArea && !scm) {
+      const view = sidebarArea.data.view;
+      if (view === "explorer" || !view) {
+        add({ id: "openFolder", label: "Open Folder…", run: () => void openFolder() });
+        add({ id: "newConnection", label: "New Connection…", run: () => setNewConnectionFor({ pluginId: null }) });
+        add({
+          id: "refreshExplorer",
+          label: "Refresh Explorer",
+          separator: true,
+          run: () => setExplorerTokens((prev) => Object.fromEntries([...connections.map((c) => c.id), ...folders.map((f) => f.id), ...Object.keys(prev)].map((id) => [id, (prev[id] ?? 0) + 1]))),
+        });
+      } else if (view !== "search") {
+        // A plugin's section: new connection of its type.
+        add({ id: "newConnection", label: "New Connection…", run: () => setNewConnectionFor({ pluginId: view }) });
+      } else {
+        add({ id: "findInFiles", label: "Find in Files", run: () => shortcutRef.current("findInFiles") });
+      }
+    }
+
+    if (area("activitybar")) {
+      add(go("showExplorer", "Explorer", "showExplorer"));
+      add(go("findInFiles", "Search", "findInFiles"));
+      add(go("showScm", "Source Control", "showScm"));
+      add(go("toggleSidebar", "Hide Side Bar", "toggleSidebar", true));
+    }
+
+    if (area("statusbar")) {
+      add({ id: "toggleSecondary", label: "Toggle Secondary Side Bar", run: () => secondary.toggle() });
+      add(go("toggleSidebar", "Toggle Side Bar", "toggleSidebar"));
+      add(go("togglePanel", "Toggle Panel", "togglePanel"));
+    }
+
+    if (area("secondary")) {
+      if (secondary.view) {
+        const v = secondary.view;
+        add({ id: "moveToEditor", label: "Move to Editor", run: () => undockView(v) });
+      }
+      add({ id: "closeSecondary", label: "Close Secondary Side Bar", run: () => secondary.hide() });
+    }
+
+    if ((area("editor") || area("tabbar")) && !area("panel")) {
+      if (activeTab && tabs.length > 1) add({ id: "splitRight", label: "Split Editor Right", run: () => moveTab(activeTab.id, true) });
+      if (tabs.length > 0) {
+        add({ id: "closeSaved", label: "Close Saved Editors", run: () => closeSavedTabs() });
+        add({ id: "closeAll", label: "Close All Editors", run: () => closeTabs(tabs.map((t) => t.id)) });
+      }
+      add({ id: "newConnection", label: "New Connection…", separator: true, run: () => setNewConnectionFor({ pluginId: null }) });
+    }
+
+    // -- editing, links --
+    if (r.editable) {
+      add({ id: "cut", label: "Cut", separator: true, run: edit("cut") });
+      add({ id: "copy", label: "Copy", run: edit("copy") });
+      add({ id: "paste", label: "Paste", run: edit("paste") });
+      add({ id: "selectAll", label: "Select All", separator: true, run: edit("selectAll") });
+    } else if (r.selection) {
+      add({ id: "copySelection", label: "Copy", separator: true, run: edit("copy") });
+      add({ id: "selectAll", label: "Select All", run: edit("selectAll") });
+    }
+    if (r.link) {
+      const link = r.link;
+      add({ id: "openLink", label: "Open Link in New Tab", separator: true, run: () => void window.open(link, "_blank", "noopener,noreferrer") });
+      add({ id: "copyLink", label: "Copy Link Address", run: copy(link) });
+    }
+
+    // -- everywhere --
+    add(go("commandPalette", "Command Palette…", "commandPalette", true));
+    add(go("quickSearch", "Go to File or Connection…", "quickSearch"));
+    add({ id: "reload", label: "Reload Window", separator: true, run: () => window.location.reload() });
+    return items;
+  };
+  useEffect(() => {
+    const onRequest = (e: Event) => {
+      const r = (e as CustomEvent<AppContextMenuRequest>).detail;
+      setMenu({ x: r.x, y: r.y, items: contextMenuRef.current(r) });
+    };
+    window.addEventListener(APP_CONTEXT_MENU_EVENT, onRequest);
+    return () => window.removeEventListener(APP_CONTEXT_MENU_EVENT, onRequest);
+  }, []);
+
+  /** A button on a notification: run its command, or jump to a task / an Output channel. */
+  function runNotificationAction(action: NotificationAction) {
+    if (action.showTask) return showTask(action.showTask);
+    if (action.showOutput) {
+      localStorage.setItem(OUTPUT_SELECT_KEY, action.showOutput);
+      window.dispatchEvent(new CustomEvent(OUTPUT_SELECT_EVENT, { detail: action.showOutput }));
+      panelRef.current.show(OUTPUT_PANEL_KEY, { focus: false });
+      return;
+    }
+    if (action.commandId) {
+      void window.oneclient.executeCommand(action.commandId, action.args ?? []).catch((err: unknown) => {
+        const id = Date.now();
+        setToasts((prev) => [...prev, { id, kind: "error", message: err instanceof Error ? err.message : String(err) }]);
+      });
+    }
+  }
+
   /** Terminal ▸ Run Task… (optionally only build / test tasks; a single default runs at once). */
   async function pickTask(group?: "build" | "test") {
     const defs = await window.oneclient.taskDefinitions().catch(() => []);
@@ -1743,7 +1899,7 @@ export function App() {
         onMouseDownCapture={() => setFocusRight(group === "right")}
         {...dropOn(group === "right")}
       >
-        <div className="tab-bar">
+        <div className="tab-bar" data-ctx="tabbar">
           {groupTabs.map((t) => {
             const dirty = dirtyViews.has(t.id);
             return (
@@ -1854,7 +2010,7 @@ export function App() {
         onManage={openManageMenu}
       />
 
-      <div className="sidebar-wrapper" style={{ width: sidebar.width }} hidden={!container.visible}>
+      <div className="sidebar-wrapper" data-ctx="sidebar" data-ctx-view={container.active} style={{ width: sidebar.width }} hidden={!container.visible}>
         {/* Search stays mounted once opened, so its query and results survive switching containers. */}
         {(container.active === "search" || searchMounted) && (
           <div hidden={container.active !== "search"} className="sidebar-slot">
@@ -1902,7 +2058,7 @@ export function App() {
             {split && renderGroupBar("right", rightTabs, rightActive?.id)}
           </div>
 
-          <div className="tab-content">
+          <div className="tab-content" data-ctx="editor">
             {renderPane("left", leftActive)}
             {split && renderPane("right", rightActive)}
             {/* Every Tier 2 tab stays mounted (just hidden) so its view keeps its state across tab switches and across groups. */}
@@ -1939,7 +2095,7 @@ export function App() {
       <SecondarySidebar state={secondary} overlayOpen={overlayOpen} onMoveToEditor={undockView} />
       </div>
 
-      <div className="status-bar">
+      <div className="status-bar" data-ctx="statusbar">
         <span className="status-brand">
           <Logo size={14} /> oneClient
         </span>
@@ -1974,6 +2130,7 @@ export function App() {
         })()}
         <span>{plugins.filter((p) => p.state === "active").length} plugin(s) active</span>
         <span style={{ marginLeft: "auto" }}>Ctrl/Cmd+Shift+P — Command Palette</span>
+        <NotificationBell onAction={runNotificationAction} />
         <button className={`status-button ${secondary.open ? "active" : ""}`} title="Toggle Secondary Side Bar (Ctrl+Alt+B)" onClick={() => secondary.toggle()}>
           <ThemeIcon id="secondary-sidebar" size={14} />
         </button>

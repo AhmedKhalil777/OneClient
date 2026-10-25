@@ -1,0 +1,87 @@
+{
+  "name": "oneclient-pipeline",
+  "displayName": "Pipelines",
+  "description": "Build test scenarios like a CI/CD job: run scripts, start test containers, seed data, call REST APIs and assert on the results — step by step, with teardown.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "features": [
+    {
+      "category": "Steps",
+      "items": [
+        "Scripts: PowerShell, pwsh, bash, sh or cmd",
+        "Test containers through the Docker plugin, with their ports as variables",
+        "HTTP requests with status, header, JSON and timing assertions",
+        "Commands of other plugins, to seed data",
+        "Wait, set variables and check values"
+      ]
+    },
+    {
+      "category": "Pipeline behaviour",
+      "items": [
+        "Variables and secrets; each step's outputs feed the next",
+        "Retries and timeouts per step",
+        "Teardown steps that run even after a failure or a stop",
+        "Containers a run started are removed when it ends",
+        "Run history and live output, also in the Tasks panel"
+      ]
+    }
+  ],
+  "engines": { "oneclient": "^0.1.1" },
+  "main": "dist/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "views": [
+      {
+        "id": "pipeline.editor",
+        "title": "Pipeline",
+        "tier": 2,
+        "location": "editor",
+        "entry": "index.html",
+        "connectionType": "pipeline"
+      }
+    ],
+    "connectionTypes": [
+      {
+        "id": "pipeline",
+        "connectionLabel": "Pipeline Workspace",
+        "label": "Pipelines",
+        "description": "A set of test pipelines: scripts, containers and API checks run as steps.",
+        "category": "Testing",
+        "icon": "icon.svg"
+      }
+    ],
+    "explorerNodes": [
+      { "id": "pipeline.pipeline", "connectionType": "pipeline" },
+      { "id": "pipeline.editorTab" }
+    ],
+    "commands": [
+      {
+        "id": "pipeline.new",
+        "title": "Pipeline: New Pipeline…",
+        "when": "contextValue == 'connection' && connectionType == 'pipeline'",
+        "inputSchema": {
+          "type": "object",
+          "required": ["name"],
+          "properties": { "name": { "type": "string", "title": "Pipeline name" } }
+        }
+      },
+      {
+        "id": "pipeline.newExample",
+        "title": "Pipeline: New Example Pipeline (web server smoke test)",
+        "when": "contextValue == 'connection' && connectionType == 'pipeline'"
+      },
+      { "id": "pipeline.run", "title": "Pipeline: Run", "when": "contextValue == 'pipeline.pipeline'" },
+      { "id": "pipeline.duplicate", "title": "Pipeline: Duplicate", "when": "contextValue == 'pipeline.pipeline'" },
+      {
+        "id": "pipeline.delete",
+        "title": "Pipeline: Delete",
+        "when": "contextValue == 'pipeline.pipeline'",
+        "confirm": "Delete pipeline \"{label}\" and its run history?"
+      },
+      { "id": "pipeline.api", "title": "Pipeline: API", "hidden": true }
+    ]
+  },
+  "activationEvents": ["onConnectionType:pipeline"]
+}

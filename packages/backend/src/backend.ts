@@ -5,6 +5,9 @@ import { ConnectionManager } from "./connections/connection-manager.js";
 import { type FileDialogs, registerIpcHandlers } from "./rpc/handlers.js";
 import { SearchService } from "./search/search-service.js";
 import { OutputService } from "./output/output-service.js";
+import { NotificationService } from "./notifications/notification-service.js";
+import { notificationForTask } from "./shared/notifications.js";
+import type { TaskInfo } from "./tasks/task-service.js";
 import { ExtensionHostSupervisor } from "./plugins/extension-host-supervisor.js";
 import { PluginManager, type PluginRecord } from "./plugins/plugin-manager.js";
 import { ProviderDirectory } from "./plugins/provider-directory.js";
@@ -36,6 +39,22 @@ function log(pluginId: string, level: "debug" | "info" | "warn" | "error", messa
   const prefix = `[plugin:${pluginId}]`;
   // eslint-disable-next-line no-console
   console[level === "debug" ? "log" : level](prefix, message, meta ?? "");
+}
+
+let runtimeLoggingInstalled = false;
+
+/** Uncaught exceptions and unhandled rejections in the backend process land in the Application log (and still on stderr). */
+function installRuntimeErrorLogging(appLog: (level: "info" | "warn" | "error", message: string, err?: unknown) => void): void {
+  if (runtimeLoggingInstalled) return;
+  runtimeLoggingInstalled = true;
+  process.on("unhandledRejection", (reason) => {
+    appLog("error", `Unhandled promise rejection: ${reason instanceof Error ? reason.message : String(reason)}`, reason);
+    console.error("[oneclient] unhandled rejection", reason);
+  });
+  process.on("uncaughtException", (err) => {
+    appLog("error", `Uncaught exception: ${err.message}`, err);
+    console.error("[oneclient] uncaught exception", err);
+  });
 }
 
 export interface BackendOptions {
@@ -84,6 +103,12 @@ export async function createBackend(opts: BackendOptions) {
   let workspace!: WorkspaceService;
   let terminal!: TerminalService;
   const output = new OutputService();
+  const notifications = new NotificationService();
+  // Output → "oneClient — Application": what goes wrong in the app itself, with the stack as expandable detail.
+  const appLog = (level: "info" | "warn" | "error", message: string, err?: unknown) =>
+    output.append(CORE_PLUGIN_ID, "Application", level, message, err instanceof Error ? err.stack : err === undefined ? undefined : String(err));
+  installRuntimeErrorLogging(appLog);
+  appLog("info", "oneClient backend started.");
   const views = opts.createViews((pluginId, viewId, connectionId, message) => {
     if (pluginId !== CORE_PLUGIN_ID) return supervisor.sendViewMessage(pluginId, viewId, connectionId, message);
     if (viewId === EDITOR_VIEW) workspace.onEditorMessage(connectionId, message);
@@ -100,6 +125,7 @@ export async function createBackend(opts: BackendOptions) {
     },
     (pluginId, code) => {
       providers.removeForPlugin(pluginId);
+      appLog("error", `Plugin "${pluginId}" stopped unexpectedly (code ${code}). Its Output → Log channel has the details.`);
       pluginManager.setState(pluginId, "crashed", `Extension host exited unexpectedly (code ${code}).`);
     },
     log,
@@ -120,6 +146,7 @@ export async function createBackend(opts: BackendOptions) {
       await supervisor.activate(record);
       pluginManager.setState(record.id, "active");
     } catch (err) {
+      appLog("error", `Plugin "${record.id}" failed to start: ${err instanceof Error ? err.message : String(err)}`, err);
       pluginManager.setState(record.id, "crashed", err instanceof Error ? err.message : String(err));
     }
   }
@@ -158,6 +185,15 @@ export async function createBackend(opts: BackendOptions) {
   // Background tasks (Git network operations, the Task Runner, plugins' context.tasks) and source control.
   const tasks = new TaskService();
   supervisor.setTasks(tasks, (pluginId) => pluginManager.getRecord(pluginId)?.manifest?.displayName ?? pluginId);
+  // A task that fails, or finishes after a few seconds, tells the user — they have likely looked away by then.
+  const lastTaskStates = new Map<string, TaskInfo>();
+  tasks.onChanged((list) => {
+    for (const t of list) {
+      const note = notificationForTask(lastTaskStates.get(t.id), t);
+      lastTaskStates.set(t.id, t);
+      if (note) notifications.show(note);
+    }
+  });
   const taskRunner = new TaskRunner(tasks, () => workspace.folders());
   const gitService = new GitService(tasks);
   void gitService.setFolders(workspace.folders());
@@ -209,8 +245,33 @@ export async function createBackend(opts: BackendOptions) {
   }
   supervisor.setWorkspace({ folders: () => workspace.folders().map(({ name, path }) => ({ name, path })), openFile: openWorkspaceFile });
   // context.connections / context.contributions: what plugins may read and do across plugins.
-  supervisor.setApi(async (_pluginId, method, args) => {
+  supervisor.setApi(async (pluginId, method, args) => {
     switch (method) {
+      case "notifications.show": {
+        const [message, options] = args as [unknown, Record<string, unknown> | undefined];
+        const o = options ?? {};
+        const severity = ["info", "success", "warning", "error"].includes(String(o.severity)) ? (o.severity as "info" | "success" | "warning" | "error") : "info";
+        const info = notifications.show({
+          pluginId,
+          source: pluginManager.getRecord(pluginId)?.manifest?.displayName ?? pluginId,
+          severity,
+          message: String(message ?? ""),
+          detail: typeof o.detail === "string" ? o.detail : undefined,
+          actions: Array.isArray(o.actions)
+            ? (o.actions as Array<{ label?: unknown; commandId?: unknown; args?: unknown }>).map((a) => ({ label: String(a.label ?? ""), ...(typeof a.commandId === "string" ? { commandId: a.commandId } : {}), ...(Array.isArray(a.args) ? { args: a.args } : {}) }))
+            : undefined,
+          sticky: typeof o.sticky === "boolean" ? o.sticky : undefined,
+          silent: o.silent === true,
+          key: typeof o.key === "string" && o.key ? o.key.slice(0, 80) : undefined,
+        });
+        return { id: info.id };
+      }
+      case "notifications.dismiss": {
+        const id = String(args[0] ?? "");
+        // A plugin may only remove its own.
+        if (notifications.list().some((n) => n.id === id && n.pluginId === pluginId)) notifications.dismiss(id);
+        return undefined;
+      }
       case "connections.list":
         return connections.listWithConfig();
       case "connections.create": {
@@ -266,8 +327,23 @@ export async function createBackend(opts: BackendOptions) {
     ],
   );
 
+  // A request from the UI that throws is reported to the UI — and now also written to the Application log.
+  const loggedRpc: RpcHost = {
+    on: (channel, handler) => rpc.on(channel, handler),
+    broadcast: (channel, payload) => rpc.broadcast(channel, payload),
+    handle: (channel, handler) =>
+      rpc.handle(channel, async (...args: unknown[]) => {
+        try {
+          return await (handler as (...a: unknown[]) => unknown)(...args);
+        } catch (err) {
+          appLog("error", `${channel} failed: ${err instanceof Error ? err.message : String(err)}`, err);
+          throw err;
+        }
+      }),
+  };
+
   registerIpcHandlers({
-    rpc,
+    rpc: loggedRpc,
     platform,
     themes,
     registry,
@@ -278,6 +354,7 @@ export async function createBackend(opts: BackendOptions) {
     supervisor,
     views,
     output,
+    notifications,
     ensureActivated,
     workspace,
     openWorkspaceFile,

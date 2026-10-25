@@ -28,7 +28,7 @@ export function ActivityBar({
   onManage: (e: React.MouseEvent) => void;
 }) {
   return (
-    <div className="activity-bar">
+    <div className="activity-bar" data-ctx="activitybar">
       <div className="activity-bar-group">
         <ActivityItem title="Explorer (Ctrl+Shift+E)" selected={sidebarVisible && active === "explorer"} onClick={() => onSelect("explorer")}>
           <ThemeIcon id="files" size={24} />

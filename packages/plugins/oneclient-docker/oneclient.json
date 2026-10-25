@@ -39,6 +39,9 @@
         "connectionType": "docker"
       }
     ],
+    "explorerSections": [
+      { "id": "testContainers", "title": "Test Containers", "rootNodeType": "docker.testcontainers", "connectionType": "docker" }
+    ],
     "icons": [
       { "id": "docker-container", "description": "A Docker container", "path": "icons/container.svg", "colored": true },
       { "id": "docker-image", "description": "A Docker image", "path": "icons/image.svg", "colored": true },
@@ -56,7 +59,9 @@
       { "id": "docker.networks", "connectionType": "docker" },
       { "id": "docker.network", "parentNodeType": "docker.networks" },
       { "id": "docker.templates", "connectionType": "docker" },
-      { "id": "docker.template", "parentNodeType": "docker.templates" }
+      { "id": "docker.template", "parentNodeType": "docker.templates" },
+      { "id": "docker.testcontainers" },
+      { "id": "docker.testcontainer", "parentNodeType": "docker.testcontainers" }
     ],
     "commands": [
       {
@@ -82,6 +87,21 @@
         "title": "Docker: Run Infrastructure from a Template…",
         "when": "contextValue == 'connection' && connectionType == 'docker' || nodeType == 'docker.templates'"
       },
+      {
+        "id": "docker.openTestContainers",
+        "title": "Docker: Run a Test Container…",
+        "when": "contextValue == 'connection' && connectionType == 'docker' || contextValue == 'docker.testcontainers'"
+      },
+      { "id": "docker.searchImages", "title": "Docker: Search Images", "hidden": true },
+      { "id": "docker.imageTags", "title": "Docker: List Image Tags", "hidden": true },
+      { "id": "docker.listTestContainers", "title": "Docker: List Test Containers", "hidden": true },
+      { "id": "docker.runTestContainer", "title": "Docker: Run Test Container", "hidden": true },
+      {
+        "id": "docker.cleanupTestContainers",
+        "title": "Docker: Remove All Test Containers",
+        "when": "contextValue == 'connection' && connectionType == 'docker' || contextValue == 'docker.testcontainers'",
+        "confirm": "Force-remove every container labelled as a test container?"
+      },
       { "id": "docker.listTemplates", "title": "Docker: List Container Templates", "hidden": true },
       { "id": "docker.runTemplate", "title": "Docker: Run Container Template", "hidden": true },
       {
@@ -100,7 +120,70 @@
           "properties": { "image": { "type": "string", "title": "Image", "description": "e.g. nginx:latest" } }
         }
       }
-    ]
+    ],
+    "extensions": {
+      "oneclient.aiTools": [
+        {
+          "name": "docker_run_test_container",
+          "description": "Start a throwaway container from any image on a Docker connection, wait until it is ready, and return its endpoints. Used by pipelines.",
+          "command": "docker.runTestContainer",
+          "inputSchema": {
+            "type": "object",
+            "required": [
+              "connectionId",
+              "request"
+            ],
+            "properties": {
+              "connectionId": {
+                "type": "string",
+                "description": "A Docker connection id."
+              },
+              "request": {
+                "type": "object",
+                "description": "{ image, name, ports[], env, cmd, wait: { kind: none|port|log|healthy, message }, timeoutSeconds, ttlMinutes, autoRemove }"
+              }
+            }
+          }
+        },
+        {
+          "name": "docker_remove_container",
+          "description": "Force-remove a container by id or name on a Docker connection.",
+          "command": "docker.removeContainer",
+          "inputSchema": {
+            "type": "object",
+            "required": [
+              "connectionId",
+              "containerId"
+            ],
+            "properties": {
+              "connectionId": {
+                "type": "string"
+              },
+              "containerId": {
+                "type": "string",
+                "description": "Container id or name."
+              }
+            }
+          }
+        },
+        {
+          "name": "docker_cleanup_test_containers",
+          "description": "Remove every test container (label oneclient.testcontainer) on a Docker connection.",
+          "command": "docker.cleanupTestContainers",
+          "inputSchema": {
+            "type": "object",
+            "required": [
+              "connectionId"
+            ],
+            "properties": {
+              "connectionId": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    }
   },
   "activationEvents": ["onConnectionType:docker"]
 }

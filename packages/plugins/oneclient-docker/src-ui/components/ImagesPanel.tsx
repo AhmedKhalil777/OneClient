@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { type ImageRow, pullImage } from "../api.js";
+import { ImagePicker } from "./ImagePicker.js";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -35,13 +36,7 @@ export function ImagesPanel({ images, onChanged }: { images: ImageRow[]; onChang
   return (
     <>
       <div className="pull-row">
-        <input
-          placeholder="Image to pull, e.g. nginx:latest"
-          value={pullTag}
-          onChange={(e) => setPullTag(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && void doPull()}
-          disabled={pulling}
-        />
+        <ImagePicker value={pullTag} onChange={setPullTag} disabled={pulling} placeholder="Search Docker Hub or type an image to pull, e.g. nginx:latest" />
         <button className="icon-btn" disabled={pulling || !pullTag.trim()} onClick={() => void doPull()}>
           {pulling ? "Pulling…" : "Pull"}
         </button>

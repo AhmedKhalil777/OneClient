@@ -19,6 +19,8 @@ import type {
   Workspace,
   WorkspaceFolder,
   Tasks,
+  Notifications,
+  NotificationOptions,
   Connections,
   Contributions,
   SavedConnection,
@@ -141,6 +143,18 @@ function makeConnections(): Connections {
   };
 }
 
+function makeNotifications(): Notifications {
+  const show = (message: string, options?: NotificationOptions) => apiRequest<{ id: string }>("notifications.show", message, options ?? {});
+  return {
+    show,
+    info: (m, o) => show(m, { ...o, severity: "info" }),
+    success: (m, o) => show(m, { ...o, severity: "success" }),
+    warning: (m, o) => show(m, { ...o, severity: "warning" }),
+    error: (m, o) => show(m, { ...o, severity: "error" }),
+    dismiss: (id) => apiRequest<void>("notifications.dismiss", id),
+  };
+}
+
 function makeContributions(): Contributions {
   return { get: (point) => apiRequest("contributions.get", point) };
 }
@@ -192,6 +206,7 @@ function makeContext(extensionPath: string): PluginContext {
     createOutputChannel: makeOutputChannel,
     workspace: makeWorkspace(),
     tasks: makeTasks(),
+    notifications: makeNotifications(),
     refreshExplorer: (connectionId) => post({ type: "explorer:refresh", connectionId: String(connectionId) }),
     connections: makeConnections(),
     contributions: makeContributions(),
@@ -237,15 +252,24 @@ async function handleMessage(msg: HostInboundMessage): Promise<void> {
         await mod.activate(makeContext(msg.extensionPath));
         post({ type: "activated" });
       } catch (err) {
+        post({ type: "log", level: "error", message: `Activation failed: ${describeError(err)}`, meta: { stack: err instanceof Error ? err.stack : undefined } });
         post({ type: "activate:error", error: describeError(err) });
       }
       return;
     }
     case "invoke": {
+      const what = `${msg.kind} ${msg.target}${msg.method ? `.${msg.method}` : ""}`;
+      const started = Date.now();
       try {
         const result = await dispatchInvoke(msg);
+        logOutcome(msg, result, Date.now() - started);
+        // Commands report many failures as a value ({ ok: false, error }) rather than throwing — surface those too.
+        if (msg.kind === "command" && result && typeof result === "object" && (result as { ok?: unknown }).ok === false) {
+          post({ type: "log", level: "warn", message: `${what} failed: ${String((result as { error?: unknown }).error ?? "no details")}` });
+        }
         post({ type: "invoke:result", requestId: msg.requestId, ok: true, result });
       } catch (err) {
+        post({ type: "log", level: "error", message: `${what} failed: ${describeError(err)}`, meta: { stack: err instanceof Error ? err.stack : undefined } });
         post({ type: "invoke:result", requestId: msg.requestId, ok: false, error: describeError(err) });
       }
       return;
@@ -253,8 +277,9 @@ async function handleMessage(msg: HostInboundMessage): Promise<void> {
     case "deactivate": {
       try {
         await deactivateFn?.();
-      } catch {
-        // best-effort — the host process is about to be killed regardless
+      } catch (err) {
+        // best-effort — the host process is about to be killed regardless, but say what went wrong
+        post({ type: "log", level: "warn", message: `deactivate() threw: ${describeError(err)}`, meta: { stack: err instanceof Error ? err.stack : undefined } });
       }
       post({ type: "deactivated" });
       return;
@@ -293,8 +318,9 @@ async function handleMessage(msg: HostInboundMessage): Promise<void> {
       for (const listener of folderListeners) {
         try {
           listener(msg.folders);
-        } catch {
-          // a plugin's listener failing must not break the others
+        } catch (err) {
+          // a plugin's listener failing must not break the others — but it should be seen
+          post({ type: "log", level: "error", message: `A workspace folder listener threw: ${describeError(err)}`, meta: { stack: err instanceof Error ? err.stack : undefined } });
         }
       }
       return;
@@ -312,12 +338,17 @@ async function handleMessage(msg: HostInboundMessage): Promise<void> {
       try {
         await handler.onMessage(msg.message, { connectionId: msg.connectionId, reply });
       } catch (err) {
+        post({ type: "log", level: "error", message: `View ${msg.viewId} failed to handle a "${(msg.message as { type?: string } | null)?.type ?? "message"}" message: ${describeError(err)}`, meta: { stack: err instanceof Error ? err.stack : undefined } });
         reply({ error: describeError(err) });
       }
       return;
     }
     case "view:dispose": {
-      await viewHandlers.get(msg.viewId)?.onDispose?.(msg.connectionId);
+      try {
+        await viewHandlers.get(msg.viewId)?.onDispose?.(msg.connectionId);
+      } catch (err) {
+        post({ type: "log", level: "warn", message: `View ${msg.viewId} failed to clean up: ${describeError(err)}`, meta: { stack: err instanceof Error ? err.stack : undefined } });
+      }
       return;
     }
   }
@@ -370,6 +401,34 @@ async function dispatchInvoke(msg: InvokeMessage): Promise<unknown> {
     }
   }
 }
+
+/**
+ * What every plugin does on the host's behalf, written to its Output "Log" without the plugin lifting a finger:
+ * connections opening / testing / closing, explorer loads, command runs (debug), with timings.
+ */
+function logOutcome(msg: InvokeMessage, result: unknown, ms: number): void {
+  const say = (level: "debug" | "info" | "warn", message: string) => post({ type: "log", level, message });
+  const id = msg.connectionId ? ` [${msg.connectionId.slice(0, 8)}]` : "";
+  if (msg.kind === "connection") {
+    const r = result as { success?: boolean; message?: string } | undefined;
+    if (msg.method === "test") say(r?.success === false ? "warn" : "info", `Connection test (${msg.target}) ${r?.success === false ? `failed: ${r.message ?? "no details"}` : "passed"} in ${ms} ms.`);
+    else say("info", `Connection ${msg.method}${id} (${msg.target}) done in ${ms} ms.`);
+  } else if (msg.kind === "explorer") {
+    say("debug", `Explorer ${msg.target}${id}: ${Array.isArray(result) ? result.length : 0} nodes in ${ms} ms.`);
+  } else {
+    say("debug", `Command ${msg.target} ran in ${ms} ms.`);
+  }
+}
+
+// A bug in a plugin's background work must not vanish: log it where the user looks (Output → the plugin's "Log").
+process.on("unhandledRejection", (reason) => {
+  post({ type: "log", level: "error", message: `Unhandled promise rejection: ${describeError(reason)}`, meta: { stack: reason instanceof Error ? reason.stack : undefined } });
+});
+process.on("uncaughtException", (err) => {
+  post({ type: "log", level: "error", message: `Uncaught exception — the extension host is stopping: ${describeError(err)}`, meta: { stack: err.stack } });
+  // Give the message a moment to leave, then stop: the process state can no longer be trusted.
+  setTimeout(() => process.exit(1), 200);
+});
 
 function describeError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);

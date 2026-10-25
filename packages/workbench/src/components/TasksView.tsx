@@ -97,7 +97,7 @@ export function TasksView({ visible, onRunTask }: { visible: boolean; onRunTask:
   const ansi = useMemo(() => renderAnsi(output), [output]);
 
   return (
-    <div className="tasks-view">
+    <div className="tasks-view" data-ctx="tasks">
       <div className="tasks-list">
         <div className="tasks-list-bar">
           <span>TASKS</span>
@@ -111,7 +111,7 @@ export function TasksView({ visible, onRunTask }: { visible: boolean; onRunTask:
         </div>
         {tasks.length === 0 && <div className="output-empty">No tasks yet. Run one with Terminal ▸ Run Task…; Git fetch / pull / push show up here too.</div>}
         {tasks.map((t) => (
-          <div key={t.id} className={`task-row state-${t.state} ${shown?.id === t.id ? "selected" : ""}`} onClick={() => setSelected(t.id)} title={t.command ? `${t.command}\n${t.cwd ?? ""}` : t.title}>
+          <div key={t.id} className={`task-row state-${t.state} ${shown?.id === t.id ? "selected" : ""}`} data-ctx="task" data-ctx-id={t.id} data-ctx-state={t.state} data-ctx-definition={t.definitionId ?? ""} onClick={() => setSelected(t.id)} title={t.command ? `${t.command}\n${t.cwd ?? ""}` : t.title}>
             <span className={`task-state ${t.state === "running" ? "spin" : ""}`}>{STATE_ICON[t.state]}</span>
             <span className="task-title">{t.title}</span>
             <span className="task-meta">

@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { type ContainerRow, type ImageRow, initialParams, listContainers, listImages } from "./api.js";
 import { ContainersPanel } from "./components/ContainersPanel.js";
 import { ImagesPanel } from "./components/ImagesPanel.js";
+import { TestContainersPanel } from "./components/TestContainersPanel.js";
 import { TemplatesPanel } from "./components/TemplatesPanel.js";
 
 const POLL_MS = 3000;
-type Tab = "containers" | "images" | "templates";
+type Tab = "containers" | "images" | "templates" | "tests";
 
 export function App() {
-  const [tab, setTab] = useState<Tab>(initialParams.tab === "templates" || initialParams.tab === "images" ? initialParams.tab : "containers");
+  const [tab, setTab] = useState<Tab>(initialParams.tab === "templates" || initialParams.tab === "images" || initialParams.tab === "tests" ? initialParams.tab : "containers");
   const [containers, setContainers] = useState<ContainerRow[]>([]);
   const [images, setImages] = useState<ImageRow[]>([]);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
@@ -54,6 +55,9 @@ export function App() {
           <button className={`tab-btn ${tab === "templates" ? "active" : ""}`} onClick={() => setTab("templates")}>
             Templates
           </button>
+          <button className={`tab-btn ${tab === "tests" ? "active" : ""}`} onClick={() => setTab("tests")}>
+            Test Containers
+          </button>
         </div>
         <div className="toolbar-spacer" />
         <span className="refresh-indicator">
@@ -66,6 +70,7 @@ export function App() {
         {tab === "containers" && <ContainersPanel containers={containers} onChanged={changed} onShowTemplates={() => setTab("templates")} />}
         {tab === "images" && <ImagesPanel images={images} onChanged={refresh} />}
         {tab === "templates" && <TemplatesPanel focus={initialParams.template} onChanged={changed} />}
+        {tab === "tests" && <TestContainersPanel onChanged={changed} />}
       </div>
     </div>
   );

@@ -148,7 +148,7 @@ version is a self-hosted **plain Node** server that you use from a browser.
 | `packages/workbench` | The UI (React + Vite): title bar menus, Explorer, Search, editor, Source Control, Terminal, Tasks, Output | no |
 | `packages/server` | **Web runtime:** an HTTP + WebSocket server for the backend, serving the workbench to a browser | no |
 | `packages/core` | **Desktop runtime:** the Electron shell (main process, preloads, native windows and views) | yes |
-| `packages/plugins/*` | SQL Server, PostgreSQL, MySQL / MariaDB, Redis, Kafka, Azure Blob Storage, Docker, Keycloak, HTTP client, AI Assistant, Miscellaneous | no |
+| `packages/plugins/*` | SQL Server, PostgreSQL, MySQL / MariaDB, Redis, Kafka, Azure Blob Storage, Docker, Keycloak, HTTP client, Pipelines, AI Assistant, Miscellaneous | no |
 | `packages/plugin-api`, `packages/editor-kit` | What plugins depend on, and the shared editor | no |
 | `packages/sql-core`, `packages/editor-core` | The shared base of the SQL plugins, and the editor's syntax tokenizers (TypeScript, JavaScript, CSS, C#, YAML) | no |
 
