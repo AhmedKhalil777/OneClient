@@ -2,7 +2,7 @@
   "name": "oneclient-ai",
   "displayName": "AI Assistant",
   "description": "Chat with Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen or any OpenAI-compatible server with your own API key. It can read your open folders and propose edits you approve.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",

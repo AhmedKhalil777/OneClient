@@ -2,7 +2,7 @@
   "name": "oneclient-azure-blob",
   "displayName": "Azure Blob Storage",
   "description": "Browse Azure Blob Storage: containers and folders, upload and download, view and edit text, properties, metadata, access tiers and SAS links. Works with Azurite.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",

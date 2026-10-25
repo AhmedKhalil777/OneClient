@@ -1,6 +1,6 @@
 {
   "name": "oneclient-kafka",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "oneClient plugin: Apache Kafka — brokers, topics, messages (browse and produce), consumer groups and lag.",
   "license": "MIT",
   "private": true,

@@ -1,6 +1,6 @@
 {
   "name": "oneclient-azure-blob",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "oneClient plugin: Azure Blob Storage — containers, folders, blobs, upload/download, properties, metadata, SAS links.",
   "license": "MIT",
   "private": true,

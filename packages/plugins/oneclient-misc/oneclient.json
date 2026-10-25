@@ -2,7 +2,7 @@
   "name": "oneclient-misc",
   "displayName": "Miscellaneous",
   "description": "Built-in: JSON, XML, SQL, Markdown, TypeScript, JavaScript, CSS, C# and YAML editor support, text utilities (sort, de-duplicate, trim) and the Material Icon Theme.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "$(extensions)",

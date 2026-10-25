@@ -2,7 +2,7 @@
   "name": "oneclient-keycloak",
   "displayName": "Keycloak",
   "description": "Manage Keycloak: realms, users, groups, roles, clients, scopes, identity providers, sessions and events — with JSON editing, role mapping, and developer token tools (decode, get, introspect, evaluate).",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",

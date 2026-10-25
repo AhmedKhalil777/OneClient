@@ -1,6 +1,6 @@
 {
   "name": "oneclient-ai",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "oneClient plugin: AI assistant — chat with Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen or any OpenAI-compatible server using your own API key, with read access to your open folders and edits you approve.",
   "license": "MIT",
   "private": true,

@@ -1,6 +1,6 @@
 {
   "name": "oneclient-redis",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "oneClient plugin: Redis — browse keys by namespace, edit every data type, server info and a CLI.",
   "license": "MIT",
   "private": true,

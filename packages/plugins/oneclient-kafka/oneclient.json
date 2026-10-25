@@ -2,7 +2,7 @@
   "name": "oneclient-kafka",
   "displayName": "Apache Kafka",
   "description": "Work with Apache Kafka: brokers, topics and partitions, browse messages from any offset or time, produce messages, topic configs, consumer groups with lag and offset resets. Supports SASL and TLS.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",

@@ -2,7 +2,7 @@
   "name": "oneclient-mssql",
   "displayName": "SQL Server",
   "description": "Connect to Microsoft SQL Server: object explorer, query editor, result grids and Fast Tools (saved fast queries, fake-data generator) — a small SSMS.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",

@@ -1,6 +1,6 @@
 {
   "name": "oneclient-http",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "oneClient plugin: send HTTP requests — collections, environments, variables, auth, history, and Postman / cURL import and export.",
   "license": "MIT",
   "private": true,

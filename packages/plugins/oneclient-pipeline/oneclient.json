@@ -2,7 +2,7 @@
   "name": "oneclient-pipeline",
   "displayName": "Pipelines",
   "description": "Build test scenarios like a CI/CD job: run scripts, start test containers, seed data, call REST APIs and assert on the results — step by step, with teardown.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",

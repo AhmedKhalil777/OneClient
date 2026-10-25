@@ -2,7 +2,7 @@
   "name": "oneclient-docker",
   "displayName": "Docker",
   "description": "Connect to a local or remote Docker Engine: browse containers, images, volumes, networks — and run the databases, brokers and caches your other plugins support, with a ready connection to each.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",

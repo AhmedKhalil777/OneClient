@@ -2,7 +2,7 @@
   "name": "oneclient-http",
   "displayName": "HTTP Client",
   "description": "Send HTTP requests: collections, environments with {{variables}}, auth, history, cURL and Postman import, and Postman export.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",

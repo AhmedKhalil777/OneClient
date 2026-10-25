@@ -2,7 +2,7 @@
   "name": "oneclient-mysql",
   "displayName": "MySQL",
   "description": "Connect to MySQL and MariaDB: databases, tables, views, procedures and functions; query windows with IntelliSense, streamed result grids, table data editor with staged changes, CSV import, execution plans, SSH tunnels and object search.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",

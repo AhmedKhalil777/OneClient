@@ -1,6 +1,6 @@
 {
   "name": "oneclient-postgres",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "oneClient plugin: PostgreSQL — object explorer, query editor with IntelliSense, result grids and scripting.",
   "license": "MIT",
   "private": true,

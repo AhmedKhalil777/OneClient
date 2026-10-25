@@ -2,7 +2,7 @@
   "name": "oneclient-redis",
   "displayName": "Redis",
   "description": "Browse Redis keys by namespace, view and edit every data type (string/JSON, hash, list, set, sorted set, stream), TTLs, server info, slow log and a CLI.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",

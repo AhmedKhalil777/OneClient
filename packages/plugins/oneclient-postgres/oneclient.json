@@ -2,7 +2,7 @@
   "name": "oneclient-postgres",
   "displayName": "PostgreSQL",
   "description": "Connect to PostgreSQL: databases, schemas, tables, views, functions and procedures; query windows with IntelliSense, result grids, NOTICE messages, cancel, CREATE / ALTER scripts and object search.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "publisher": "oneclient",
   "license": "MIT",
   "icon": "icon.svg",
