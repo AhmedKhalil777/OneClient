@@ -131,6 +131,7 @@ export type WorkbenchShortcut =
   | "showScm"
   | "runBuildTask"
   | "toggleSidebar"
+  | "toggleSecondarySideBar"
   | "closeEditor"
   | "nextEditor"
   | "previousEditor"

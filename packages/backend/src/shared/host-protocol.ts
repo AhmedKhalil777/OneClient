@@ -34,7 +34,7 @@ export type HostInboundMessage =
  * Host APIs answered by main through one request/response pair (`api:request` → `api:result`) — context.connections
  * and context.contributions. `method` is one of these; `args` are its arguments.
  */
-export type HostApiMethod = "connections.list" | "connections.create" | "connections.test" | "contributions.get";
+export type HostApiMethod = "connections.list" | "connections.create" | "connections.test" | "contributions.get" | "aiTools.call";
 
 export type RegisteredContribution =
   | { kind: "connection"; typeId: string; configSchema: unknown; uiSchema?: unknown }

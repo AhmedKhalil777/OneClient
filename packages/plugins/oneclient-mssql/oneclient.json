@@ -12,7 +12,14 @@
   "main": "dist/main.js",
   "ui": "dist/ui",
   "contributes": {
-    "icons": [{ "id": "sql-server", "description": "Microsoft SQL Server", "path": "icon.svg", "colored": true }],
+    "icons": [
+      {
+        "id": "sql-server",
+        "description": "Microsoft SQL Server",
+        "path": "icon.svg",
+        "colored": true
+      }
+    ],
     "extensions": {
       "docker.containerTemplates": [
         {
@@ -65,6 +72,92 @@
             }
           },
           "startupSeconds": 150
+        }
+      ],
+      "oneclient.aiTools": [
+        {
+          "name": "mssql_schema",
+          "description": "List the user tables and their columns of a SQL Server connection (one line per table: schema.table(column type, …)). Call this before writing SQL so names and types are right. Optional filter matches table or schema names.",
+          "command": "mssql.ai.schema",
+          "readOnly": true,
+          "inputSchema": {
+            "type": "object",
+            "required": [
+              "connectionId"
+            ],
+            "properties": {
+              "connectionId": {
+                "type": "string",
+                "description": "A SQL Server connection id — get it from list_connections."
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to run in (optional; default is the connection's)."
+              },
+              "filter": {
+                "type": "string",
+                "description": "Only tables whose name contains this text."
+              }
+            }
+          }
+        },
+        {
+          "name": "mssql_query",
+          "description": "Run ONE read-only SQL statement (SELECT / WITH / SHOW / DESCRIBE / EXPLAIN) on a SQL Server connection and get the rows as tab-separated text. Rejects anything that could change data. Limit large results yourself.",
+          "command": "mssql.ai.query",
+          "readOnly": true,
+          "inputSchema": {
+            "type": "object",
+            "required": [
+              "connectionId",
+              "sql"
+            ],
+            "properties": {
+              "connectionId": {
+                "type": "string",
+                "description": "A SQL Server connection id — get it from list_connections."
+              },
+              "sql": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to run in (optional; default is the connection's)."
+              },
+              "maxRows": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Rows to return (default 50)."
+              }
+            }
+          }
+        },
+        {
+          "name": "mssql_execute",
+          "description": "Run any SQL on a SQL Server connection, including INSERT / UPDATE / DELETE / DDL. The user sees the statement and must approve it first. Use mssql_query for reads.",
+          "command": "mssql.ai.execute",
+          "readOnly": false,
+          "inputSchema": {
+            "type": "object",
+            "required": [
+              "connectionId",
+              "sql"
+            ],
+            "properties": {
+              "connectionId": {
+                "type": "string",
+                "description": "A SQL Server connection id — get it from list_connections."
+              },
+              "sql": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to run in (optional; default is the connection's)."
+              }
+            }
+          }
         }
       ]
     },
@@ -586,6 +679,21 @@
         "title": "SQL Server: Delete Faker",
         "when": "contextValue == 'mssql.faker' || contextValue == 'mssql.fakerBroken'",
         "confirm": "Delete faker \"{label}\" (its .faker.json file)? Data it already inserted stays."
+      },
+      {
+        "id": "mssql.ai.schema",
+        "title": "AI: List Tables and Columns",
+        "hidden": true
+      },
+      {
+        "id": "mssql.ai.query",
+        "title": "AI: Run Read-Only Query",
+        "hidden": true
+      },
+      {
+        "id": "mssql.ai.execute",
+        "title": "AI: Run Statement",
+        "hidden": true
       }
     ],
     "searchProviders": [

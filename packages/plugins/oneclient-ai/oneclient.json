@@ -1,0 +1,81 @@
+{
+  "name": "oneclient-ai",
+  "displayName": "AI Assistant",
+  "description": "Chat with Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen or any OpenAI-compatible server with your own API key. It can read your open folders and propose edits you approve.",
+  "version": "0.1.0",
+  "publisher": "oneclient",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "engines": {
+    "oneclient": "^0.1.0"
+  },
+  "main": "dist/main.js",
+  "ui": "dist/ui",
+  "contributes": {
+    "connectionTypes": [
+      {
+        "id": "ai",
+        "connectionLabel": "AI Account",
+        "label": "AI Assistant",
+        "description": "Chat with an AI model using your own API key (Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen, Ollama…).",
+        "category": "AI",
+        "icon": "icon.svg"
+      }
+    ],
+    "quickActions": [
+      {
+        "id": "ai.newChat",
+        "title": "New AI Chat",
+        "icon": "icon.svg",
+        "order": 10,
+        "openView": { "viewId": "ai.chat", "title": "AI Chat", "params": { "c": "{uid}" } }
+      }
+    ],
+    "explorerNodes": [
+      {
+        "id": "ai.new",
+        "connectionType": "ai"
+      },
+      {
+        "id": "ai.conversation",
+        "connectionType": "ai"
+      }
+    ],
+    "views": [
+      {
+        "id": "ai.chat",
+        "title": "Chat",
+        "tier": 2,
+        "location": "editor",
+      "dock": "secondary",
+        "entry": "chat.html",
+        "connectionType": "ai"
+      }
+    ],
+    "commands": [
+      {
+        "id": "ai.renameConversation",
+        "title": "AI: Rename Conversation…",
+        "when": "contextValue == 'ai.conversation'",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Title"
+            }
+          }
+        }
+      },
+      {
+        "id": "ai.deleteConversation",
+        "title": "AI: Delete Conversation",
+        "when": "contextValue == 'ai.conversation'",
+        "confirm": "Delete \"{label}\"? This can't be undone."
+      }
+    ]
+  }
+}

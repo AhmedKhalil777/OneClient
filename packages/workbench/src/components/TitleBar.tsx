@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { ThemeIcon } from "../theme.js";
 import { Logo } from "./Logo.js";
 
@@ -38,8 +38,11 @@ export function TitleBar({
   onSearch,
   onOpenChange,
   onBeforeOpen,
+  actions,
 }: {
   menus: TopMenu[];
+  /** Quick-access icon buttons at the right end. */
+  actions?: ReactNode;
   onSearch: () => void;
   /** A dropdown opened / closed — the shell hides its native view layers while one is open. */
   onOpenChange: (open: boolean) => void;
@@ -206,6 +209,7 @@ export function TitleBar({
       </button>
 
       <div className="titlebar-right" />
+      {actions && <div className="titlebar-actions">{actions}</div>}
 
       {openMenuDef && openRect && (
         <Dropdown

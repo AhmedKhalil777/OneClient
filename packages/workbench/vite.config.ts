@@ -30,6 +30,7 @@ export function workbenchConfig(root: string, outDir = resolve(root, "dist")): U
           editor: resolve(root, "views/editor/index.html"),
           terminal: resolve(root, "views/terminal/index.html"),
           diff: resolve(root, "views/diff/index.html"),
+          graph: resolve(root, "views/graph/index.html"),
         },
       },
     },

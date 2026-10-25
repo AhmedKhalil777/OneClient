@@ -29,6 +29,7 @@ const CORE_VIEWS: Record<string, string> = {
   [EDITOR_VIEW]: "views/editor/index.html",
   [TERMINAL_VIEW]: "views/terminal/index.html",
   "git.diff": "views/diff/index.html",
+  "git.graph": "views/graph/index.html",
 };
 
 function log(pluginId: string, level: "debug" | "info" | "warn" | "error", message: string, meta?: unknown): void {
@@ -178,6 +179,16 @@ export async function createBackend(opts: BackendOptions) {
   const coreCommands: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {
     ...fileCommands,
     ...terminal.commands(),
+    // The Git Graph view: repositories, the commit log, a commit's files and message, and checkout.
+    "git.repos": async () => gitService.list(),
+    "git.log": async (a) => gitService.log(a.root, { all: a.all === true, limit: Math.min(5000, Math.max(1, Number(a.limit) || 500)) }),
+    "git.commitFiles": async (a) => gitService.commitFiles(a.root, String(a.sha ?? "")),
+    "git.commitDetails": async (a) => gitService.commitDetails(a.root, String(a.sha ?? "")),
+    "git.fetchRepo": async (a) => gitService.fetch(a.root),
+    "git.checkoutRef": async (a) => {
+      await gitService.checkout(a.root, String(a.name ?? ""));
+      return { ok: true };
+    },
     // The diff view: both sides of a file.
     "git.diffContents": async (a) => {
       const path = String(a.path ?? "");
@@ -219,6 +230,17 @@ export async function createBackend(opts: BackendOptions) {
       }
       case "contributions.get":
         return typeof args[0] === "string" ? registry.getExtensions(args[0]) : [];
+      case "aiTools.call": {
+        // Only commands a plugin has listed as an AI tool can be reached this way — not any command of any plugin.
+        const [commandId, input] = args as [unknown, unknown];
+        if (typeof commandId !== "string") throw new Error("aiTools.call needs a command id.");
+        const tool = registry.getExtensions("oneclient.aiTools").find((t) => t.command === commandId);
+        if (!tool) throw new Error(`"${commandId}" is not listed as an AI tool by any plugin.`);
+        await ensureActivated(tool.pluginId);
+        const payload = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+        if (typeof payload.connectionId === "string" && connections.list().some((c) => c.id === payload.connectionId)) await connections.ensureConnected(payload.connectionId);
+        return supervisor.invoke(tool.pluginId, "command", commandId, "execute", [payload]);
+      }
     }
   });
   views.setOpenFileHandler(openWorkspaceFile);

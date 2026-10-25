@@ -195,6 +195,7 @@ function makeContext(extensionPath: string): PluginContext {
     refreshExplorer: (connectionId) => post({ type: "explorer:refresh", connectionId: String(connectionId) }),
     connections: makeConnections(),
     contributions: makeContributions(),
+    aiTools: { call: (commandId, input) => apiRequest("aiTools.call", commandId, input) },
     subscriptions,
     registerConnectionProvider(provider) {
       connectionProviders.set(provider.typeId, provider);

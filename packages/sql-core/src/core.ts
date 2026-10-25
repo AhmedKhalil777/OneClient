@@ -14,6 +14,7 @@ import { type TableEditor, createTableEditor } from "./table-editor/api.js";
 import type { TableAccess } from "./table-editor/types.js";
 import type { ExecuteQuery } from "./types.js";
 import { createQueryViews } from "./views.js";
+import { createAiCommands } from "./ai-tools.js";
 
 /** What the core can do for a SQL plugin; everything is on unless the plugin turns it off. */
 export interface SqlCoreFeatures {
@@ -36,6 +37,8 @@ export interface SqlCoreFeatures {
    * panel (`<prefix>.runInBackground`, `.backgroundTasks`…). Needs `host`. The QUERY HISTORY section follows `history`.
    */
   background?: boolean;
+  /** Commands the AI assistant uses (`<prefix>.ai.schema`, `.ai.query`, `.ai.execute`) — see ai-tools.ts. */
+  aiTools?: boolean;
 }
 
 export interface SqlCoreOptions {
@@ -115,7 +118,7 @@ export function commandArg<T>(args: unknown[]): T {
 
 export function createSqlCore(options: SqlCoreOptions): SqlCore {
   const { prefix } = options;
-  const features = { history: true, fastTools: true, fastQueries: true, tableEditor: true, importCsv: true, plan: true, createDatabase: true, background: true, ...options.features };
+  const features = { history: true, fastTools: true, fastQueries: true, tableEditor: true, importCsv: true, plan: true, createDatabase: true, background: true, aiTools: true, ...options.features };
   const dataDir = options.dataDir ?? prefix;
   const describe = options.describeError ?? ((err: unknown) => (err instanceof Error ? err.message : String(err)));
   const queryWindow = createQueryWindowFactory(prefix, options.untitledQuery);
@@ -429,6 +432,8 @@ export function createSqlCore(options: SqlCoreOptions): SqlCore {
       ),
     );
   }
+
+  if (features.aiTools) commands.push(...createAiCommands({ prefix, executeQuery: options.executeQuery, ensureConnected: options.ensureConnected, releaseWindow: options.releaseWindow, describeError: describe }));
 
   return { prefix, queryWindow, folders, history, commands, views: createQueryViews(options.executeQuery, history), fastTools, fastQueries, sections, background, tableEditor, csvImporter, planner, action };
 }

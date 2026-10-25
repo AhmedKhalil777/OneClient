@@ -11,7 +11,7 @@ let registry: ContributionRegistrySnapshot;
 const logs: string[] = [];
 
 function emptyRegistry(): ContributionRegistrySnapshot {
-  return { connectionTypes: [], explorerNodes: [], explorerSections: [], views: [], commands: [], themes: [], iconThemes: [], searchProviders: [], icons: [], menus: [], extensions: [] };
+  return { connectionTypes: [], explorerNodes: [], explorerSections: [], views: [], commands: [], themes: [], iconThemes: [], searchProviders: [], icons: [], menus: [], quickActions: [], extensions: [] };
 }
 
 function service() {

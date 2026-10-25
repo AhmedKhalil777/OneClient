@@ -24,6 +24,7 @@ export function workbenchShortcut(input: KeyPress): WorkbenchShortcut | null {
   if (mod && input.shift && !input.alt && key === "g") return "showScm";
   if (mod && input.shift && !input.alt && key === "b") return "runBuildTask";
   if (mod && !input.shift && !input.alt && key === "b") return "toggleSidebar";
+  if (mod && !input.shift && input.alt && key === "b") return "toggleSecondarySideBar";
   if (mod && !input.shift && !input.alt && key === "w") return "closeEditor";
   if (mod && !input.alt && input.key === "PageDown") return "nextEditor";
   if (mod && !input.alt && input.key === "PageUp") return "previousEditor";

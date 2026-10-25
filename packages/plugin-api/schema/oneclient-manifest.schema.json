@@ -111,6 +111,32 @@
             }
           }
         },
+        "quickActions": {
+          "type": "array",
+          "description": "Icon buttons at the right of the title bar: run a command or open a view of this plugin.",
+          "items": {
+            "type": "object",
+            "required": ["id", "title"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "$ref": "#/$defs/contributionId" },
+              "title": { "type": "string" },
+              "icon": { "type": "string" },
+              "order": { "type": "number" },
+              "command": { "type": "string" },
+              "openView": {
+                "type": "object",
+                "required": ["viewId"],
+                "additionalProperties": false,
+                "properties": {
+                  "viewId": { "$ref": "#/$defs/contributionId" },
+                  "title": { "type": "string" },
+                  "params": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
         "menus": {
           "type": "array",
           "description": "Items in the title bar menus: run a command of this plugin, or press a keybinding in the active editor tab (one of this plugin's views).",
@@ -257,6 +283,11 @@
         "tier": { "type": "integer", "enum": [1, 2] },
         "location": { "type": "string", "enum": ["sidebar", "panel", "editor"] },
         "icon": { "type": "string" },
+        "dock": {
+          "type": "string",
+          "enum": ["secondary"],
+          "description": "Where an 'editor' view opens by default: \"secondary\" shows it in the secondary side bar (right) instead of an editor tab. The user can still move it to the editor."
+        },
         "entry": {
           "type": "string",
           "description": "Path, relative to manifest.ui, to this view's entry HTML. Required if tier is 2."

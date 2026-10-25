@@ -53,7 +53,7 @@ describe("fast query store and commands", () => {
     const base = { prefix: "pg", executeQuery: async () => ({ resultSets: [], messages: [], hasErrors: false, cancelled: false, elapsedMs: 0, database: null, rowsAffected: 0 }), cancelQuery: () => true, ensureConnected: () => undefined };
     const full = createSqlCore(base);
     expect(full.commands.map((c) => c.commandId)).toEqual(expect.arrayContaining(["pg.executeQuery", "pg.history", "pg.attachFastToolsFolder", "pg.saveFastQuery", "pg.runFastQueryOn"]));
-    const lean = createSqlCore({ ...base, features: { history: false, fastQueries: false } });
+    const lean = createSqlCore({ ...base, features: { history: false, fastQueries: false, aiTools: false } });
     expect(lean.commands.map((c) => c.commandId).sort()).toEqual(["pg.attachFastToolsFolder", "pg.cancelQuery", "pg.detachFastToolsFolder", "pg.executeQuery"]);
     expect(lean.fastTools?.nodeTypes).toEqual(["pg.fastToolsRoot"]);
     expect(createSqlCore({ ...base, features: { fastTools: false } }).fastTools).toBeUndefined();

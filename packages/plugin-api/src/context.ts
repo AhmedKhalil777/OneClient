@@ -7,6 +7,7 @@ import type { SecretStore } from "./secrets.js";
 import type { Workspace } from "./workspace.js";
 import type { Tasks } from "./tasks.js";
 import type { Connections, Contributions } from "./connections.js";
+import type { AiTools } from "./ai-tools.js";
 import type { ViewMessageHandler } from "./ui.js";
 
 export interface Disposable {
@@ -58,6 +59,9 @@ export interface PluginContext {
 
   /** Other plugins' `contributes.extensions` entries — see connections.ts. */
   readonly contributions: Contributions;
+
+  /** Runs the commands plugins list in `oneclient.aiTools` — see ai-tools.ts. */
+  readonly aiTools: AiTools;
 
   /** Disposables registered here are disposed automatically on deactivate/disable. */
   readonly subscriptions: Disposable[];

@@ -61,6 +61,8 @@ export interface PluginManifest {
     readonly icons?: IconContribution[];
     /** Items in the title bar menus (File, Edit, View, Go, Run, Terminal, Help). */
     readonly menus?: MenuContribution[];
+    /** Icon buttons at the right of the title bar (quick access), like VS Code's toolbar: run a command or open a view. */
+    readonly quickActions?: QuickActionContribution[];
     /**
      * Contributions to other plugins' extension points, keyed by point id (`<owning plugin id>.<name>`).
      * Core only brokers them (views read them with `ViewHostApi.getContributions`); the plugin that owns the
@@ -109,6 +111,29 @@ export type MenuId = "file" | "edit" | "view" | "go" | "run" | "terminal" | "hel
  * ]
  * ```
  */
+/**
+ * A title bar icon button. Give it either a `command` (run like a palette command) or an `openView` (open one of this
+ * plugin's views — on the first saved connection of the view's `connectionType`, or the New Connection dialog when
+ * there is none; honours the view's `dock`).
+ */
+export interface QuickActionContribution {
+  readonly id: string;
+  /** Tooltip. */
+  readonly title: string;
+  /** `$(id)` from the icon registry, or an image in the plugin folder. */
+  readonly icon?: string;
+  /** Lower numbers sit further left. Default 100. */
+  readonly order?: number;
+  readonly command?: string;
+  readonly openView?: {
+    readonly viewId: string;
+    /** Tab / panel title. Default: the view's title. */
+    readonly title?: string;
+    /** Query parameters of the view. `{uid}` in a value becomes a fresh id (a new chat, a new scratch pad…). */
+    readonly params?: Readonly<Record<string, string>>;
+  };
+}
+
 export interface MenuContribution {
   readonly menu: MenuId;
   /** Defaults to the command's title. */
@@ -159,6 +184,8 @@ export interface ViewContribution {
   readonly tier: 1 | 2;
   readonly location: "sidebar" | "panel" | "editor";
   readonly icon?: string;
+  /** `"secondary"`: opens in the secondary side bar (on the right) by default instead of as an editor tab, e.g. a chat. */
+  readonly dock?: "secondary";
   /** Path, relative to `manifest.ui`, to this view's entry HTML. Required iff `tier === 2`. */
   readonly entry?: string;
   /**

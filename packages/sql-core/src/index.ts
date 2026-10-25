@@ -6,6 +6,7 @@
  * tools the plugin adds, like SQL Server's fakers). Each feature can be turned off (`SqlCoreOptions.features`).
  * The view-side half (query window, results panel, editor) is `@oneclient/sql-core/ui`.
  */
+export { isReadOnlySql } from "./ai-tools.js";
 export { type SqlCore, type SqlCoreFeatures, type SqlCoreOptions, checkDatabaseName, commandArg, createSqlCore } from "./core.js";
 export type { ExecuteQuery, ExecuteQueryRequest, QueryRunSummary } from "./types.js";
 export { type HistoryEntry, type HistoryStore, createHistoryStore } from "./history.js";

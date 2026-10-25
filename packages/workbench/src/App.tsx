@@ -21,6 +21,8 @@ import { connectionLabel } from "./connection-label.js";
 import { PluginManagerPanel } from "./components/PluginManagerPanel.js";
 import { Sidebar, stripCategory } from "./components/Sidebar.js";
 import { Tier2ViewHost } from "./components/Tier2ViewHost.js";
+import { SecondarySidebar, type SecondaryView, useSecondarySidebar } from "./components/SecondarySidebar.js";
+import type { QuickActionContribution } from "@oneclient/plugin-api";
 import { SearchView, type SearchViewHandle } from "./components/SearchView.js";
 import { ExplorerView, FILE_NODE, FOLDER_NODE } from "./components/ExplorerView.js";
 import { ScmView, type ScmActions } from "./components/ScmView.js";
@@ -59,6 +61,7 @@ const emptyRegistry: ContributionRegistrySnapshot = {
   searchProviders: [],
   icons: [],
   menus: [],
+  quickActions: [],
   extensions: [],
 };
 
@@ -269,6 +272,11 @@ export function App() {
   const shortcutRef = useRef<(shortcut: WorkbenchShortcut) => void>(() => {});
   const panelToggleRef = useRef(panel.toggle);
   panelToggleRef.current = panel.toggle;
+  const secondary = useSecondarySidebar();
+  const secondaryToggleRef = useRef(secondary.toggle);
+  secondaryToggleRef.current = secondary.toggle;
+  const secondaryShowRef = useRef(secondary.show);
+  secondaryShowRef.current = secondary.show;
   const registryRef = useRef(registry);
   registryRef.current = registry;
   const panelRef = useRef(panel);
@@ -299,8 +307,16 @@ export function App() {
     // A plugin view asking for another of its views in a new tab (e.g. a table row → that row's editor).
     const offExplorerRefresh = window.oneclient.onExplorerRefresh((connectionId) => setExplorerTokens((prev) => ({ ...prev, [connectionId]: (prev[connectionId] ?? 0) + 1 })));
     const offOpenView = window.oneclient.onOpenViewRequest((e) => {
-      const known = registryRef.current.views.some((v) => v.pluginId === e.pluginId && v.id === e.viewId && v.tier === 2);
-      if (!known) return;
+      if (e.pluginId === CORE_PLUGIN_ID && e.viewId === "git.diff") {
+        const key = Object.entries(e.params).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join("&");
+        const id = `core:git.diff:${key}`;
+        return openTab({ id, title: e.title, kind: "tier2-view", instanceId: id, pluginId: CORE_PLUGIN_ID, viewId: "git.diff", params: e.params, ...(e.icon ? { icon: e.icon } : {}) });
+      }
+      const contribution = registryRef.current.views.find((v) => v.pluginId === e.pluginId && v.id === e.viewId && v.tier === 2);
+      if (!contribution) return;
+      if (contribution.dock === "secondary") {
+        return secondaryShowRef.current({ title: e.title, pluginId: e.pluginId, viewId: e.viewId, ...(e.connectionId ? { connectionId: e.connectionId } : {}), params: e.params, ...(e.icon ? { icon: e.icon } : {}) });
+      }
       const key = Object.entries(e.params)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([k, v]) => `${k}=${v}`)
@@ -364,6 +380,7 @@ export function App() {
       else if (mod && !e.shiftKey && !e.altKey && key === "n") action = () => menuActionsRef.current.newFile();
       else if (mod && !e.shiftKey && !e.altKey && key === "o") action = () => menuActionsRef.current.openFolder();
       else if (mod && !e.shiftKey && !e.altKey && key === "b") action = () => shortcutRef.current("toggleSidebar");
+      else if (mod && !e.shiftKey && e.altKey && key === "b") action = () => secondaryToggleRef.current();
       else if (mod && !e.shiftKey && !e.altKey && key === "w") action = () => shortcutRef.current("closeEditor");
       else if (mod && !e.altKey && e.key === "PageDown") action = () => shortcutRef.current("nextEditor");
       else if (mod && !e.altKey && e.key === "PageUp") action = () => shortcutRef.current("previousEditor");
@@ -530,7 +547,109 @@ export function App() {
           : { id: "move", label: "Split Editor Right", separator: true, run: () => moveTab(target.id, true) },
       );
     }
+    if (target?.kind === "tier2-view") {
+      items.push({ id: "dock", label: "Move to Secondary Side Bar", separator: true, run: () => dockTab(target) });
+    }
     setMenu({ x, y, items });
+  }
+
+  /** Moves a view tab out of the editor into the secondary side bar (its state is reloaded there). */
+  function dockTab(tab: Extract<Tab, { kind: "tier2-view" }>) {
+    closeTabs([tab.id]);
+    secondary.show({
+      title: tab.title,
+      pluginId: tab.pluginId,
+      viewId: tab.viewId,
+      ...(tab.connectionId ? { connectionId: tab.connectionId } : {}),
+      ...(tab.params ? { params: tab.params } : {}),
+      ...(tab.icon ? { icon: tab.icon } : {}),
+      originId: tab.id,
+    });
+  }
+
+  /** The Git Graph tab (a core view): one per window, any repository inside it. */
+  function openGitGraph() {
+    openTab({ id: "core:git.graph", title: "Git Graph", kind: "tier2-view", instanceId: "core:git.graph", pluginId: CORE_PLUGIN_ID, viewId: "git.graph", icon: "$(git-graph)" });
+  }
+
+  /** A plugin's title-bar quick action: run its command, or open its view (on its first connection; New Connection when it has none). */
+  function runQuickAction(qa: QuickActionContribution & { pluginId: string }) {
+    if (qa.command) return void runContributedCommand(qa.command, qa.title);
+    const open = qa.openView;
+    if (!open) return;
+    const view = registry.views.find((v) => v.pluginId === qa.pluginId && v.id === open.viewId && v.tier === 2);
+    if (!view) return pushToast("error", `${qa.title}: the view "${open.viewId}" is not available.`);
+    let connection: ConnectionSummary | undefined;
+    if (view.connectionType) {
+      connection = connections.find((c) => c.pluginId === qa.pluginId && c.typeId === view.connectionType);
+      if (!connection) return setNewConnectionFor({ pluginId: qa.pluginId });
+    }
+    const uid = `n${Date.now().toString(36)}`;
+    const params = Object.fromEntries(Object.entries(open.params ?? {}).map(([k, v]) => [k, v.replaceAll("{uid}", uid)]));
+    const title = open.title ?? view.title;
+    if (view.dock === "secondary") {
+      return secondary.show({ title, pluginId: qa.pluginId, viewId: view.id, ...(connection ? { connectionId: connection.id } : {}), params, ...(qa.icon ? { icon: qa.icon } : {}) });
+    }
+    const instanceId = `${qa.pluginId}:${view.id}:${connection?.id ?? ""}:${JSON.stringify(params)}`;
+    openTab({ id: instanceId, title, kind: "tier2-view", instanceId, pluginId: qa.pluginId, viewId: view.id, ...(connection ? { connectionId: connection.id } : {}), params, ...(qa.icon ? { icon: qa.icon } : {}) });
+  }
+
+  /** Title-bar quick access: plugins' actions (by `order`), then Git Graph, then the layout toggles. */
+  const quickAccess = (
+    <>
+      {[...registry.quickActions]
+        .sort((a, b) => (a.order ?? 100) - (b.order ?? 100))
+        .map((qa) => (
+          <button key={`${qa.pluginId}:${qa.id}`} className="qa-button" title={qa.title} aria-label={qa.title} onClick={() => runQuickAction(qa)}>
+            <AssetIcon pluginId={qa.pluginId} icon={qa.icon ?? "$(extensions)"} size={16} />
+          </button>
+        ))}
+      <button className="qa-button" title="Git Graph" aria-label="Git Graph" onClick={openGitGraph}>
+        <ThemeIcon id="git-graph" size={16} />
+      </button>
+      <span className="qa-sep" />
+      <button className={`qa-button ${container.visible ? "on" : ""}`} title="Toggle Primary Side Bar (Ctrl+B)" aria-label="Toggle Primary Side Bar" onClick={() => shortcutRef.current("toggleSidebar")}>
+        <ThemeIcon id="layout-sidebar" size={16} />
+      </button>
+      <button className={`qa-button ${panel.open ? "on" : ""}`} title="Toggle Panel (Ctrl+`)" aria-label="Toggle Panel" onClick={() => panel.toggle()}>
+        <ThemeIcon id="layout-panel" size={16} />
+      </button>
+      <button className={`qa-button ${secondary.open ? "on" : ""}`} title="Toggle Secondary Side Bar (Ctrl+Alt+B)" aria-label="Toggle Secondary Side Bar" onClick={() => secondary.toggle()}>
+        <ThemeIcon id="secondary-sidebar" size={16} />
+      </button>
+    </>
+  );
+
+  /**
+   * The one-click way to the AI assistant: its chat in the secondary side bar. Uses the AI connection (it holds all
+   * the API keys); if there is none yet, opens the New Connection dialog for it.
+   */
+  function openAiChat() {
+    const ai = connections.find((c) => c.pluginId === "oneclient-ai" && c.typeId === "ai");
+    if (!ai) {
+      if (!plugins.some((p) => p.id === "oneclient-ai" && p.state !== "disabled")) return pushToast("error", "The AI Assistant plugin is not enabled.");
+      return setNewConnectionFor({ pluginId: "oneclient-ai" });
+    }
+    if (secondary.view?.pluginId === "oneclient-ai" && secondary.view.viewId === "ai.chat") return secondary.show(secondary.view);
+    secondary.show({ title: "AI Chat", pluginId: "oneclient-ai", viewId: "ai.chat", connectionId: ai.id, params: { c: `n${Date.now().toString(36)}` }, icon: "icon.svg" });
+  }
+
+  /** Brings the secondary side bar's view back as an editor tab. */
+  function undockView(view: SecondaryView) {
+    secondary.clearView();
+    const id = view.originId ?? `${view.pluginId}:${view.viewId}:${view.connectionId ?? ""}:${JSON.stringify(view.params ?? {})}`;
+    openTab({
+      id,
+      title: view.title,
+      kind: "tier2-view",
+      instanceId: id,
+      pluginId: view.pluginId,
+      viewId: view.viewId,
+      ...(view.connectionId ? { connectionId: view.connectionId } : {}),
+      ...(view.params ? { params: view.params } : {}),
+      ...(view.icon ? { icon: view.icon } : {}),
+    });
+    secondary.hide();
   }
 
   async function requestCloseTab(id: string) {
@@ -582,6 +701,22 @@ export function App() {
       if (dashboard) builtIns.push({ id: "core.openDashboard", label: `Open ${dashboard.title}`, run: () => openDashboard(connection, dashboard) });
       builtIns.push({ id: "core.editConnection", label: `Edit ${nounFor(connection).one}…`, run: () => setEditConnection(connection) });
       builtIns.push({ id: "core.removeConnection", label: `Remove ${nounFor(connection).one}`, danger: true, run: () => void removeConnection(connection) });
+    }
+    if (node?.openView) {
+      const { viewId, title, params, icon } = node.openView;
+      builtIns.push({
+        id: "core.openSecondary",
+        label: "Open in Secondary Side Bar",
+        run: () =>
+          secondary.show({
+            title: title ?? node.label,
+            pluginId: connection.pluginId,
+            viewId,
+            connectionId: connection.id,
+            ...(params ? { params: { ...params } } : {}),
+            ...(icon ? { icon } : {}),
+          }),
+      });
     }
     if (items.length > 0) builtIns[0] = { ...builtIns[0]!, separator: true };
 
@@ -761,6 +896,10 @@ export function App() {
   function openNodeView(connection: ConnectionSummary, node: TreeNode) {
     if (!node.openView) return;
     const { viewId, title, params, icon } = node.openView;
+    // Views that declare `dock: "secondary"` (the AI chat) open in the secondary side bar, not as an editor tab.
+    if (registry.views.some((v) => v.pluginId === connection.pluginId && v.id === viewId && v.dock === "secondary")) {
+      return secondary.show({ title: title ?? node.label, pluginId: connection.pluginId, viewId, connectionId: connection.id, ...(params ? { params: { ...params } } : {}), ...(icon ? { icon } : {}) });
+    }
     const instanceId = `${connection.pluginId}:${viewId}:${connection.id}:${node.id}`;
     openTab({
       id: instanceId,
@@ -868,6 +1007,9 @@ export function App() {
         run: importConnections,
       },
       { id: "workbench.revealConfig", title: "Preferences: Show oneclient.json in File Manager", run: () => void window.oneclient.revealConfigFile() },
+      { id: "workbench.toggleSecondary", title: "View: Toggle Secondary Side Bar", run: () => secondary.toggle() },
+      { id: "workbench.openAiChat", title: "AI: Open Chat in Secondary Side Bar", run: openAiChat },
+      { id: "workbench.openGitGraph", title: "Git: Open Git Graph", run: openGitGraph },
       ...(panelViews.length ? [{ id: "workbench.togglePanel", title: "View: Toggle Panel", run: () => panel.toggle() }] : []),
       ...panelViews.map((v) => ({
         id: `workbench.showPanel.${v.pluginId}.${v.id}`,
@@ -1356,6 +1498,7 @@ export function App() {
             separator: true,
             submenu: [
               { id: "sidebar", label: "Primary Side Bar", accel: "Ctrl+B", checked: container.visible, run: () => shortcutRef.current("toggleSidebar") },
+              { id: "secondary", label: "Secondary Side Bar", accel: "Ctrl+Alt+B", checked: secondary.open, run: () => secondary.toggle() },
               { id: "panel", label: "Panel", accel: "Ctrl+`", checked: panel.open, run: () => panel.toggle() },
               { id: "fullScreen", label: "Full Screen", accel: "F11", checked: fullScreen, separator: true, run: () => void window.oneclient.windowAction("toggleFullScreen") },
               { id: "zoomIn", label: "Zoom In", accel: "Ctrl+=", separator: true, run: () => void window.oneclient.windowAction("zoomIn") },
@@ -1514,6 +1657,8 @@ export function App() {
         return container.show("scm");
       case "runBuildTask":
         return void pickTask("build");
+      case "toggleSecondarySideBar":
+        return secondary.toggle();
       case "toggleSidebar":
         return container.setVisible((v) => !v);
       case "closeEditor":
@@ -1698,7 +1843,7 @@ export function App() {
           : "var(--activity-bar-width) 1fr",
       }}
     >
-      <TitleBar menus={menus} onSearch={() => setSearchOpen(true)} onOpenChange={setMenuBarOpen} onBeforeOpen={captureEditTarget} />
+      <TitleBar menus={menus} onSearch={() => setSearchOpen(true)} onOpenChange={setMenuBarOpen} onBeforeOpen={captureEditTarget} actions={quickAccess} />
 
       <ActivityBar
         scmCount={scmCount}
@@ -1749,6 +1894,7 @@ export function App() {
         <div className="sidebar-resize-handle" onPointerDown={sidebar.startResizing} />
       </div>
 
+      <div className="center-row">
       <div className="main-area">
         <div className={`editor-area ${split ? "split" : ""}`} style={{ "--split": splitRatio } as React.CSSProperties}>
           <div className="editor-head">
@@ -1790,6 +1936,8 @@ export function App() {
 
         <Panel state={panel} overlayOpen={overlayOpen} onRunTask={() => void pickTask()} />
       </div>
+      <SecondarySidebar state={secondary} overlayOpen={overlayOpen} onMoveToEditor={undockView} />
+      </div>
 
       <div className="status-bar">
         <span className="status-brand">
@@ -1826,6 +1974,9 @@ export function App() {
         })()}
         <span>{plugins.filter((p) => p.state === "active").length} plugin(s) active</span>
         <span style={{ marginLeft: "auto" }}>Ctrl/Cmd+Shift+P — Command Palette</span>
+        <button className={`status-button ${secondary.open ? "active" : ""}`} title="Toggle Secondary Side Bar (Ctrl+Alt+B)" onClick={() => secondary.toggle()}>
+          <ThemeIcon id="secondary-sidebar" size={14} />
+        </button>
         {/* One toggle for the whole panel; switching between its views is the panel's icon navigator. */}
         {panelViews.length > 0 && (
           <button

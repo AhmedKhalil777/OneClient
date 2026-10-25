@@ -5,7 +5,7 @@ import type {
   CommandContribution,
   ConnectionTestResult,
   ConnectionTypeContribution,
-  MenuContribution, SearchProviderContribution,
+  MenuContribution, QuickActionContribution, SearchProviderContribution,
   ExplorerNodeContribution,
   ExplorerSectionContribution,
   JsonSchemaObject,
@@ -31,6 +31,7 @@ export interface ContributionRegistrySnapshot {
   iconThemes: Array<IconThemeContribution & { pluginId: string }>;
   searchProviders: Array<SearchProviderContribution & { pluginId: string }>;
   menus: Array<MenuContribution & { pluginId: string }>;
+  quickActions: Array<QuickActionContribution & { pluginId: string }>;
   icons: Array<IconContribution & { pluginId: string }>;
   /** Contributions to other plugins' extension points, one entry per (point, contributing plugin). */
   extensions: Array<{ point: string; pluginId: string; items: Array<Record<string, unknown>> }>;
