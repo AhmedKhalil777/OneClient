@@ -6,6 +6,9 @@ import type { Change, ChangeStatus, Commit, Ref } from "../git/git.js";
 import type { OutputChannelInfo, OutputChannelState, OutputEntry } from "./output.js";
 import type { NotificationInfo } from "./notifications.js";
 import type {
+  AvailablePlugin,
+  PluginDetails,
+  PluginRegistryInfo,
   ConnectionSummary,
   ConnectionTestResult,
   ConnectionTypeFormInfo,
@@ -22,6 +25,12 @@ export const IpcChannel = {
   PluginList: "oneclient:plugin:list",
   PluginsChanged: "oneclient:plugin:changed",
   PluginSetEnabled: "oneclient:plugin:setEnabled",
+  PluginRegistryInfo: "oneclient:plugin:registryInfo",
+  PluginSetRegistryToken: "oneclient:plugin:setRegistryToken",
+  PluginAvailable: "oneclient:plugin:available",
+  PluginDetails: "oneclient:plugin:details",
+  PluginInstall: "oneclient:plugin:install",
+  PluginUninstall: "oneclient:plugin:uninstall",
 
   CommandExecute: "oneclient:command:execute",
 
@@ -236,6 +245,18 @@ export interface OneClientApi {
   listPlugins(): Promise<PluginSummary[]>;
   onPluginsChanged(listener: (plugins: PluginSummary[]) => void): () => void;
   setPluginEnabled(pluginId: string, enabled: boolean): Promise<void>;
+  /** Where plugins are downloaded from (GitHub Packages) and whether a token is saved for it. */
+  pluginRegistryInfo(): Promise<PluginRegistryInfo>;
+  /** Saves the GitHub token (read:packages) used to download plugins; an empty string forgets it. */
+  setPluginRegistryToken(token: string): Promise<void>;
+  /** The plugins published to the registry. */
+  listAvailablePlugins(): Promise<AvailablePlugin[]>;
+  /** The plugin page: manifest, README, contributions — for an installed plugin, or from the registry for one that isn't. */
+  getPluginDetails(id: string): Promise<PluginDetails>;
+  /** Downloads and loads a plugin (replacing the installed copy); the newest version unless one is given. */
+  installPlugin(id: string, version?: string): Promise<PluginSummary>;
+  /** Stops a plugin installed from the registry and deletes it. Bundled plugins can only be disabled. */
+  uninstallPlugin(pluginId: string): Promise<void>;
 
   executeCommand(commandId: string, args?: unknown[]): Promise<unknown>;
 

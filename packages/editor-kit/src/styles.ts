@@ -32,6 +32,11 @@ const CSS = `
   font-size: var(--oc-ac-font-size);
   overflow: hidden;
 }
+/* \`display: flex\` above would otherwise beat the [hidden] attribute, leaving an empty popup drawn as a thin line. */
+.oc-ac[hidden],
+.oc-ac-doc[hidden] {
+  display: none;
+}
 .oc-ac-list {
   max-height: 264px;
   overflow-y: auto;

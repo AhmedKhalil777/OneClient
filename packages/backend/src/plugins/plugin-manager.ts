@@ -14,6 +14,8 @@ export interface PluginRecord {
   manifest: PluginManifest;
   state: PluginState;
   error?: string;
+  /** Lives in the user plugins folder (installed from the registry), so it can be uninstalled; bundled plugins can't. */
+  removable?: boolean;
 }
 
 /**
@@ -63,17 +65,32 @@ export class PluginManager extends EventEmitter {
   }
 
   async scan(): Promise<void> {
-    for (const dir of this.pluginDirs) {
+    for (const [index, dir] of this.pluginDirs.entries()) {
       let entries: string[];
       try {
         entries = await readdir(dir);
       } catch {
         continue; // dir doesn't exist — fine, e.g. no user plugins installed yet
       }
+      // The first directory is the user's plugins folder; the rest are bundled with the app.
       for (const entry of entries) {
-        await this.loadOne(join(dir, entry));
+        await this.loadOne(join(dir, entry), index === 0);
       }
     }
+    this.emitChanged();
+  }
+
+  /** Loads one plugin folder that appeared after start-up (an install); resolves to its record, if it has a manifest. */
+  async add(rootDir: string): Promise<PluginRecord | undefined> {
+    const record = await this.loadOne(rootDir, true);
+    this.emitChanged();
+    return record;
+  }
+
+  /** Forgets a plugin (an uninstall): its contributions leave the registry. The caller stops it and deletes its folder. */
+  remove(pluginId: string): void {
+    if (!this.records.delete(pluginId)) return;
+    this.registry.removePlugin(pluginId);
     this.emitChanged();
   }
 
@@ -93,13 +110,13 @@ export class PluginManager extends EventEmitter {
     this.emitChanged();
   }
 
-  private async loadOne(rootDir: string): Promise<void> {
+  private async loadOne(rootDir: string, removable = false): Promise<PluginRecord | undefined> {
     let raw: unknown;
     try {
       const text = await readFile(join(rootDir, "oneclient.json"), "utf-8");
       raw = JSON.parse(text);
     } catch {
-      return; // not a plugin directory (no manifest) — silently skip
+      return undefined; // not a plugin directory (no manifest) — silently skip
     }
 
     const validation = validateManifest(raw);
@@ -107,14 +124,16 @@ export class PluginManager extends EventEmitter {
       const id = typeof (raw as Partial<PluginManifest>)?.name === "string"
         ? (raw as PluginManifest).name
         : rootDir;
-      this.records.set(id, {
+      const invalid: PluginRecord = {
         id,
         rootDir,
         manifest: raw as PluginManifest,
         state: "invalid",
         error: validation.errors?.join("; ") ?? "Manifest failed schema validation.",
-      });
-      return;
+        removable,
+      };
+      this.records.set(id, invalid);
+      return invalid;
     }
 
     const manifest = validation.manifest;
@@ -123,14 +142,16 @@ export class PluginManager extends EventEmitter {
     });
 
     if (!compatible) {
-      this.records.set(manifest.name, {
+      const incompatible: PluginRecord = {
         id: manifest.name,
         rootDir,
         manifest,
         state: "incompatible",
         error: `Requires oneclient engine "${manifest.engines.oneclient}", host provides ${PLUGIN_API_VERSION}.`,
-      });
-      return;
+        removable,
+      };
+      this.records.set(manifest.name, incompatible);
+      return incompatible;
     }
 
     const previousVersion = this.metadata.recordVersion(manifest.name, manifest.version);
@@ -144,11 +165,13 @@ export class PluginManager extends EventEmitter {
       rootDir,
       manifest,
       state: enabled ? "inactive" : "disabled",
+      removable,
     };
     this.records.set(manifest.name, record);
-    if (!enabled) return;
+    if (!enabled) return record;
     this.registry.addPlugin(manifest.name, manifest.contributes);
     this.emit("loaded", record);
+    return record;
   }
 
   private emitChanged(): void {
@@ -167,6 +190,7 @@ export function summarizePlugin(r: ReturnType<PluginManager["getRecords"]>[numbe
     state: r.state,
     error: r.error,
     icon: r.manifest?.icon,
+    ...(r.removable ? { removable: true } : {}),
     ...(features?.length
       ? {
           features: features.map((g) => ({

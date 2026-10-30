@@ -19,6 +19,7 @@ import type { EditRole, ViewKey } from "@oneclient/backend/shared/ipc-contract.j
 import { NewConnectionDialog } from "./components/NewConnectionDialog.js";
 import { connectionLabel } from "./connection-label.js";
 import { PluginManagerPanel } from "./components/PluginManagerPanel.js";
+import { PluginDetailPanel } from "./components/PluginDetailPanel.js";
 import { Sidebar, stripCategory } from "./components/Sidebar.js";
 import { Tier2ViewHost } from "./components/Tier2ViewHost.js";
 import { SecondarySidebar, type SecondaryView, useSecondarySidebar } from "./components/SecondarySidebar.js";
@@ -37,6 +38,7 @@ import { type MenuItem, TitleBar, type TopMenu } from "./components/TitleBar.js"
 type Tab =
   | { id: "welcome"; title: "Welcome"; kind: "welcome" }
   | { id: "plugin-manager"; title: "Plugins"; kind: "plugin-manager" }
+  | { id: string; title: string; kind: "plugin-detail"; pluginId: string }
   | { id: string; title: string; kind: "command-result"; result: unknown }
   | {
       id: string;
@@ -453,6 +455,11 @@ export function App() {
       setActiveTabId(id);
       setFocusRight(false);
     }
+  }
+
+  /** A plugin's own page (like VS Code's extension editor) — for an installed plugin or one that is only on the registry. */
+  function openPluginPage(pluginId: string, title?: string) {
+    openTab({ id: `plugin:${pluginId}`, title: title ?? pluginId, kind: "plugin-detail", pluginId });
   }
 
   function openTab(tab: Tab) {
@@ -1984,7 +1991,8 @@ export function App() {
             <button className="welcome-action" onClick={openWelcome}>Open the Feature Guide</button>
           </div>
         )}
-        {tab?.kind === "plugin-manager" && <PluginManagerPanel plugins={plugins} hasConnections={(id) => registry.connectionTypes.some((t) => t.pluginId === id)} onTry={(id) => setNewConnectionFor({ pluginId: id })} />}
+        {tab?.kind === "plugin-manager" && <PluginManagerPanel plugins={plugins} hasConnections={(id) => registry.connectionTypes.some((t) => t.pluginId === id)} onTry={(id) => setNewConnectionFor({ pluginId: id })} onOpenPlugin={openPluginPage} />}
+        {tab?.kind === "plugin-detail" && <PluginDetailPanel pluginId={tab.pluginId} plugins={plugins} hasConnections={registry.connectionTypes.some((t) => t.pluginId === tab.pluginId)} onTry={() => setNewConnectionFor({ pluginId: tab.pluginId })} />}
         {tab?.kind === "command-result" && <pre className="result">{JSON.stringify(tab.result, null, 2)}</pre>}
       </div>
     );
@@ -2040,6 +2048,7 @@ export function App() {
           onNewConnection={(pluginId) => setNewConnectionFor({ pluginId })}
           onRunCommand={(id, title) => void runContributedCommand(id, title)}
           onOpenPluginManager={() => openTab({ id: "plugin-manager", title: "Plugins", kind: "plugin-manager" })}
+          onOpenPlugin={openPluginPage}
           onOpenDashboard={openDashboard}
           onOpenNodeView={openNodeView}
           explorerTokens={explorerTokens}

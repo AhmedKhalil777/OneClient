@@ -6,6 +6,7 @@ import { ThemeIcon } from "../theme.js";
 import { AssetIcon } from "./AssetIcon.js";
 import { ConnectionRootNodes, ExplorerTreeNode, type NodeContextMenuFn, type OpenNodeViewFn } from "./ExplorerTree.js";
 import { connectionLabel } from "../connection-label.js";
+import { isNewer, usePluginRegistry } from "./usePluginRegistry.js";
 
 /** Right-click on a connection row (`node` undefined) or a tree node under it. */
 export type ExplorerContextMenuFn = (
@@ -35,6 +36,7 @@ export function Sidebar({
   onNewConnection,
   onRunCommand,
   onOpenPluginManager,
+  onOpenPlugin,
   onOpenDashboard,
   onOpenNodeView,
   onExplorerContextMenu,
@@ -50,6 +52,8 @@ export function Sidebar({
   onNewConnection: (pluginId: string) => void;
   onRunCommand: (commandId: string, title: string) => void;
   onOpenPluginManager: () => void;
+  /** Open a plugin's own page (installed or not). */
+  onOpenPlugin: (pluginId: string, title?: string) => void;
   onOpenDashboard: (connection: ConnectionSummary, view: DashboardView) => void;
   onOpenNodeView: (connection: ConnectionSummary, node: TreeNode) => void;
   onExplorerContextMenu: ExplorerContextMenuFn;
@@ -58,7 +62,7 @@ export function Sidebar({
   explorerSections?: Section[];
 }) {
   if (container === "plugins") {
-    return <PluginsContainer plugins={plugins} onOpenPluginManager={onOpenPluginManager} />;
+    return <PluginsContainer plugins={plugins} onOpenPluginManager={onOpenPluginManager} onOpenPlugin={onOpenPlugin} />;
   }
 
   const pluginId = container.slice("plugin:".length);
@@ -243,7 +247,14 @@ function PluginContainer({
   );
 }
 
-function PluginsContainer({ plugins, onOpenPluginManager }: { plugins: PluginSummary[]; onOpenPluginManager: () => void }) {
+/** The Plugins view: what is installed, and — from GitHub Packages — what else can be installed from GitHub Releases. (The optional GitHub token is set in the Plugin Manager.) */
+function PluginsContainer({ plugins, onOpenPluginManager, onOpenPlugin }: { plugins: PluginSummary[]; onOpenPluginManager: () => void; onOpenPlugin: (pluginId: string, title?: string) => void }) {
+  const { available, loading, busy, error, refresh, install, uninstall } = usePluginRegistry();
+  const installed = new Set(plugins.map((p) => p.id));
+  const notInstalled = (available ?? []).filter((a) => !installed.has(a.id));
+  const latest = new Map((available ?? []).map((a) => [a.id, a.latest]));
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+
   return (
     <div className="sidebar">
       <div className="sidebar-header">
@@ -260,11 +271,48 @@ function PluginsContainer({ plugins, onOpenPluginManager }: { plugins: PluginSum
           </button>
         }
       >
-        {plugins.map((p) => (
-          <div className="tree-row" key={p.id} onClick={onOpenPluginManager}>
-            <AssetIcon pluginId={p.id} icon={p.icon} />
-            <span>{p.displayName ?? p.id}</span>
-            <span className={`badge badge-${p.state}`}>{p.state}</span>
+        {plugins.map((p) => {
+          const newer = p.removable && latest.get(p.id) && isNewer(latest.get(p.id)!, p.version) ? latest.get(p.id) : undefined;
+          return (
+            <div className="tree-row" key={p.id} onClick={() => onOpenPlugin(p.id, p.displayName)}>
+              <AssetIcon pluginId={p.id} icon={p.icon} />
+              <span>{p.displayName ?? p.id}</span>
+              <span className={`badge badge-${p.state}`}>{p.state}</span>
+              {newer && (
+                <button className="btn plugin-row-btn" disabled={Boolean(busy[p.id])} title={`Update to v${newer}`} onClick={(e) => (stop(e), void install(p.id))}>
+                  {busy[p.id] === "installing" ? "Updating…" : "Update"}
+                </button>
+              )}
+              {p.removable && (
+                <button className="btn plugin-row-btn" disabled={Boolean(busy[p.id])} title="Uninstall this plugin" onClick={(e) => (stop(e), uninstall(p))}>
+                  {busy[p.id] === "uninstalling" ? "Removing…" : "Uninstall"}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </SidebarSection>
+      <SidebarSection
+        containerId="plugins"
+        sectionId="available"
+        title="Available"
+        {...(available ? { count: notInstalled.length } : {})}
+        actions={
+          <button className="icon-button" title="Refresh the list" disabled={loading} onClick={() => void refresh()}>
+            <ThemeIcon id="refresh" />
+          </button>
+        }
+      >
+        {loading && <div className="plugin-setup">Checking for plugins…</div>}
+        {error && <div className="plugin-setup pm-error">{error}</div>}
+        {available && notInstalled.length === 0 && !error && <div className="plugin-setup">{available.length === 0 ? "No plugin has been released for this version yet." : "Every released plugin is installed."}</div>}
+        {notInstalled.map((a) => (
+          <div className="tree-row" key={a.id} title={a.description} onClick={() => onOpenPlugin(a.id)}>
+            <span>{a.id}</span>
+            <span className="badge badge-inactive">v{a.latest}</span>
+            <button className="btn btn-primary plugin-row-btn" disabled={Boolean(busy[a.id])} onClick={(e) => (stop(e), void install(a.id))}>
+              {busy[a.id] ? "Installing…" : "Install"}
+            </button>
           </div>
         ))}
       </SidebarSection>

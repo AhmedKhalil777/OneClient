@@ -24,6 +24,12 @@ export function createClientApi(t: ClientTransport): OneClientApi {
     listPlugins: () => call(IpcChannel.PluginList),
     onPluginsChanged: on(IpcChannel.PluginsChanged),
     setPluginEnabled: (pluginId, enabled) => call(IpcChannel.PluginSetEnabled, pluginId, enabled),
+    pluginRegistryInfo: () => call(IpcChannel.PluginRegistryInfo),
+    setPluginRegistryToken: (token) => call(IpcChannel.PluginSetRegistryToken, token),
+    listAvailablePlugins: () => call(IpcChannel.PluginAvailable),
+    getPluginDetails: (id) => call(IpcChannel.PluginDetails, id),
+    installPlugin: (id, version) => call(IpcChannel.PluginInstall, id, version),
+    uninstallPlugin: (pluginId) => call(IpcChannel.PluginUninstall, pluginId),
 
     executeCommand: (commandId, args) => call(IpcChannel.CommandExecute, commandId, args),
 

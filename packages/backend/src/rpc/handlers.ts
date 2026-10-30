@@ -2,11 +2,13 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ThemeState, TreeNode } from "@oneclient/plugin-api";
 import { type AppInfo, type GitMethod, IpcChannel } from "../shared/ipc-contract.js";
-import type { ConnectionSummary, ContributionRegistrySnapshot, PluginSummary } from "../shared/types.js";
+import type { ConnectionSummary, ContributionRegistrySnapshot, PluginDetails, PluginSummary } from "../shared/types.js";
 import type { ConfigStore } from "../config/config-store.js";
 import type { ConnectionManager } from "../connections/connection-manager.js";
 import type { ExtensionHostSupervisor } from "../plugins/extension-host-supervisor.js";
 import { type PluginManager, summarizePlugin } from "../plugins/plugin-manager.js";
+import type { PluginInstaller } from "../plugins/plugin-installer.js";
+import { installedPluginDetails } from "../plugins/plugin-details.js";
 import type { ContributionRegistry } from "../plugins/registry.js";
 import type { ThemeService } from "../themes/theme-service.js";
 import type { SearchService } from "../search/search-service.js";
@@ -35,6 +37,7 @@ export interface IpcDeps {
   themes: ThemeService;
   registry: ContributionRegistry;
   pluginManager: PluginManager;
+  installer: PluginInstaller;
   connections: ConnectionManager;
   search: SearchService;
   config: ConfigStore;
@@ -62,7 +65,7 @@ export interface IpcDeps {
  * dialog and native-view ones; web: server/server-handlers.ts adds its own), and the events broadcast to every shell.
  */
 export function registerIpcHandlers(deps: IpcDeps): void {
-  const { rpc, platform, registry, pluginManager, connections, search, config, supervisor, views, output, notifications, ensureActivated, themes, workspace, openWorkspaceFile, coreCommands, coreViewPage, terminal, tasks, taskRunner, gitService } = deps;
+  const { rpc, platform, registry, pluginManager, installer, connections, search, config, supervisor, views, output, notifications, ensureActivated, themes, workspace, openWorkspaceFile, coreCommands, coreViewPage, terminal, tasks, taskRunner, gitService } = deps;
   const broadcast = (channel: string, payload: unknown) => rpc.broadcast(channel, payload);
 
   // Every add / remove — from the UI, an import or a plugin (context.connections.create) — reaches the shell.
@@ -126,6 +129,45 @@ export function registerIpcHandlers(deps: IpcDeps): void {
     pluginManager.setEnabled(pluginId, enabled);
     if (!enabled) await supervisor.deactivate(pluginId);
   });
+
+  // Install / uninstall plugins from GitHub Releases (listed in plugin.json), live.
+  rpc.handle(IpcChannel.PluginRegistryInfo, () => installer.info());
+  rpc.handle(IpcChannel.PluginSetRegistryToken, (_e, token: unknown) => installer.setToken(typeof token === "string" ? token : ""));
+  rpc.handle(IpcChannel.PluginAvailable, () => installer.listAvailable());
+  rpc.handle(IpcChannel.PluginDetails, async (_e, id: unknown): Promise<PluginDetails> => {
+    const pluginId = String(id);
+    const record = pluginManager.getRecord(pluginId);
+    // The registry adds the newest version (and, for a plugin that isn't installed, everything the page shows).
+    const [remote, github] = await Promise.all([
+      installer.remoteInfo(pluginId).then(
+        (r) => ({ ...r, error: undefined as string | undefined }),
+        (err: unknown) => ({ error: err instanceof Error ? err.message : String(err) }) as { error: string; description?: string; readme?: string; latest?: string; license?: string },
+      ),
+      installer.githubReadme(pluginId),
+    ]);
+    // The page's text comes from the plugin's README.md on GitHub; offline, the installed copy, then the registry's.
+    const readme = (installed?: string): Pick<PluginDetails, "readme" | "readmeSource" | "readmeUrl"> => {
+      if (github) return { readme: github.markdown, readmeSource: "github", readmeUrl: github.url };
+      if (installed) return { readme: installed, readmeSource: "installed" };
+      if (remote.readme) return { readme: remote.readme, readmeSource: "registry" };
+      return {};
+    };
+    if (record) {
+      const { readme: local, ...details } = await installedPluginDetails(record);
+      return { ...details, ...readme(local), ...(remote.latest ? { latestVersion: remote.latest } : {}), ...(remote.error ? { registryError: remote.error } : {}) };
+    }
+    if (remote.error && !github) throw new Error(remote.error);
+    return {
+      id: pluginId,
+      version: remote.latest ?? "",
+      installed: false,
+      ...(remote.description ? { description: remote.description } : {}),
+      ...readme(),
+      ...(remote.license ? { license: remote.license } : {}),
+    };
+  });
+  rpc.handle(IpcChannel.PluginInstall, (_e, id: unknown, version: unknown) => installer.install(String(id), typeof version === "string" && version ? version : undefined));
+  rpc.handle(IpcChannel.PluginUninstall, (_e, pluginId: unknown) => installer.uninstall(String(pluginId)));
 
   rpc.handle(IpcChannel.CommandExecute, async (_event, commandId: string, args: unknown[] = []) => {
     // Core's own commands (the Explorer's files.*, the Terminal's terminal.*) come first.

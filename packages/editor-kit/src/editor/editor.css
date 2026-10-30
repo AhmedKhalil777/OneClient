@@ -32,10 +32,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 10px;
+  padding: 2px 10px;
   background: var(--oce-bar);
   border-bottom: 1px solid var(--oce-border);
-  min-height: 32px;
+  min-height: 30px;
 }
 .oce-file-name {
   overflow: hidden;
@@ -44,6 +44,24 @@
 }
 .oce-spacer {
   flex: 1;
+}
+.oce-toolbar-start {
+  flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 8px;
+  border-right: 1px solid var(--oce-border);
+}
+/* The breadcrumb lives inside the toolbar: it fills the space the buttons leave and has no bar of its own. */
+.oce-toolbar .oce-breadcrumbs {
+  flex: 1;
+  min-width: 0;
+  min-height: 24px;
+  padding: 0;
+  background: transparent;
+  border-bottom: 0;
 }
 .oce-btn {
   display: inline-flex;

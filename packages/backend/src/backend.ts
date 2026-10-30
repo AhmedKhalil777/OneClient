@@ -10,6 +10,7 @@ import { notificationForTask } from "./shared/notifications.js";
 import type { TaskInfo } from "./tasks/task-service.js";
 import { ExtensionHostSupervisor } from "./plugins/extension-host-supervisor.js";
 import { PluginManager, type PluginRecord } from "./plugins/plugin-manager.js";
+import { PluginInstaller } from "./plugins/plugin-installer.js";
 import { ProviderDirectory } from "./plugins/provider-directory.js";
 import { ContributionRegistry } from "./plugins/registry.js";
 import { FileSecretStore } from "./secrets/secret-store.js";
@@ -348,6 +349,7 @@ export async function createBackend(opts: BackendOptions) {
     themes,
     registry,
     pluginManager,
+    installer: new PluginInstaller({ userDir: platform.pluginDirs[0]!, pluginManager, secrets, appVersion: platform.appVersion, deactivate: (id) => supervisor.deactivate(id) }),
     connections,
     search,
     config,

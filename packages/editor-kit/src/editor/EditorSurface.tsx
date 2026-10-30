@@ -1,4 +1,4 @@
-import { type ReactNode, type RefObject, useMemo, useRef } from "react";
+import { type ReactNode, type RefObject, useLayoutEffect, useMemo, useRef } from "react";
 
 const LINE_HEIGHT = 20;
 
@@ -52,13 +52,23 @@ export function EditorSurface({
   // One text block instead of one element per line: a 20,000-line file would otherwise re-render 20,000 nodes per keystroke.
   const numbers = useMemo(() => Array.from({ length: lineCount }, (_, i) => i + 1).join("\n"), [lineCount]);
 
-  function onScroll(e: React.UIEvent<HTMLTextAreaElement>) {
-    const el = e.currentTarget;
+  function syncScroll(el: HTMLTextAreaElement) {
     if (gutterRef.current) gutterRef.current.scrollTop = el.scrollTop;
     if (layerRef.current) {
       layerRef.current.scrollTop = el.scrollTop;
       layerRef.current.scrollLeft = el.scrollLeft;
     }
+  }
+
+  // Adding or removing lines changes how far the textarea can scroll (the browser clamps it, sometimes without a scroll
+  // event), so line up the gutter and highlight layer with it after every edit, before the browser paints.
+  useLayoutEffect(() => {
+    if (textareaRef.current) syncScroll(textareaRef.current);
+  }, [text, highlightHtml, textareaRef]);
+
+  function onScroll(e: React.UIEvent<HTMLTextAreaElement>) {
+    const el = e.currentTarget;
+    syncScroll(el);
     const range = el.scrollHeight - el.clientHeight;
     onScrollFraction?.(range > 0 ? el.scrollTop / range : 0);
   }
@@ -74,8 +84,8 @@ export function EditorSurface({
               ▶
             </button>
           ))}
-          <div className="oce-gutter-current" style={{ top: (cursorLine - 1) * LINE_HEIGHT }}>
-            {cursorLine}
+          <div className="oce-gutter-current" style={{ top: (Math.min(cursorLine, lineCount) - 1) * LINE_HEIGHT }}>
+            {Math.min(cursorLine, lineCount)}
           </div>
         </div>
       </div>

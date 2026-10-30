@@ -307,8 +307,9 @@ export function FeatureEditor({
   return (
     <div className="oce-editor">
       <div className="oce-toolbar">
-        {toolbarStart ?? <span className="oce-file-name">{fileName}</span>}
-        <span className="oce-spacer" />
+        {toolbarStart && <span className="oce-toolbar-start">{toolbarStart}</span>}
+        {/* One bar: the path (file › symbols) takes the width, the buttons sit at its right end. */}
+        <Breadcrumbs filePath={displayPath ?? fileName} path={structure?.path ?? []} symbols={structure?.symbols ?? []} onGoTo={goToSymbol} />
         {features?.format && !readOnly && (
           <button className="oce-icon-btn" disabled={busy !== null} onClick={() => void runTransform(features.format!, "Format")} title={busy === "Format" ? "Formatting…" : "Format Document (Shift+Alt+F)"} aria-label="Format Document">
             <Icon id={busy === "Format" ? "refresh" : "format"} size={15} />
@@ -351,8 +352,6 @@ export function FeatureEditor({
         )}
         {toolbarEnd}
       </div>
-
-      <Breadcrumbs filePath={displayPath ?? fileName} path={structure?.path ?? []} symbols={structure?.symbols ?? []} onGoTo={goToSymbol} />
 
       <div className={`oce-body ${showPreview || outcome ? "split" : ""}`}>
         <div className="oce-pane-editor">
@@ -399,6 +398,9 @@ export function FeatureEditor({
             readOnly={readOnly}
             onChange={(v) => {
               onChange(v);
+              // The caret moved with the edit: keep the gutter's current-line number on the right row right away,
+              // not on the next key-up (a held Enter / Backspace would otherwise leave it covering another line's number).
+              updateCursor();
               setProblem(null);
             }}
             onKeyDown={onTextareaKeyDown}

@@ -1,0 +1,68 @@
+# Releases every plugin whose version changed and records it in plugin.json, the catalog the app reads.
+#
+#   push to main that changes a plugin's oneclient.json   → a GitHub Release `<plugin>-v<version>` per new version
+#                                                            (with <plugin>-<version>.tgz attached), then plugin.json is updated
+#   Actions ▸ Release plugins ▸ Run                        → same; tick "dry run" to only build and pack
+#
+# To ship a plugin change: bump its version (package.json + oneclient.json), and — if it needs a newer oneClient —
+# set "oneclient": { "app": ">=x.y.z" } in its package.json. Versions that already have a release are skipped.
+name: Release plugins
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/plugins/*/oneclient.json"
+      - "scripts/release-plugins.mjs"
+      - "scripts/lib/stage-plugins.mjs"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (build and pack, release nothing)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+# One run at a time: each one edits plugin.json.
+concurrency:
+  group: release-plugins
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Release
+        run: node scripts/release-plugins.mjs ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}
+
+      - name: Commit plugin.json
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+        run: |
+          if git diff --quiet -- plugin.json; then
+            echo "plugin.json is up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add plugin.json
+          git commit -m "Update plugin.json for released plugins [skip ci]"
+          git push
