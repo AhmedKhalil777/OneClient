@@ -3,5 +3,174 @@
   "app": {
     "version": "0.1.0"
   },
-  "plugins": {}
+  "plugins": {
+    "oneclient-ai": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.0",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-ai-v0.4.0/oneclient-ai-0.4.0.tgz",
+          "sha512": "sha512-X7Va68yJkl51N842nvWD8PN+xq6YdZaoyDUpamadLd5HDx2YyUGH/MGW/Gf5MzMPj93cLHp9STd8sg4fxeHGmg==",
+          "size": 1044185,
+          "publishedAt": "2026-10-30T22:39:44.647Z"
+        }
+      ],
+      "description": "Chat with Claude, OpenAI, Gemini, DeepSeek, Kimi, GLM, Grok, Mistral, Qwen or any OpenAI-compatible server with your own API key. It can read your open folders and propose edits you approve."
+    },
+    "oneclient-azure-blob": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.0",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-azure-blob-v0.4.0/oneclient-azure-blob-0.4.0.tgz",
+          "sha512": "sha512-nC/VRpTyxRfQqMqYcSTBmZIh6gvtt1nQaf4xbNQtXVdjhsdHfD+8x+Ool9QdwB0zAlT95/EyA9joWh31ZpNNoQ==",
+          "size": 85492,
+          "publishedAt": "2026-10-30T22:39:47.905Z"
+        }
+      ],
+      "description": "Browse Azure Blob Storage: containers and folders, upload and download, view and edit text, properties, metadata, access tiers and SAS links. Works with Azurite."
+    },
+    "oneclient-docker": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.1",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-docker-v0.4.0/oneclient-docker-0.4.0.tgz",
+          "sha512": "sha512-Wtqva7fPYcNEG3xI7p5ofoeZWsVcghKWxT+HFgFi2gToH8Oh74vIqn8V3LzNGLdOCp9iQlAfdgQKT7gD1TZVuA==",
+          "size": 74225,
+          "publishedAt": "2026-10-30T22:39:50.949Z"
+        }
+      ],
+      "description": "Connect to a local or remote Docker Engine: browse containers, images, volumes, networks — and run the databases, brokers and caches your other plugins support, with a ready connection to each."
+    },
+    "oneclient-http": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.0",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-http-v0.4.0/oneclient-http-0.4.0.tgz",
+          "sha512": "sha512-e21E3kre7sZQHUlLVpM6M4rgoW85j2F0FdPlFo+nZjQWh87S4q1h7mhgiMJBuKzwqbxLEMCCiA/vOwEI74aMBw==",
+          "size": 107849,
+          "publishedAt": "2026-10-30T22:39:53.570Z"
+        }
+      ],
+      "description": "Send HTTP requests: collections, environments with {{variables}}, auth, history, cURL and Postman import, and Postman export."
+    },
+    "oneclient-kafka": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.0",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-kafka-v0.4.0/oneclient-kafka-0.4.0.tgz",
+          "sha512": "sha512-ZowamBhozq8jSLxazI7C82J9O+WQGua/IKVmYrA+/IJNDZMs+tLYtO04hKLjf8LqyTDQsUEg5bgo2ICfcf4tNw==",
+          "size": 90533,
+          "publishedAt": "2026-10-30T22:39:56.643Z"
+        }
+      ],
+      "description": "Work with Apache Kafka: brokers, topics and partitions, browse messages from any offset or time, produce messages, topic configs, consumer groups with lag and offset resets. Supports SASL and TLS."
+    },
+    "oneclient-keycloak": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.0",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-keycloak-v0.4.0/oneclient-keycloak-0.4.0.tgz",
+          "sha512": "sha512-SFrNpWPBte06hu0iKxqnjLBPpcCY/2Oz6M/0QG0mn+1/gpzZMn4Q4ChMGLAFD9Pr8pTYNSRIlUJ/3U5PrfDeyg==",
+          "size": 97309,
+          "publishedAt": "2026-10-30T22:40:00.084Z"
+        }
+      ],
+      "description": "Manage Keycloak: realms, users, groups, roles, clients, scopes, identity providers, sessions and events — with JSON editing, role mapping, and developer token tools (decode, get, introspect, evaluate)."
+    },
+    "oneclient-misc": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.0",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-misc-v0.4.0/oneclient-misc-0.4.0.tgz",
+          "sha512": "sha512-UrnwiLwOPyRVzJEP4t7Ci7Qv0sE+t4tbjK37mW+kg4D7z7z7IZpxnCv0akbgT0/867mAiJrlKR7TEr5bft0xzA==",
+          "size": 24244,
+          "publishedAt": "2026-10-30T22:40:03.278Z"
+        }
+      ],
+      "description": "Built-in: JSON, XML, SQL, Markdown, TypeScript, JavaScript, CSS, C# and YAML editor support, text utilities (sort, de-duplicate, trim) and the Material Icon Theme."
+    },
+    "oneclient-mssql": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.0",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-mssql-v0.4.0/oneclient-mssql-0.4.0.tgz",
+          "sha512": "sha512-iiyNsJr9XG3ldmj2dPM3b5ag/ki32RB3PK91DVPZd+X432TJcc4ZDu/oXTmi6e+rLhsvGRsryFls3tnAFoMO8A==",
+          "size": 196277,
+          "publishedAt": "2026-10-30T22:40:07.235Z"
+        }
+      ],
+      "description": "Connect to Microsoft SQL Server: object explorer, query editor, result grids and Fast Tools (saved fast queries, fake-data generator) — a small SSMS."
+    },
+    "oneclient-mysql": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.0",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-mysql-v0.4.0/oneclient-mysql-0.4.0.tgz",
+          "sha512": "sha512-dmk7/j7AJ6IlaVTRCB0T70gHt11PyNDyvsLgwtKV9/xCcmwduH5cPE9swQwvEyxgMwBoALvPev63RNkgkkESvA==",
+          "size": 173988,
+          "publishedAt": "2026-10-30T22:40:09.954Z"
+        }
+      ],
+      "description": "Connect to MySQL and MariaDB: databases, tables, views, procedures and functions; query windows with IntelliSense, streamed result grids, table data editor with staged changes, CSV import, execution plans, SSH tunnels and object search."
+    },
+    "oneclient-pipeline": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.1",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-pipeline-v0.4.0/oneclient-pipeline-0.4.0.tgz",
+          "sha512": "sha512-fht1zNvWcdzNKNmcuDGk+XUGKLmWLkAJR6O8BvMwjp1sZR6RN5oFV1l60K64M99YLI8j7BzjFZ7+X9j99eTuCw==",
+          "size": 72216,
+          "publishedAt": "2026-10-30T22:40:12.958Z"
+        }
+      ],
+      "description": "Build test scenarios like a CI/CD job: run scripts, start test containers, seed data, call REST APIs and assert on the results — step by step, with teardown."
+    },
+    "oneclient-postgres": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.0",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-postgres-v0.4.0/oneclient-postgres-0.4.0.tgz",
+          "sha512": "sha512-RtBsw2/dEItpMIxO8Pd6hUIjkxCKVoz8cyYJy8LMaM5o08cpTHaPRHFXhow4vvBJ0NDa22MMis6ZShZeHigsPQ==",
+          "size": 180638,
+          "publishedAt": "2026-10-30T22:40:15.728Z"
+        }
+      ],
+      "description": "Connect to PostgreSQL: databases, schemas, tables, views, functions and procedures; query windows with IntelliSense, result grids, NOTICE messages, cancel, CREATE / ALTER scripts and object search."
+    },
+    "oneclient-redis": {
+      "releases": [
+        {
+          "version": "0.4.0",
+          "app": ">=0.1.0",
+          "engine": "^0.1.0",
+          "url": "https://github.com/AhmedKhalil777/OneClient/releases/download/oneclient-redis-v0.4.0/oneclient-redis-0.4.0.tgz",
+          "sha512": "sha512-RP/ipj9pBHvm+DTNWmFMsCMejll+PtYpyBSviylvbj+2hjqU4BsyqJbeB0m2xavadjQBlrFW7xSNHzC9pIk7uw==",
+          "size": 88507,
+          "publishedAt": "2026-10-30T22:40:18.378Z"
+        }
+      ],
+      "description": "Browse Redis keys by namespace, view and edit every data type (string/JSON, hash, list, set, sorted set, stream), TTLs, server info, slow log and a CLI."
+    }
+  }
 }
